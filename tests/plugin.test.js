@@ -6,7 +6,7 @@ const fs=require('node:fs');
 const path=require('node:path');
 const Core=require('../src/core');
 function fixture() {
-  const notices=[], timers=new Map(); let timerId=0;
+  const notices=[], timers=new Map(), handlers={}; let timerId=0;
   class Component {
     registerEvent(){} registerDomEvent(){}
     addChild(child){child.onload?.();return child;}
@@ -28,23 +28,24 @@ function fixture() {
     throw Error(name);
   },window:{setInterval:()=>1},setTimeout:fn=>{timers.set(++timerId,fn);return timerId;},clearTimeout:id=>timers.delete(id),console,Intl,Date};
   vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../dist/algorithm-workbench/main.js'),'utf8'),context);
-  const plugin=new mod.exports();plugin.saved=[];plugin.app={workspace,vault:{on:()=>({})}};
+  const plugin=new mod.exports();plugin.saved=[];plugin.app={workspace,vault:{on:(name,fn)=>{(handlers[name]??=[]).push(fn);return {};}}};
   const docs=new Map();
   const doc=text=>{
-    if(!docs.has(text))docs.set(text,{length:text.length,scans:0,toString(){this.scans++;return text;},sliceString:(a,b)=>text.slice(a,b)});
+    if(!docs.has(text))docs.set(text,{length:text.length,scans:0,toString(){this.scans++;return text;},sliceString:(a,b)=>text.slice(a,b),
+      lineAt:pos=>({from:text.lastIndexOf('\n',pos-1)+1,to:text.indexOf('\n',pos)<0?text.length:text.indexOf('\n',pos)})});
     return docs.get(text);
   };
-  const update=(before,after,user=true,filePath='note.md')=>{
+  const update=(before,after,user=true,filePath='note.md',event='input.type')=>{
     let a=0;while(a<before.length&&a<after.length&&before[a]===after[a])a++;
     let endA=before.length,endB=after.length;
     while(endA>a&&endB>a&&before[endA-1]===after[endB-1]){endA--;endB--;}
     return {docChanged:true,state:{field:()=>({file:new TFile(filePath)})},transactions:[{
-      docChanged:true,isUserEvent:type=>user&&type==='input',startState:{doc:doc(before)},newDoc:doc(after),
+      docChanged:true,isUserEvent:type=>user&&(event===type||event.startsWith(type+'.')),startState:{doc:doc(before)},newDoc:doc(after),
       changes:{iterChanges:fn=>fn(a,endA,a,endB,{toString:()=>after.slice(a,endB)})}
     }]};
   };
 
-  return {plugin,workspace,notices,update,docs,timers};
+  return {plugin,workspace,notices,update,docs,timers,handlers,TFile};
 }
 test('bundled plugin loads, counts actual transactions, filters folders and saves',async()=>{
   const {plugin,update}=fixture();await plugin.onload();
@@ -77,7 +78,7 @@ test('writes are serialized and a failed write can recover',async()=>{
   plugin.onunload();await plugin.saveQueue;
 });
 test('invalid existing data aborts loading without replacing it',async()=>{
-  const {plugin,notices}=fixture();plugin.initialData={version:2};
+  const {plugin,notices}=fixture();plugin.initialData={version:3};
   await assert.rejects(()=>plugin.onload());assert.equal(plugin.saved.length,0);assert.equal(notices.length,1);
 });
 
@@ -135,5 +136,29 @@ test('closing the view releases retained DOM references',async()=>{
   await view.onClose();
   assert.equal(cleared,true);assert.equal(view.dayEl,null);assert.equal(view.recentEl,null);
   assert.equal(view.statNumbers,null);assert.equal(view.heatCells,null);
+  plugin.onunload();await plugin.saveQueue;
+});
+
+test('checked tasks count once per file and day; pasted lists do not count',async()=>{
+  const {plugin,update}=fixture();await plugin.onload();const today=Core.dayKey();
+  plugin.extension(update('- [ ] 推导\n- [ ] 实验','- [x] 推导\n- [ ] 实验'));
+  plugin.extension(update('- [x] 推导\n- [ ] 实验','- [ ] 推导\n- [ ] 实验'));
+  plugin.extension(update('- [ ] 推导\n- [ ] 实验','- [x] 推导\n- [ ] 实验'));
+  assert.equal(plugin.data.days[today].tasks,1);
+  plugin.extension(update('- [x] 推导\n- [ ] 实验','- [x] 推导\n- [ ] 实验\n- [x] 粘贴\n- [x] 粘贴',true,'note.md','input.paste'));
+  assert.equal(plugin.data.days[today].tasks,1);
+  // A checkbox click may carry no user-event annotation; a one-character toggle still counts.
+  plugin.extension(update('- [x] 推导\n- [ ] 实验\n- [x] 粘贴\n- [x] 粘贴','- [x] 推导\n- [x] 实验\n- [x] 粘贴\n- [x] 粘贴',false));
+  assert.equal(plugin.data.days[today].tasks,2);
+  assert.ok(plugin.data.days[today].minutes>=1);
+  plugin.onunload();await plugin.saveQueue;
+});
+test('new notes count only after the vault finishes loading, outside excluded folders',async()=>{
+  const {plugin,workspace,handlers,TFile}=fixture();await plugin.onload();plugin.data.settings.openOnStartup=false;
+  for(const fn of handlers.create)fn(new TFile('启动扫描.md'));
+  assert.equal(plugin.data.days[Core.dayKey()],undefined);
+  workspace.ready();
+  for(const fn of handlers.create){fn(new TFile('新笔记.md'));fn(new TFile('Templates/模板.md'));}
+  assert.equal(plugin.data.days[Core.dayKey()].notes,1);
   plugin.onunload();await plugin.saveQueue;
 });

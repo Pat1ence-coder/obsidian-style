@@ -1,9 +1,11 @@
 /* Shared design source. Only namespaced tokens live here; no app-wide resets. */
 body {
   --ds-font-ui: system-ui, -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
-  --ds-font-mono: "SFMono-Regular", "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --ds-font-mono: "SF Mono", "SFMono-Regular", "JetBrains Mono", Menlo, Consolas, "Liberation Mono", monospace;
   --ds-font-academic: "Times New Roman", "Songti SC", "Noto Serif CJK SC", "SimSun", serif;
   --ds-font-academic-heading: "Times New Roman", "Heiti SC", "PingFang SC", "Noto Sans CJK SC", sans-serif;
+  /* Figures, badges and chips use the monospace face, as in the dashboard. */
+  --ds-font-numeric: var(--ds-font-mono);
   --ds-font-body: var(--ds-font-ui);
   --ds-font-heading: var(--ds-font-ui);
   /* One scale, respecting Obsidian's overall text-size preference. */
@@ -26,33 +28,39 @@ body {
   --ds-page-inset: 24px;
   --ds-space-1: 4px; --ds-space-2: 8px; --ds-space-3: 12px;
   --ds-space-4: 16px; --ds-space-6: 24px; --ds-space-8: 32px;
-  --ds-radius-control: 8px; --ds-radius-content: 12px; --ds-radius-card: 16px;
-  --ds-bg: #eef3f3;
-  --ds-paper: #fcfbf7;
-  --ds-surface: #f1f5f4;
-  --ds-surface-hover: #e7eff0;
-  --ds-text: #283238;
-  --ds-muted: #68767c;
-  --ds-faint: #78868c;
-  --ds-accent: #557786;
-  --ds-accent-hover: #395f70;
-  --ds-accent-soft: #e5f0f2;
-  --ds-border: #dce3e4;
-  --ds-rule: #bacbd0;
-  --ds-selection: rgba(85,119,134,.18);
-  --ds-shadow: 0 2px 6px rgba(40,62,72,.025), 0 12px 32px rgba(40,62,72,.035);
-  --ds-code-bg: #f0f4f4;
-  --ds-heat-0: #edf0ef; --ds-heat-1: #d3e0e2; --ds-heat-2: #acc6ce;
-  --ds-heat-3: #7f9fab; --ds-heat-4: #557786;
+  --ds-radius-control: 8px; --ds-radius-content: 12px; --ds-radius-card: 18px;
+  /* Crisp pulse: neutral cool greys, white panels, periwinkle-indigo accent. */
+  --ds-bg: #eceef2;
+  --ds-paper: #ffffff;
+  --ds-shell: #f5f6f8;
+  --ds-surface: #f3f4f7;
+  --ds-surface-hover: #eaecf2;
+  --ds-text: #1f2330;
+  --ds-muted: #686d7e;
+  --ds-faint: #8b90a0;
+  --ds-accent: #5b5fc7;
+  --ds-accent-hover: #4549b0;
+  --ds-accent-soft: #ebecfa;
+  --ds-warm: #d4573a;
+  --ds-border: #e3e5eb;
+  --ds-rule: #cdd1db;
+  --ds-selection: rgba(91,95,199,.16);
+  --ds-shadow: 0 1px 2px rgba(31,35,48,.04), 0 8px 24px rgba(31,35,48,.06);
+  --ds-shadow-soft: 0 1px 2px rgba(31,35,48,.06), 0 2px 6px rgba(31,35,48,.04);
+  --ds-code-bg: #f4f5f8;
+  --ds-heat-0: #eef0f4; --ds-heat-1: #d5d7f4; --ds-heat-2: #aeb1ec;
+  --ds-heat-3: #8387dc; --ds-heat-4: #5b5fc7;
 }
 body.theme-dark {
-  --ds-bg:#1c2529; --ds-paper:#232d32; --ds-surface:#2b373d;
-  --ds-surface-hover:#34464e;
-  --ds-text:#e7efef; --ds-muted:#b0c0c5; --ds-faint:#93a7b0;
-  --ds-accent:#a6c5cf; --ds-accent-hover:#c8e1e8; --ds-accent-soft:#31464e;
-  --ds-border:#3a4b52; --ds-rule:#536c77; --ds-selection:rgba(166,197,207,.24);
-  --ds-shadow:0 4px 18px rgba(0,0,0,.12);
-  --ds-code-bg:#2a383f;
-  --ds-heat-0:#2c3b40; --ds-heat-1:#3e5964; --ds-heat-2:#5a7d89;
-  --ds-heat-3:#7fa3ae; --ds-heat-4:#b3d1da;
+  --ds-bg:#16181d; --ds-paper:#1f2228; --ds-shell:#1b1e23; --ds-surface:#262a31;
+  --ds-surface-hover:#2f343d;
+  --ds-text:#e4e6ec; --ds-muted:#a3a8b6; --ds-faint:#80869a;
+  --ds-accent:#9da0f2; --ds-accent-hover:#babcf7; --ds-accent-soft:#2c2f4d;
+  --ds-warm:#ee8a6c;
+  --ds-border:#30343d; --ds-rule:#454b58; --ds-selection:rgba(157,160,242,.24);
+  --ds-shadow:0 1px 2px rgba(0,0,0,.2),0 8px 24px rgba(0,0,0,.22);
+  --ds-shadow-soft:0 1px 2px rgba(0,0,0,.25);
+  --ds-code-bg:#262a31;
+  --ds-heat-0:#2a2e36; --ds-heat-1:#363a69; --ds-heat-2:#4b509c;
+  --ds-heat-3:#6d72cf; --ds-heat-4:#9da0f2;
 }

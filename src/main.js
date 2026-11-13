@@ -23,14 +23,14 @@ class WorkbenchSettings extends PluginSettingTab {
       s.excludedFolders=v.split('\n').map(x=>x.trim().replace(/^\/+|\/+$/g,'')).filter(Boolean);this.plugin.data.records={};this.plugin.changed();
     }));
     new Setting(this.containerEl).setName('立即打开工作台').addButton(b=>b.setButtonText('打开').onClick(()=>this.plugin.openWorkbench()));
-    this.containerEl.createEl('p',{text:'数据保存在此插件目录的 data.json，仅包含设置、日期、文件路径和计数。第一版针对单台设备，不合并多设备统计。'});
+    this.containerEl.createEl('p',{text:'数据保存在此插件目录的 data.json，仅包含设置、日期、文件路径和计数。针对单台设备，不合并多设备统计。'});
   }
 }
 
 class WorkbenchPlugin extends Plugin {
   async onload() {
     this.saveQueue=Promise.resolve(); this.saving=false; this.saveRequested=false;
-    this.documentCounts=new WeakMap(); this.recordDay=Core.dayKey();
+    this.documentCounts=new WeakMap(); this.recordDay=Core.dayKey(); this.session={last:null,span:0};
     this.stopped=false; this.saveError=false;
     try {this.data=Core.loadState(await this.loadData());}
     catch(error){new Notice('工作台统计数据无法读取，已停止加载，原文件未改动。请先备份 data.json。',10000);throw error;}
@@ -38,8 +38,8 @@ class WorkbenchPlugin extends Plugin {
     this.figures=this.addChild(new Figures(this));
     this.screenshotNames=this.addChild(new ScreenshotNames(this));
     this.registerView(VIEW,leaf=>new WorkbenchView(leaf,this));
-    this.addRibbonIcon('layout-dashboard','打开工作台',()=>this.openWorkbench());
-    this.addCommand({id:'open-workbench',name:'打开工作台',callback:()=>this.openWorkbench()});
+    this.addRibbonIcon('activity','打开知识脉冲看板',()=>this.openWorkbench());
+    this.addCommand({id:'open-workbench',name:'打开知识脉冲看板',callback:()=>this.openWorkbench()});
     this.addSettingTab(new WorkbenchSettings(this.app,this));
     this.registerEditorExtension(EditorView.updateListener.of(update=>this.trackUpdate(update)));
     for(const event of ['create','modify','delete']) this.registerEvent(this.app.vault.on(event,file=>{
@@ -52,7 +52,12 @@ class WorkbenchPlugin extends Plugin {
       this.cleanRecords(); this.scheduleRefresh(); if(this.saveError)this.scheduleSave();
     },60000));
     this.registerEvent(this.app.workspace.on('active-leaf-change',()=>this.scheduleRefresh()));
-    this.app.workspace.onLayoutReady(()=>{if(!this.stopped&&this.data.settings.openOnStartup)void this.openWorkbench();});
+    this.app.workspace.onLayoutReady(()=>{
+      if(this.stopped)return;
+      // Vault emits create for every existing file while indexing; count only later ones.
+      this.registerEvent(this.app.vault.on('create',file=>this.trackCreate(file)));
+      if(this.data.settings.openOnStartup)void this.openWorkbench();
+    });
     this.scheduleSave();
   }
   trackUpdate(update) {
@@ -60,13 +65,28 @@ class WorkbenchPlugin extends Plugin {
     const file=update.state.field(editorInfoField,false)?.file;
     if(!(file instanceof TFile)||file.extension!=='md'||Core.isExcluded(file.path,this.data.settings.excludedFolders))return;
     const date=Core.dayKey(); this.cleanRecords(date);
+    let active=false;
     for(const tr of update.transactions) {
       if(!tr.docChanged)continue;
       const user=['input','delete','undo','redo','move'].some(type=>tr.isUserEvent(type));
       const [before,after]=Core.transactionCounts(tr,this.documentCounts);
       Core.recordChange(this.data,file.path,before,after,date,user);
+      if(this.countsTasks(tr,user))Core.recordTasks(this.data,file.path,Core.taskDelta(tr),date);
+      active||=user;
     }
+    if(active)Core.recordActivity(this.data,this.session);
     this.changed();
+  }
+  // Pasted or dragged lists are not newly completed work. A checkbox toggle may carry
+  // no user-event annotation, so tiny unannotated replacements are accepted as well.
+  countsTasks(tr,user){
+    if(user)return !tr.isUserEvent('input.paste')&&!tr.isUserEvent('move');
+    let size=0;tr.changes.iterChanges((fromA,toA,fromB,toB)=>{size+=(toA-fromA)+(toB-fromB);});
+    return size<=2;
+  }
+  trackCreate(file){
+    if(this.stopped||!this.data.settings.tracking||!(file instanceof TFile)||file.extension!=='md'||Core.isExcluded(file.path,this.data.settings.excludedFolders))return;
+    Core.recordNote(this.data,Core.dayKey());this.changed();
   }
   changed(){this.scheduleSave();this.scheduleRefresh();}
   cleanRecords(date=Core.dayKey()) {

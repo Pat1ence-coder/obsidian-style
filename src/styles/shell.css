@@ -38,11 +38,68 @@ body:is(.theme-light,.theme-dark) {
   --scrollbar-thumb-bg: color-mix(in srgb, var(--ds-muted) 24%, transparent);
   --scrollbar-active-thumb-bg: color-mix(in srgb, var(--ds-muted) 42%, transparent);
 }
-body.theme-dark {--text-on-accent: #191b22;}
-.workspace-tab-header-container {border-bottom: 1px solid var(--ds-border);}
+body.theme-dark {--text-on-accent: #15171c;}
+/* Chrome: one cool-grey frame; the open note sits in it as a white card. */
+body:is(.theme-light,.theme-dark) {
+  --titlebar-background: var(--ds-bg);
+  --titlebar-background-focused: var(--ds-bg);
+  --ribbon-background: var(--ds-bg);
+  --ribbon-background-collapsed: var(--ds-bg);
+  --tab-container-background: var(--ds-bg);
+  --tab-background-active: var(--ds-paper);
+  --tab-text-color: var(--ds-muted);
+  --tab-text-color-focused: var(--ds-muted);
+  --tab-text-color-focused-active: var(--ds-text);
+  --tab-text-color-focused-active-current: var(--ds-text);
+  --tab-outline-color: transparent;
+  --tab-divider-color: transparent;
+  --tab-curve: 0px;
+  --tab-radius: var(--ds-radius-control);
+  --status-bar-background: var(--ds-bg);
+  --status-bar-border-color: transparent;
+  --status-bar-text-color: var(--ds-muted);
+  --divider-color: var(--ds-border);
+  --nav-item-color: var(--ds-text);
+  --nav-item-color-hover: var(--ds-text);
+  --nav-item-background-hover: var(--ds-surface-hover);
+  --nav-item-weight-active: 600;
+  --nav-indentation-guide-color: var(--ds-border);
+  --icon-color: var(--ds-muted);
+  --icon-color-hover: var(--ds-text);
+  --icon-color-active: var(--ds-accent);
+  --modal-radius: var(--ds-radius-card);
+  --modal-border-color: var(--ds-border);
+  --checkbox-radius: 5px;
+  --checkbox-color: var(--ds-accent);
+  --checkbox-color-hover: var(--ds-accent-hover);
+  --checkbox-border-color: var(--ds-rule);
+  --checklist-done-color: var(--ds-muted);
+  --tag-radius: 6px;
+  --tag-padding-x: .5em;
+  --tag-padding-y: .15em;
+  --tag-weight: 500;
+  --tag-background-hover: var(--ds-accent-soft);
+}
+.workspace-split.mod-root {background: var(--ds-bg);}
+.workspace-split.mod-root .workspace-tab-container {padding: 0 8px 8px;}
+.workspace-split.mod-root .workspace-leaf-content {
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-card);
+  background: var(--background-primary);
+  box-shadow: var(--ds-shadow-soft);
+  overflow: hidden;
+}
+.workspace-tab-header-container {border-bottom: 0;}
+.workspace-tab-header.is-active {box-shadow: var(--ds-shadow-soft);}
+.workspace-tab-header.is-active .workspace-tab-header-inner-title {font-weight: 600;}
+.workspace-split.mod-sidedock {background: var(--ds-bg);}
 .workspace-leaf-content[data-type="file-explorer"] .nav-header {padding-block: 8px;}
 .workspace-leaf-content[data-type="file-explorer"] .nav-action-button {border-radius: var(--ds-radius-control);}
 .workspace-leaf-content[data-type="file-explorer"] .nav-folder-title,
-.workspace-leaf-content[data-type="file-explorer"] .nav-file-title {font-family: var(--ds-font-ui);}
+.workspace-leaf-content[data-type="file-explorer"] .nav-file-title {font-family: var(--ds-font-ui);border-radius: 7px;}
+.workspace-leaf-content[data-type="file-explorer"] .nav-folder-title {font-weight: 500;}
+.status-bar {font-family: var(--ds-font-numeric);font-size: 11.5px;}
 /* Decorative translucency stays out of paragraphs and documents. */
 .modal {border: 1px solid var(--ds-border);border-radius: var(--ds-radius-card);box-shadow: var(--ds-shadow);}
+.vertical-tab-header {background: var(--ds-bg);}
+button.mod-cta {box-shadow: 0 2px 8px color-mix(in srgb, var(--ds-accent) 30%, transparent);}

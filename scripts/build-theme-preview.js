@@ -1,0 +1,66 @@
+'use strict';
+// Standard-library only. A script-free mock of Obsidian's window using its real class
+// names, so the document snippet can be eyeballed. HOST approximates how Obsidian's own
+// app.css consumes theme variables; it is not Obsidian's stylesheet.
+const fs=require('node:fs'),path=require('node:path');
+const root=path.resolve(__dirname,'..');
+const snippet=fs.readFileSync(path.join(root,'dist/snippets/style.css'),'utf8');
+const HOST=`*{box-sizing:border-box}html,body{margin:0;height:100%}
+body{font-family:var(--font-interface);font-size:13px;color:var(--text-normal);background:var(--background-secondary);--tab-container-background:var(--background-secondary)}
+.app-container{display:flex;height:100vh}
+.workspace-ribbon{width:44px;background:var(--ribbon-background);display:flex;flex-direction:column;align-items:center;gap:14px;padding-top:46px;border-right:1px solid var(--divider-color)}
+.workspace-ribbon i{width:18px;height:18px;border-radius:5px;background:var(--icon-color);opacity:.35}
+.workspace-split.mod-left-split{width:250px;background:var(--background-secondary);border-right:1px solid var(--divider-color);display:flex;flex-direction:column}
+.workspace-split.mod-root{flex:1;display:flex;flex-direction:column;min-width:0}
+.workspace-tab-header-container{display:flex;gap:4px;height:42px;align-items:flex-end;padding:0 10px 6px;background:var(--tab-container-background)}
+.workspace-tab-header{display:flex;align-items:center;height:30px;padding:0 14px;border-radius:var(--tab-radius);color:var(--tab-text-color)}
+.workspace-tab-header.is-active{background:var(--tab-background-active);color:var(--tab-text-color-focused-active)}
+.workspace-tab-container{flex:1;display:flex;min-height:0}
+.workspace-leaf-content{flex:1;display:flex;flex-direction:column;min-width:0}
+.view-header{height:40px;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:13px}
+.view-content{flex:1;overflow:auto}
+.nav-header{padding:12px 12px 8px;display:flex;gap:10px}.nav-action-button{width:22px;height:22px;background:var(--icon-color);opacity:.25}
+.nav-files-container{padding:4px 8px}
+.nav-folder-title,.nav-file-title{padding:4px 10px;margin:1px 0;color:var(--nav-item-color);font-size:13.5px}
+.nav-file-title{padding-left:26px}.nav-file-title.is-active{background:var(--nav-item-background-active);color:var(--nav-item-color-active);font-weight:var(--nav-item-weight-active)}
+.markdown-preview-view{padding:32px var(--file-margins);color:var(--text-normal)}
+.inline-title{font-size:var(--inline-title-size);font-weight:var(--inline-title-weight);line-height:var(--inline-title-line-height);color:var(--inline-title-color)}
+.markdown-rendered h1{font-size:var(--h1-size);font-weight:var(--h1-weight);color:var(--h1-color)}
+.markdown-rendered h2{font-size:var(--h2-size);font-weight:var(--h2-weight);color:var(--h2-color)}
+.markdown-rendered h3{font-size:var(--h3-size);font-weight:var(--h3-weight);color:var(--h3-color)}
+.markdown-rendered a{color:var(--link-color);text-decoration:none}
+a.tag{background:var(--tag-background);color:var(--tag-color);border-radius:var(--tag-radius);padding:var(--tag-padding-y) var(--tag-padding-x);font-weight:var(--tag-weight)}
+.markdown-rendered blockquote{border-inline-start:var(--blockquote-border-thickness) solid var(--blockquote-border-color);background:var(--blockquote-background-color);color:var(--blockquote-color);margin-inline:0}
+.callout{padding:var(--callout-padding);margin:1em 0}.callout-title{display:flex;gap:8px;font-weight:var(--callout-title-weight)}
+.task-list-item{list-style:none;margin-inline-start:-1.4em}.task-list-item input{appearance:none;width:15px;height:15px;border:1px solid var(--checkbox-border-color);border-radius:var(--checkbox-radius);vertical-align:-2px;margin-right:8px}
+.task-list-item.is-checked input{background:var(--checkbox-color);border-color:var(--checkbox-color)}.task-list-item.is-checked{color:var(--checklist-done-color);text-decoration:line-through}
+.status-bar{position:fixed;right:10px;bottom:4px;color:var(--status-bar-text-color);background:var(--status-bar-background)}
+code .kw{color:var(--code-keyword)}code .fn{color:var(--code-function)}code .st{color:var(--code-string)}code .cm{color:var(--code-comment)}code .nu{color:var(--code-value)}`;
+const tree=[['研究',[['Attention 机制与梯度推导',true],['对比学习阅读笔记']]],['实验',[['检索模型消融实验']]],['工程',[['推理服务延迟排查'],['数据集版本说明']]]];
+const files=tree.map(([folder,items])=>`<div class="nav-folder-title">▾ ${folder}</div>`+items.map(([name,active])=>`<div class="tree-item-self nav-file-title${active?' is-active':''}">${name}</div>`).join('')).join('');
+const note=`<div class="inline-title">Attention 机制与梯度推导</div>
+<p><a class="tag">#研究</a> <a class="tag">#transformer</a></p>
+<p>缩放点积注意力把查询与键的相似度归一化后，对值做加权平均。下面整理前向公式与 <code>softmax</code> 的雅可比矩阵，并记录一次<a>消融实验</a>的结论。</p>
+<h2>1. 前向计算</h2>
+<p>给定 <strong>Q、K、V</strong>，输出为 softmax(QKᵀ/√d)·V。缩放因子防止点积随维度增大而进入 softmax 的饱和区。</p>
+<div class="callout" data-callout="note"><div class="callout-title">ⓘ 记录</div><div class="callout-content"><p>维度 d=64 时，未缩放版本训练前 2k 步的梯度范数下降约 40%。</p></div></div>
+<h2>2. 实验对比</h2>
+<table><thead><tr><th>方法</th><th align="right">MRR@10</th><th align="right">延迟 ms</th><th align="right">参数量</th></tr></thead>
+<tbody><tr><td>Baseline</td><td align="right">0.372</td><td align="right">18.4</td><td align="right">110M</td></tr><tr><td>+ 缩放</td><td align="right">0.391</td><td align="right">18.6</td><td align="right">110M</td></tr><tr><td>+ 缩放 + 温度</td><td align="right">0.398</td><td align="right">18.7</td><td align="right">110M</td></tr></tbody></table>
+<pre><code><span class="kw">def</span> <span class="fn">attention</span>(q, k, v, d):
+    <span class="cm"># 缩放点积注意力</span>
+    w = softmax(q @ k.T / d ** <span class="nu">0.5</span>)
+    <span class="kw">return</span> w @ v  <span class="st">"weighted sum"</span></code></pre>
+<h3>待办</h3>
+<ul class="contains-task-list"><li class="task-list-item is-checked"><input type="checkbox" checked>推导 softmax 雅可比</li><li class="task-list-item is-checked"><input type="checkbox" checked>补充温度系数实验</li><li class="task-list-item"><input type="checkbox">整理成组会报告</li></ul>
+<blockquote><p>注意力不是解释，但它是一个好的调试入口。</p></blockquote>`;
+const html=`<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:"><title>主题外框 · 静态示例</title><style>${HOST}\n${snippet}</style></head>
+<body class="theme-light"><div class="app-container"><div class="workspace-ribbon mod-left"><i></i><i></i><i></i><i></i></div>
+<div class="workspace-split mod-horizontal mod-sidedock mod-left-split"><div class="workspace-tab-header-container"></div><div class="workspace-leaf-content" data-type="file-explorer"><div class="nav-header"><span class="nav-action-button"></span><span class="nav-action-button"></span><span class="nav-action-button"></span></div><div class="nav-files-container">${files}</div></div></div>
+<div class="workspace-split mod-vertical mod-root"><div class="workspace-tabs"><div class="workspace-tab-header-container"><div class="workspace-tab-header"><div class="workspace-tab-header-inner"><div class="workspace-tab-header-inner-title">知识脉冲</div></div></div><div class="workspace-tab-header is-active"><div class="workspace-tab-header-inner"><div class="workspace-tab-header-inner-title">Attention 机制与梯度推导</div></div></div></div></div>
+<div class="workspace-tab-container"><div class="workspace-leaf-content" data-type="markdown"><div class="view-header"><div class="view-header-title">研究 / Attention 机制与梯度推导</div></div><div class="view-content"><div class="markdown-preview-view markdown-rendered"><div class="markdown-preview-sizer">${note}</div></div></div></div></div></div>
+</div><div class="status-bar">1,286 字 · 编辑 74 分钟</div></body></html>`;
+const out=path.join(root,'artifacts/preview');fs.mkdirSync(out,{recursive:true});
+fs.writeFileSync(path.join(out,'theme-static.html'),html);
+if(/<script\b/i.test(html))throw Error('Static preview unexpectedly contains a script');
+console.log('Script-free theme preview written:',path.join(out,'theme-static.html'));

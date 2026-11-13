@@ -1,5 +1,5 @@
 body {
-  --blockquote-border-color: var(--ds-rule);
+  --blockquote-border-color: color-mix(in srgb, var(--ds-accent) 55%, transparent);
   --blockquote-border-thickness: 2px;
   --blockquote-background-color: var(--ds-surface);
   --blockquote-color: var(--ds-muted);
@@ -15,18 +15,18 @@ body {
   --code-size: var(--ds-code-size);
   --code-radius: 4px;
   --code-comment: var(--ds-muted);
-  --code-keyword: #496c82;
-  --code-string: #356c57;
-  --code-function: #465fa5;
-  --code-property: #465fa5;
-  --code-value: #965823;
-  --code-important: #496c82;
+  --code-keyword: #5b5fc7;
+  --code-string: #2f7a5c;
+  --code-function: #3b63c4;
+  --code-property: #3b63c4;
+  --code-value: #b0532c;
+  --code-important: #c0432f;
   --code-operator: var(--ds-text);
   --table-text-size: var(--ds-table-size);
   --table-header-size: var(--ds-table-size);
   --table-header-font: var(--ds-font-body);
-  --table-header-weight: 600;
-  --table-header-color: var(--ds-text);
+  --table-header-weight: 500;
+  --table-header-color: var(--ds-muted);
   --table-header-background: var(--ds-surface);
   --table-text-color: var(--ds-text);
   --table-background: transparent;
@@ -37,14 +37,20 @@ body {
   --table-cell-vertical-alignment: top;
   --table-white-space: normal;
 }
-body.theme-dark {--code-keyword:#a7c5d8;--code-string:#a3cbb6;--code-function:#a3b9ed;--code-property:#a3b9ed;--code-value:#e2bd96;--code-important:#a7c5d8;}
+body.theme-dark {--code-keyword:#a9acf5;--code-string:#8fcfae;--code-function:#93b1f2;--code-property:#93b1f2;--code-value:#efa784;--code-important:#f08c78;}
 .markdown-rendered blockquote:not(.callout) {padding: .6em 1em;border-radius: 0 var(--ds-radius-control) var(--ds-radius-control) 0;}
 .markdown-rendered blockquote:not(.callout) > :last-child {margin-bottom: 0;}
 .callout-content > :last-child {margin-bottom: 0;}
-:is(.markdown-rendered,.markdown-source-view) .callout[data-callout="note"] {--callout-color: 85,119,134;}
-:is(.markdown-rendered,.markdown-source-view) .callout[data-callout="info"] {--callout-color: 67,103,152;}
-:is(.markdown-rendered,.markdown-source-view) .callout[data-callout="success"] {--callout-color: 60,121,97;}
-:is(.markdown-rendered,.markdown-source-view) .callout[data-callout="warning"] {--callout-color: 157,103,45;}
+:is(.markdown-rendered,.markdown-source-view) .callout[data-callout="note"] {--callout-color: 91,95,199;}
+:is(.markdown-rendered,.markdown-source-view) .callout[data-callout="info"] {--callout-color: 59,99,196;}
+:is(.markdown-rendered,.markdown-source-view) .callout[data-callout="success"] {--callout-color: 47,122,92;}
+:is(.markdown-rendered,.markdown-source-view) .callout[data-callout="warning"] {--callout-color: 192,110,32;}
+/* Callouts read as dashboard cards: neutral shell, colour kept in the title only.
+   The figure callout overrides this with its own higher-specificity rule. */
+:is(.markdown-rendered,.markdown-source-view) .callout {background: var(--ds-shell);border: 1px solid var(--ds-border);border-radius: var(--ds-radius-content);}
+:is(.markdown-rendered,.markdown-source-view) .callout-title {color: rgb(var(--callout-color));}
+:is(.markdown-rendered,.markdown-source-view) .callout-content {color: var(--ds-text);}
+:is(.markdown-rendered,.markdown-source-view) :is(a.tag,.cm-hashtag) {font-family: var(--ds-font-numeric);font-size: .82em;}
 :is(.markdown-rendered,.markdown-source-view) table {
   width:100%;border-collapse:collapse;border-spacing:0;
   margin-block:.6em 1em;border-block:1px solid var(--ds-rule);box-shadow:none;
@@ -54,8 +60,9 @@ body.theme-dark {--code-keyword:#a7c5d8;--code-string:#a3cbb6;--code-function:#a
   border:0;border-bottom:1px solid var(--ds-border);padding:10px 14px;
   vertical-align:top;font-variant-numeric:lining-nums tabular-nums;
 }
-:is(.markdown-rendered,.markdown-source-view) table th {font-weight:600;background:var(--ds-surface);}
+:is(.markdown-rendered,.markdown-source-view) table th {font-weight:500;color:var(--ds-muted);background:var(--ds-surface);}
 :is(.markdown-rendered,.markdown-source-view) table tbody tr:last-child > :is(td,th) {border-bottom:0;}
+:is(.markdown-rendered,.markdown-source-view) table th:not([align]) {text-align:start;}
 :is(.markdown-rendered,.markdown-source-view) table :is(th,td)[align="left"] {text-align:left;}
 :is(.markdown-rendered,.markdown-source-view) table :is(th,td)[align="center"] {text-align:center;}
 :is(.markdown-rendered,.markdown-source-view) table :is(th,td)[align="right"] {text-align:right;}

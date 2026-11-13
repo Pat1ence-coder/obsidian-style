@@ -60,7 +60,7 @@ test('calendar is Monday-first, includes today, crosses years and leap day',()=>
   assert.equal(new Set(days).size,days.length);
 });
 test('corrupt/newer data is rejected rather than silently overwritten',()=>{
-  assert.throws(()=>C.loadState({version:2}));
+  assert.throws(()=>C.loadState({version:3}));assert.throws(()=>C.loadState({version:2}));
   const d=setup();d.days[day]={characters:3,files:{'a.md':4}};assert.throws(()=>C.loadState(d));
 });
 test('special path keys are safe',()=>{
@@ -88,4 +88,56 @@ test('incremental counter handles disjoint changes and edits through surrogate p
     const tr={startState:{doc:doc(before)},newDoc:doc(after),changes:{iterChanges:fn=>changes.forEach(([a,b,c,d,text])=>fn(a,b,c,d,doc(text)))}};
     assert.deepEqual(C.transactionCounts(tr,new WeakMap()),[C.countCharacters(before),C.countCharacters(after)]);
   }
+});
+
+test('version 1 data migrates without losing history; activity counters start at migration',()=>{
+  const v1={version:1,started:'2026-05-01',settings:{weeks:53,tracking:true},days:{[day]:{characters:12,files:{'a.md':12}}},records:{}};
+  const d=C.loadState(v1,new Date(2026,9,12,12));
+  assert.equal(d.version,2);assert.equal(d.started,'2026-05-01');assert.equal(d.activityStarted,day);
+  assert.equal(d.days[day].characters,12);assert.equal(d.settings.range,90);assert.equal(d.settings.metric,'score');
+  const round=C.loadState(JSON.parse(JSON.stringify(d)),new Date(2026,9,12,12));
+  assert.equal(round.activityStarted,day);
+  assert.throws(()=>C.loadState({...v1,version:2}),/格式/);
+  assert.throws(()=>C.loadState({...d,days:{[day]:{characters:0,files:{},minutes:-1}}}),/活动/);
+});
+test('editing time bridges short pauses; a 25-minute session becomes focus',()=>{
+  const d=setup(),s={last:null,span:0},at=m=>new Date(2026,9,12,9,m,30).getTime();
+  assert.equal(C.recordActivity(d,s,at(0)),1);
+  assert.equal(C.recordActivity(d,s,at(0)),0);
+  assert.equal(C.recordActivity(d,s,at(4)),4);
+  assert.equal(C.recordActivity(d,s,at(30)),1);
+  assert.equal(d.days[day].minutes,6);assert.equal(d.days[day].focus,undefined);
+  for(let m=31;m<=54;m++)C.recordActivity(d,s,at(m));
+  assert.equal(d.days[day].focus,25);
+  C.recordActivity(d,s,at(56));
+  assert.equal(d.days[day].focus,27);assert.equal(d.days[day].minutes,32);
+});
+test('task deltas read only touched lines and re-ticking counts once',()=>{
+  const doc=text=>({sliceString:(a,b)=>text.slice(a,b),lineAt:pos=>({from:text.lastIndexOf('\n',pos-1)+1,to:text.indexOf('\n',pos)<0?text.length:text.indexOf('\n',pos)})});
+  const tr=(before,after,changes)=>({startState:{doc:doc(before)},newDoc:doc(after),changes:{iterChanges:fn=>changes.forEach(c=>fn(...c))}});
+  const a='- [ ] 一\n- [x] 二\n> - [ ] 三',b='- [x] 一\n- [x] 二\n> - [x] 三';
+  assert.equal(C.taskDelta(tr(a,b,[[3,4,3,4],[22,23,22,23]])),2);
+  assert.equal(C.taskDelta(tr(b,a,[[3,4,3,4]])),-1);
+  const d=setup();C.recordChange(d,'t.md',10,10,day);
+  assert.equal(C.recordTasks(d,'t.md',1,day),1);
+  assert.equal(C.recordTasks(d,'t.md',-1,day),0);
+  assert.equal(C.recordTasks(d,'t.md',1,day),0);
+  assert.equal(C.recordTasks(d,'t.md',2,day),2);
+  assert.equal(d.days[day].tasks,3);
+  assert.equal(C.recordTasks(d,'other.md',1,day),0);
+});
+test('score, summary, streaks and personal quartiles',()=>{
+  const d=setup(),now=new Date(2026,9,12,12),key=n=>C.dayKey(C.shiftDay(now,n));
+  d.days[key(0)]={characters:300,files:{'a.md':300},minutes:20,focus:0,notes:1,tasks:2};
+  d.days[key(-1)]={characters:100,files:{'a.md':100}};
+  d.days[key(-3)]={characters:0,files:{},minutes:10};
+  assert.equal(C.dayScore(d.days[key(0)]),3+2+2+2);
+  const s=C.summary(d,now,30);
+  assert.equal(s.active,3);assert.equal(s.longest,2);assert.equal(s.characters,400);assert.equal(s.score,9+1+1);
+  assert.equal(C.currentStreak(d,now),2);
+  delete d.days[key(0)];assert.equal(C.currentStreak(d,now),1);
+  const ranked=C.activeValues([0,8,1,2,3,4,5,6,7]);assert.deepEqual(ranked,[1,2,3,4,5,6,7,8]);
+  assert.deepEqual([0,1,2,3,4,6,8].map(v=>C.intensity(v,ranked)),[0,1,1,2,2,3,4]);
+  assert.equal(C.intensity(5,[]),4);assert.equal(C.intensity(9,[9]),4);
+  assert.equal(C.percentile(8,ranked),100);assert.equal(C.percentile(2,ranked),25);assert.equal(C.percentile(0,ranked),null);
 });

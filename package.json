@@ -7,7 +7,7 @@
     "build": "node scripts/build.js",
     "pretest": "npm run build",
     "test": "node --test tests/*.test.js",
-    "preview": "npm run build && node scripts/build-preview.js",
+    "preview": "npm run build && node scripts/build-preview.js && node scripts/build-preview.js recent && node scripts/build-preview.js monthly && node scripts/build-theme-preview.js",
     "stage": "npm run build && python3 -B scripts/stage-preview.py"
   }
 }

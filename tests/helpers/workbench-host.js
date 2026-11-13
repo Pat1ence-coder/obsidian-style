@@ -38,7 +38,12 @@ const iconPaths={
   folder:'M3 6h7l2 2h9v12H3z',plus:'M12 5v14 M5 12h14',
   'arrow-up-right':'M6 18L18 6 M7 6h11v11',
   'refresh-cw':'M20 7v5h-5 M4 17v-5h5 M6 7a7 7 0 0 1 12-1l2 2 M4 16l2 2a7 7 0 0 0 12-1',
-  'hard-drive':'M5 7h14l3 9v4H2v-4z M2 16h20'
+  'hard-drive':'M5 7h14l3 9v4H2v-4z M2 16h20',
+  activity:'M22 12h-4l-3 9L9 3l-3 9H2',
+  'calendar-days':'M4 5h16v16H4z M4 10h16 M8 3v4 M16 3v4 M8 14h.01 M12 14h.01 M16 14h.01 M8 18h.01 M12 18h.01',
+  history:'M3 12a9 9 0 1 0 3-6.7L3 8 M3 3v5h5 M12 7v5l4 2',
+  table:'M3 4h18v16H3z M3 10h18 M3 15h18 M9 4v16',
+  'chevron-down':'M6 9l6 6 6-6'
 };
 function fixture(){
   const document={activeElement:null};document.createElement=tag=>new Element(tag,document);
@@ -46,8 +51,8 @@ function fixture(){
   class TFile{constructor(filePath,mtime){this.path=filePath;this.basename=filePath.split('/').pop().replace(/\.md$/,'');this.extension='md';this.parent={path:filePath.includes('/')?filePath.slice(0,filePath.lastIndexOf('/')):'/'};this.stat={mtime};}}
   const now=new Date();
   const files=['研究/Attention 机制与梯度推导.md','实验/检索模型消融实验.md','工程/推理服务延迟排查.md','研究/对比学习阅读笔记.md','工程/数据集版本说明.md','记录/本周实验安排.md'].map((filePath,i)=>new TFile(filePath,now.getTime()-i*43200000));
-  const opened=[],nativeCommands=[],notices=[];
-  const app={vault:{getMarkdownFiles:()=>files,getAbstractFileByPath:p=>files.find(f=>f.path===p)},workspace:{getLeaf:()=>({openFile:async file=>opened.push(file.path)})},commands:{executeCommandById:id=>{nativeCommands.push(id);return true;}}};
+  const opened=[],nativeCommands=[],notices=[],created=[];
+  const app={vault:{getMarkdownFiles:()=>files,getAbstractFileByPath:p=>files.find(f=>f.path===p)||created.find(([c])=>c===p),create:async(p,text)=>{created.push([p,text]);}},workspace:{getLeaf:()=>({openFile:async file=>opened.push(file.path)})},commands:{executeCommandById:id=>{nativeCommands.push(id);return true;}}};
   const obsidian={TFile,Notice:class{constructor(text){notices.push(text);}},ItemView:class{constructor(){this.app=app;this.contentEl=content;}},setIcon(node,name){
     const svg=document.createElement('svg');svg.setAttribute('viewBox','0 0 24 24');svg.setAttribute('fill','none');svg.setAttribute('stroke','currentColor');svg.setAttribute('xmlns','http://www.w3.org/2000/svg');
     const drawing=document.createElement('path');drawing.setAttribute('d',iconPaths[name]||iconPaths['file-text']);svg.appendChild(drawing);node.appendChild(svg);
@@ -58,6 +63,6 @@ function fixture(){
   data.days[Core.dayKey(now)]={characters:1286,files:{[files[0].path]:846,[files[1].path]:440}};
   const plugin={data,saveError:false,changes:0,changed(){this.changes++;},folderNotes:{getFolder:()=>null,createNote:async()=>{}}};
   const view=new module.exports.WorkbenchView({},plugin);
-  return {view,plugin,app,document,content,files,opened,nativeCommands,notices,TFile,Core,...module.exports};
+  return {view,plugin,app,document,content,files,opened,nativeCommands,notices,created,TFile,Core,...module.exports};
 }
 module.exports={fixture,serialize,escape};
