@@ -1,0 +1,12 @@
+/* CM6 adapters: leave line geometry, list indentation and code background layers native. */
+.markdown-source-view.mod-cm6 .cm-scroller {font-family:var(--ds-font-body);line-height:var(--ds-body-leading);}
+.markdown-source-view.mod-cm6 .cm-content {font-family:var(--ds-font-body);}
+.markdown-source-view.mod-cm6 .cm-line.HyperMD-header {letter-spacing:0;}
+/* The line owns the heading size. Sizing token spans again would compound ems. */
+.markdown-source-view.mod-cm6 .HyperMD-header :is(.cm-header-1,.cm-header-2,.cm-header-3,.cm-header-4,.cm-header-5,.cm-header-6) {font-size:inherit;font-family:inherit;line-height:inherit;font-weight:inherit;}
+.markdown-source-view.mod-cm6 .cm-strong {font-family:inherit;font-weight:var(--bold-weight);}
+.markdown-source-view.mod-cm6 .HyperMD-codeblock {font-family:var(--ds-font-mono);font-size:var(--ds-code-size);line-height:var(--ds-code-leading);}
+.markdown-source-view.mod-cm6 .HyperMD-codeblock :is(.cm-line,.cm-formatting) {font-family:inherit;}
+.cm-s-obsidian span.cm-inline-code {font-family:var(--ds-font-mono);font-size:var(--ds-code-size);border-radius:4px;}
+/* Quote line padding/indentation is managed by CM6, including nested quotes. */
+.markdown-source-view.mod-cm6 .HyperMD-quote {color:var(--blockquote-color);}

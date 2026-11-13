@@ -1,0 +1,75 @@
+body {
+  --blockquote-border-color: var(--ds-rule);
+  --blockquote-border-thickness: 2px;
+  --blockquote-background-color: var(--ds-surface);
+  --blockquote-color: var(--ds-muted);
+  --blockquote-font-style: normal;
+  --callout-radius: var(--ds-radius-content);
+  --callout-border-width: 1px;
+  --callout-border-opacity: .2;
+  --callout-padding: 14px 18px;
+  --callout-title-weight: 600;
+  --callout-content-padding: 8px 0 0;
+  --code-normal: var(--ds-text);
+  --code-background: var(--ds-code-bg);
+  --code-size: var(--ds-code-size);
+  --code-radius: 4px;
+  --code-comment: var(--ds-muted);
+  --code-keyword: #496c82;
+  --code-string: #356c57;
+  --code-function: #465fa5;
+  --code-property: #465fa5;
+  --code-value: #965823;
+  --code-important: #496c82;
+  --code-operator: var(--ds-text);
+  --table-text-size: var(--ds-table-size);
+  --table-header-size: var(--ds-table-size);
+  --table-header-font: var(--ds-font-body);
+  --table-header-weight: 600;
+  --table-header-color: var(--ds-text);
+  --table-header-background: var(--ds-surface);
+  --table-text-color: var(--ds-text);
+  --table-background: transparent;
+  --table-line-height: 1.5;
+  --table-border-color: var(--ds-border);
+  --table-border-width: 0;
+  --table-row-background-hover: var(--ds-surface-hover);
+  --table-cell-vertical-alignment: top;
+  --table-white-space: normal;
+}
+body.theme-dark {--code-keyword:#a7c5d8;--code-string:#a3cbb6;--code-function:#a3b9ed;--code-property:#a3b9ed;--code-value:#e2bd96;--code-important:#a7c5d8;}
+.markdown-rendered blockquote:not(.callout) {padding: .6em 1em;border-radius: 0 var(--ds-radius-control) var(--ds-radius-control) 0;}
+.markdown-rendered blockquote:not(.callout) > :last-child {margin-bottom: 0;}
+.callout-content > :last-child {margin-bottom: 0;}
+:is(.markdown-rendered,.markdown-source-view) .callout[data-callout="note"] {--callout-color: 85,119,134;}
+:is(.markdown-rendered,.markdown-source-view) .callout[data-callout="info"] {--callout-color: 67,103,152;}
+:is(.markdown-rendered,.markdown-source-view) .callout[data-callout="success"] {--callout-color: 60,121,97;}
+:is(.markdown-rendered,.markdown-source-view) .callout[data-callout="warning"] {--callout-color: 157,103,45;}
+:is(.markdown-rendered,.markdown-source-view) table {
+  width:100%;border-collapse:collapse;border-spacing:0;
+  margin-block:.6em 1em;border-block:1px solid var(--ds-rule);box-shadow:none;
+}
+:is(.markdown-rendered,.markdown-source-view) table :is(th,td) {
+  font-family:var(--ds-font-body);font-size:var(--ds-table-size);line-height:1.5;
+  border:0;border-bottom:1px solid var(--ds-border);padding:10px 14px;
+  vertical-align:top;font-variant-numeric:lining-nums tabular-nums;
+}
+:is(.markdown-rendered,.markdown-source-view) table th {font-weight:600;background:var(--ds-surface);}
+:is(.markdown-rendered,.markdown-source-view) table tbody tr:last-child > :is(td,th) {border-bottom:0;}
+:is(.markdown-rendered,.markdown-source-view) table :is(th,td)[align="left"] {text-align:left;}
+:is(.markdown-rendered,.markdown-source-view) table :is(th,td)[align="center"] {text-align:center;}
+:is(.markdown-rendered,.markdown-source-view) table :is(th,td)[align="right"] {text-align:right;}
+:is(.markdown-rendered,.markdown-source-view).experiment table :is(th,td) {padding:8px 12px;}
+/* Legacy class remains a three-line academic table, with no competing preset. */
+:is(.markdown-rendered,.markdown-source-view).academia table {width:auto;border-block:2px solid var(--ds-text);}
+:is(.markdown-rendered,.markdown-source-view).academia table :is(th,td) {border:0;background:transparent;}
+:is(.markdown-rendered,.markdown-source-view).academia table thead {border-bottom:1px solid var(--ds-text);}
+:is(.markdown-rendered,.markdown-source-view).wideTable table {min-width:100%;}
+.markdown-rendered .table-wrapper {max-width:100%;overflow-x:auto;}
+.markdown-rendered pre {font-family:var(--ds-font-mono);font-size:var(--ds-code-size);line-height:var(--ds-code-leading);border:1px solid var(--ds-border);border-radius:var(--ds-radius-content);padding:16px 18px;background:var(--ds-code-bg);}
+.markdown-rendered pre code {font-size:inherit;font-family:inherit;line-height:inherit;padding:0;background:transparent;border:0;}
+.markdown-rendered :not(pre) > code {font-family:var(--ds-font-mono);font-size:var(--ds-code-size);border-radius:4px;padding:.08em .3em;background:var(--ds-code-bg);color:var(--ds-text);}
+.markdown-rendered hr {height:1px;border:0;background:var(--ds-border);margin:1.8em 0;}
+/* Do not change math fonts; CHTML glyph metrics and baselines stay native. */
+:is(.markdown-rendered,.markdown-source-view) .math-block {min-width:0;max-width:100%;}
+:is(.markdown-rendered,.markdown-source-view) mjx-container[display="true"] {display:block;max-width:100%;overflow-x:auto;margin:1em 0;padding:.5em 0;}

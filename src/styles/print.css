@@ -1,0 +1,73 @@
+/* Export contract: A4, 20 mm, 100% scale. Screen scrollbars are not a print solution. */
+@page {size:A4; margin:20mm;}
+@page aw-landscape {size:A4 landscape; margin:20mm;}
+@media print {
+  body, body.theme-light, body.theme-dark {
+    --ds-font-body:var(--ds-font-academic);
+    --ds-font-heading:var(--ds-font-academic-heading);
+    --font-text:var(--ds-font-academic);
+    --font-text-theme:var(--ds-font-academic);
+    --font-print:var(--ds-font-academic);
+    --ds-body-size:10.5pt;
+    --ds-title-size:22pt;
+    --ds-h1-size:18pt; --ds-h2-size:16pt; --ds-h3-size:14pt;
+    --ds-h4-size:12pt; --ds-h5-size:11pt; --ds-h6-size:10.5pt;
+    --ds-table-size:9.5pt; --ds-caption-size:9pt; --ds-code-size:9.5pt;
+    --ds-body-leading:1.5;
+    --ds-paragraph-gap:6pt;
+    --ds-page-width:100%; --ds-page-inset:0;
+    --file-line-width:100%; --file-margins:0;
+    --font-text-size:10.5pt;
+    --ds-bg:#fff; --ds-paper:#fff; --ds-surface:#fff; --ds-surface-hover:#fff;
+    --ds-text:#111; --ds-muted:#444; --ds-faint:#555;
+    --ds-accent:#222; --ds-accent-hover:#222; --ds-accent-soft:#fff;
+    --ds-border:#ccc; --ds-rule:#777; --ds-code-bg:#f5f5f5;
+    --ds-shadow:none;
+    --code-keyword:#333; --code-string:#333; --code-function:#222; --code-property:#222; --code-value:#333;
+    --text-normal:#111; --text-muted:#444; --text-faint:#555; --text-on-accent:#fff;
+    --background-primary:#fff; --background-secondary:#fff;
+    font-family:var(--ds-font-academic);
+    font-size:10.5pt;
+    color:#111;
+    background:#fff;
+  }
+  .markdown-preview-view,
+  .markdown-source-view.mod-cm6,
+  .markdown-preview-view:is(.research,.experiment) {
+    --file-line-width:100%;
+    padding:0;
+    margin:0;
+    font-size:var(--ds-body-size);
+    font-family:var(--ds-font-academic);
+    line-height:var(--ds-body-leading);
+    overflow:visible;
+  }
+  .print .markdown-preview-view {color:var(--ds-text);}
+  .markdown-preview-view .markdown-preview-sizer {width:100%;max-width:none;margin:0;padding:0;min-height:0;}
+  .markdown-rendered .inline-title {font-size:var(--ds-title-size);font-family:var(--ds-font-academic-heading);text-align:center;margin:0 0 16pt;}
+  .markdown-rendered :is(h1,h2,h3,h4,h5,h6) {break-after:avoid;page-break-after:avoid;margin-block-start:14pt;margin-block-end:6pt;}
+  .markdown-rendered :is(p,li) {orphans:3;widows:3;}
+  .markdown-rendered a {color:inherit;text-decoration:none;}
+  .markdown-rendered :is(.table-wrapper,.el-table) {overflow:visible;max-width:100%;}
+  .markdown-rendered table {width:100%;max-width:100%;table-layout:auto;break-inside:auto;box-shadow:none;}
+  .markdown-rendered table :is(th,td) {padding:5pt 6pt;font-size:var(--ds-table-size);overflow-wrap:anywhere;white-space:normal;}
+  .markdown-rendered table thead {display:table-header-group;}
+  .markdown-rendered table tfoot {display:table-footer-group;}
+  .markdown-rendered table tr {break-inside:avoid;page-break-inside:avoid;}
+  .markdown-rendered table th {background:#f5f5f5;}
+  .markdown-rendered.academia table {width:100%;}
+  .markdown-rendered pre {white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;overflow:visible;break-inside:avoid;border-radius:0;padding:8pt;box-shadow:none;}
+  .markdown-rendered p:has(+pre), .markdown-rendered .el-p:has(+.el-pre) {break-after:avoid;}
+  .markdown-rendered pre code {white-space:inherit;font-size:inherit;}
+  .markdown-rendered :not(pre) > code {border-radius:0;background:transparent;padding:0 .12em;}
+  .markdown-rendered mjx-container[display="true"] {overflow:visible;break-inside:avoid;margin:8pt 0;padding:3pt 0;}
+  .markdown-rendered .callout {box-shadow:none;background:transparent;mix-blend-mode:normal;border-color:#bbb;}
+  .print .markdown-preview-view .callout-content,
+  .markdown-rendered .callout-content {display:block !important;height:auto !important;overflow:visible;}
+  .markdown-rendered .callout-title {color:#222;}
+  .markdown-rendered img {max-width:100%;}
+  .markdown-rendered .callout[data-callout="figure"] img {max-height:190mm;object-fit:contain;}
+  /* The generic export rule must not destroy the figure grid. */
+  .markdown-rendered .callout[data-callout="figure"][data-callout-metadata^="grid-"] > .callout-content {display:grid !important;}
+  .print-wide {page:aw-landscape;}
+}

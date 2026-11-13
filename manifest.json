@@ -1,0 +1,9 @@
+{
+  "id": "algorithm-workbench",
+  "name": "算法工作台",
+  "version": "0.0.1",
+  "minAppVersion": "1.5.7",
+  "description": "最近编辑的笔记、每日新增字符热力图和本地写作统计。",
+  "author": "Obsidian Style contributors",
+  "isDesktopOnly": true
+}

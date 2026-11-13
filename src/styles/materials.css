@@ -1,0 +1,89 @@
+/* Material roles: geometry and translucent surfaces live here, component layout elsewhere. */
+.aw-view {
+  --aw-radius-shell:18px;
+  --aw-radius-surface:10px;
+  --aw-radius-control:6px;
+  --aw-radius-item:4px;
+  --aw-shell-inset:8px;
+  --aw-glass-solid:#e9eff0;
+  --aw-glass-tint:rgba(226,235,237,.62);
+  --aw-glass-top:rgba(255,255,255,.48);
+  --aw-glass-bottom:rgba(252,251,247,.16);
+  --aw-glass-edge:rgba(255,255,255,.78);
+  --aw-surface-face:rgba(252,251,247,.95);
+  --aw-surface-edge:rgba(255,255,255,.88);
+  --aw-edge-light:rgba(255,255,255,.88);
+  --aw-edge-shade:rgba(65,84,92,.055);
+  --aw-glass-shadow:0 1px 2px rgba(44,65,74,.025),0 10px 30px rgba(44,65,74,.055);
+  --aw-surface-shadow:0 1px 3px rgba(44,65,74,.035),0 3px 8px rgba(44,65,74,.025);
+  --aw-hover-shift:-1px; --aw-press-shift:1px;
+  --aw-motion:160ms cubic-bezier(.2,.7,.2,1);
+}
+.theme-dark .aw-view {
+  --aw-glass-solid:#2a383e;
+  --aw-glass-tint:rgba(38,55,62,.76);
+  --aw-glass-top:rgba(211,231,238,.085);
+  --aw-glass-bottom:rgba(19,31,37,.12);
+  --aw-glass-edge:rgba(209,231,239,.16);
+  --aw-surface-face:rgba(35,45,50,.95);
+  --aw-surface-edge:rgba(188,214,224,.12);
+  --aw-edge-light:rgba(219,238,245,.1);
+  --aw-edge-shade:rgba(0,0,0,.2);
+  --aw-glass-shadow:0 1px 2px rgba(0,0,0,.12),0 10px 28px rgba(0,0,0,.16);
+  --aw-surface-shadow:0 1px 3px rgba(0,0,0,.12);
+}
+/* Opaque fallback first. Only supporting browsers receive actual backdrop filtering. */
+.aw-view .aw-material-shell {
+  border:1px solid var(--aw-glass-edge);
+  border-radius:var(--aw-radius-shell);
+  background:var(--aw-glass-solid);
+  box-shadow:inset 0 1px 0 var(--aw-edge-light),inset 0 -1px 0 var(--aw-edge-shade),var(--aw-glass-shadow);
+}
+.aw-view .aw-material-surface {
+  border:1px solid var(--aw-surface-edge);
+  border-radius:var(--aw-radius-surface);
+  background:var(--aw-surface-face);
+  box-shadow:inset 0 1px 0 var(--aw-edge-light),var(--aw-surface-shadow);
+}
+.aw-view .aw-material-control {
+  border:1px solid var(--aw-glass-edge);
+  border-radius:var(--aw-radius-control);
+  background:var(--aw-surface);
+  box-shadow:inset 0 1px 0 var(--aw-edge-light),0 2px 5px var(--aw-edge-shade);
+}
+@supports ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))) {
+  /* Two group surfaces and the small header controls only; never blur each row or calendar cell. */
+  .aw-view .aw-material-shell {
+    background:linear-gradient(145deg,var(--aw-glass-top),var(--aw-glass-bottom)),var(--aw-glass-tint);
+    -webkit-backdrop-filter:blur(18px) saturate(1.06);
+    backdrop-filter:blur(18px) saturate(1.06);
+  }
+  .aw-view .aw-material-control {
+    background:linear-gradient(155deg,var(--aw-glass-top),var(--aw-glass-bottom)),var(--aw-surface-face);
+    -webkit-backdrop-filter:blur(12px) saturate(1.04);
+    backdrop-filter:blur(12px) saturate(1.04);
+  }
+}
+/* No transition:all, animated blur, permanent will-change or page-wide opacity. */
+.aw-view :is(.aw-note-card,.aw-new-note,.aw-refresh,.aw-range-button,.aw-file-row,.aw-day-row,.aw-cell) {
+  transition:background-color var(--aw-motion),border-color var(--aw-motion),box-shadow var(--aw-motion),color var(--aw-motion),transform var(--aw-motion);
+}
+@media (hover:hover) {
+  .aw-view .aw-note-card:hover {border-color:var(--aw-glass-edge);box-shadow:inset 0 1px 0 var(--aw-edge-light),0 5px 16px var(--aw-edge-shade);transform:translateY(var(--aw-hover-shift));}
+  .aw-view :is(.aw-new-note,.aw-refresh):hover {background-color:var(--ds-surface-hover);color:var(--ds-accent-hover);box-shadow:inset 0 1px 0 var(--aw-edge-light),0 3px 8px var(--aw-edge-shade);}
+  .aw-view :is(.aw-file-row,.aw-day-row):hover:not(:disabled) {background-color:color-mix(in srgb,var(--aw-accent) 6%,transparent);color:var(--aw-accent);}
+}
+.aw-view :is(.aw-note-card,.aw-new-note,.aw-refresh):active:not(:disabled) {transform:translateY(var(--aw-press-shift));box-shadow:inset 0 1px 3px var(--aw-edge-shade);}
+.aw-view .aw-range-button:active {box-shadow:inset 0 1px 3px var(--aw-edge-shade);}
+.aw-view button:focus-visible,.aw-view summary:focus-visible {outline:2px solid var(--aw-accent);outline-offset:3px;}
+@media (prefers-reduced-motion:reduce) {
+  .aw-view {--aw-hover-shift:0px;--aw-press-shift:0px;}
+  .aw-view :is(.aw-note-card,.aw-new-note,.aw-refresh,.aw-range-button,.aw-file-row,.aw-day-row,.aw-cell) {transition:none;transform:none;}
+}
+@media (prefers-reduced-transparency:reduce), (forced-colors:active) {
+  .aw-view :is(.aw-material-shell,.aw-material-control) {-webkit-backdrop-filter:none;backdrop-filter:none;background:var(--aw-glass-solid);}
+  .aw-view .aw-material-surface {background:var(--aw-surface);}
+}
+@media print {
+  .aw-view :is(.aw-material-shell,.aw-material-control,.aw-material-surface) {-webkit-backdrop-filter:none;backdrop-filter:none;box-shadow:none;background:var(--aw-surface);}
+}

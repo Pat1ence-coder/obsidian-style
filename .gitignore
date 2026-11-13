@@ -1,0 +1,14 @@
+.DS_Store
+node_modules/
+__pycache__/
+*.pyc
+.venv/
+/dist/
+/sandbox-vault/
+/artifacts/
+/backups/
+*.log
+
+# Local agent instructions
+AGENTS.md
+AGENT.md

@@ -1,0 +1,48 @@
+/* App surfaces. Document metrics are owned by typography/content, not body. */
+body:is(.theme-light,.theme-dark) {
+  --font-interface-theme: var(--ds-font-ui);
+  --font-interface: var(--ds-font-ui);
+  --font-text-theme: var(--ds-font-body);
+  --font-text: var(--ds-font-body);
+  --font-monospace-theme: var(--ds-font-mono);
+  --font-monospace: var(--ds-font-mono);
+  --background-primary: var(--ds-paper);
+  --background-primary-alt: var(--ds-surface);
+  --background-secondary: var(--ds-bg);
+  --background-secondary-alt: var(--ds-surface);
+  --background-modifier-border: var(--ds-border);
+  --background-modifier-border-hover: var(--ds-rule);
+  --background-modifier-hover: var(--ds-surface-hover);
+  --background-modifier-form-field: var(--ds-paper);
+  --text-normal: var(--ds-text);
+  --text-muted: var(--ds-muted);
+  --text-faint: var(--ds-faint);
+  --text-accent: var(--ds-accent);
+  --text-accent-hover: var(--ds-accent-hover);
+  --text-selection: var(--ds-selection);
+  --interactive-normal: var(--ds-paper);
+  --interactive-hover: var(--ds-surface-hover);
+  --interactive-accent: var(--ds-accent);
+  --interactive-accent-hover: var(--ds-accent-hover);
+  --text-on-accent: #fff;
+  --radius-s: var(--ds-radius-control);
+  --radius-m: var(--ds-radius-content);
+  --radius-l: var(--ds-radius-card);
+  --input-radius: var(--ds-radius-control);
+  --tab-radius-active: var(--ds-radius-control);
+  --nav-item-radius: 6px;
+  --nav-item-background-active: var(--ds-accent-soft);
+  --nav-item-color-active: var(--ds-accent);
+  --tag-color: var(--ds-accent);
+  --tag-background: var(--ds-accent-soft);
+  --scrollbar-thumb-bg: color-mix(in srgb, var(--ds-muted) 24%, transparent);
+  --scrollbar-active-thumb-bg: color-mix(in srgb, var(--ds-muted) 42%, transparent);
+}
+body.theme-dark {--text-on-accent: #191b22;}
+.workspace-tab-header-container {border-bottom: 1px solid var(--ds-border);}
+.workspace-leaf-content[data-type="file-explorer"] .nav-header {padding-block: 8px;}
+.workspace-leaf-content[data-type="file-explorer"] .nav-action-button {border-radius: var(--ds-radius-control);}
+.workspace-leaf-content[data-type="file-explorer"] .nav-folder-title,
+.workspace-leaf-content[data-type="file-explorer"] .nav-file-title {font-family: var(--ds-font-ui);}
+/* Decorative translucency stays out of paragraphs and documents. */
+.modal {border: 1px solid var(--ds-border);border-radius: var(--ds-radius-card);box-shadow: var(--ds-shadow);}
