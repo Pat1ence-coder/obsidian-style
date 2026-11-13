@@ -20,9 +20,10 @@ function fixture() {
     registerEditorExtension(ext){this.extension=ext;} registerEvent(){} registerInterval(){}
   }
   class TFile {constructor(path){this.path=path;this.extension='md';}}
-  const classes=new Set(['theme-light']);
-  const body={classList:{add:n=>classes.add(n),remove:n=>classes.delete(n),[Symbol.iterator]:()=>classes.values()}};
-  const workspace={containerEl:{ownerDocument:{body}},on(){return {};},onLayoutReady(fn){this.ready=fn;},getLeavesOfType(){return [];},detachLeavesOfType(){this.detached=true;}};
+  const fakeDoc=()=>{const set=new Set(['theme-light']);return {classes:set,body:{classList:{add:n=>set.add(n),remove:n=>set.delete(n),[Symbol.iterator]:()=>set.values()}}};};
+  const main=fakeDoc(),classes=main.classes,leaves=[];
+  const workspace={containerEl:{ownerDocument:main},on(){return {};},iterateAllLeaves(fn){leaves.forEach(fn);},
+    onLayoutReady(fn){(this.readyFns??=[]).push(fn);this.ready=()=>this.readyFns.forEach(f=>f());},getLeavesOfType(){return [];},detachLeavesOfType(){this.detached=true;}};
   const mod={exports:{}};
   const context={module:mod,require:name=>{
     if(name==='obsidian')return {Plugin,Component,TFile,TFolder:class{},Platform:{isMacOS:true},Modal:class{},FuzzySuggestModal:class{},ItemView:class{},PluginSettingTab:class{},Setting:class{},Notice:class{constructor(text){notices.push(text);}},editorInfoField:'info'};
@@ -47,7 +48,7 @@ function fixture() {
     }]};
   };
 
-  return {plugin,workspace,notices,update,docs,timers,handlers,TFile,classes};
+  return {plugin,workspace,notices,update,docs,timers,handlers,TFile,classes,fakeDoc,leaves};
 }
 test('bundled plugin loads, counts actual transactions, filters folders and saves',async()=>{
   const {plugin,update}=fixture();await plugin.onload();
@@ -175,4 +176,17 @@ test('palette is a body class: applied on load, switched in place, cycled by com
   plugin.commands['cycle-palette'].callback();assert.equal(plugin.data.settings.palette,'sea');assert.ok(classes.has('aw-palette-sea'));
   await plugin.flush();assert.equal(plugin.saved.at(-1).settings.palette,'sea');
   plugin.onunload();assert.deepEqual([...classes],['theme-light']);await plugin.saveQueue;
+});
+
+test('popout windows already open, or restored with the layout, follow the palette',async()=>{
+  const {plugin,workspace,fakeDoc,leaves}=fixture();
+  const existing=fakeDoc(),restored=fakeDoc();leaves.push({view:{containerEl:{ownerDocument:existing}}});
+  await plugin.onload();plugin.data.settings.openOnStartup=false;
+  assert.ok(existing.classes.has('aw-palette-sea'),'re-enabling the plugin reaches an open popout');
+  leaves.push({view:{containerEl:{ownerDocument:restored}}});workspace.ready();
+  assert.ok(restored.classes.has('aw-palette-sea'),'popouts restored with the layout are covered');
+  plugin.setPalette('sand');
+  for(const doc of [existing,restored])assert.deepEqual([...doc.classes].sort(),['aw-palette-sand','theme-light']);
+  plugin.onunload();for(const doc of [existing,restored])assert.deepEqual([...doc.classes],['theme-light']);
+  await plugin.saveQueue;
 });

@@ -628,7 +628,10 @@ body.theme-dark :is(.markdown-rendered,.markdown-source-view) .callout {box-shad
 @page {size:A4; margin:20mm;}
 @page aw-landscape {size:A4 landscape; margin:20mm;}
 @media print {
-  body, body.theme-light, body.theme-dark {
+  /* The palette selectors (body.theme-dark.aw-palette-*) are matched here with equal
+     specificity; this file loads after tokens.css, so the print values always win. */
+  body, body.theme-light, body.theme-dark,
+  body.theme-light[class*="aw-palette-"], body.theme-dark[class*="aw-palette-"] {
     --ds-font-body:var(--ds-font-academic);
     --ds-font-heading:var(--ds-font-academic-heading);
     --font-text:var(--ds-font-academic);
@@ -645,7 +648,11 @@ body.theme-dark :is(.markdown-rendered,.markdown-source-view) .callout {box-shad
     --file-line-width:100%; --file-margins:0;
     --font-text-size:10.5pt;
     --ds-bg:#fff; --ds-paper:#fff; --ds-surface:#fff; --ds-surface-hover:#fff;
-    --ds-text:#111; --ds-muted:#444; --ds-faint:#555;
+    --ds-text:#111; --ds-heading:#111; --ds-muted:#444; --ds-faint:#555;
+    /* Tones drive links, code, markers, tags and callouts; print keeps them dark and neutral. */
+    --ds-tone-accent:34,34,34; --ds-tone-1:68,68,68; --ds-tone-2:68,68,68; --ds-tone-3:68,68,68;
+    --ds-tone-4:68,68,68; --ds-tone-5:68,68,68; --ds-tone-neutral:90,90,90; --ds-ink-rgb:0,0,0;
+    --ds-shell:#fff; --ds-on-accent:#fff;
     --ds-accent:#222; --ds-accent-hover:#222; --ds-accent-soft:#fff;
     --ds-border:#ccc; --ds-rule:#777; --ds-code-bg:#f5f5f5;
     --ds-shadow:none;

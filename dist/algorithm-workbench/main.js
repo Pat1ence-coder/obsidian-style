@@ -52,7 +52,9 @@ class WorkbenchPlugin extends Plugin {
       this.setPalette(next.id);new Notice(`配色方案：${next.label}`);
     }});
     // The palette is a body class read by both stylesheets; popout windows get it too.
-    this.paletteDocs=new Set();this.applyPalette(this.app.workspace.containerEl?.ownerDocument);
+    // Windows already open (plugin re-enabled, restored layout) are collected from their leaves.
+    this.paletteDocs=new Set();this.applyPaletteEverywhere();
+    this.app.workspace.onLayoutReady(()=>{if(!this.stopped)this.applyPaletteEverywhere();});
     this.registerEvent(this.app.workspace.on('window-open',(_leaf,win)=>this.applyPalette(win.document)));
     this.registerEvent(this.app.workspace.on('window-close',(_leaf,win)=>this.paletteDocs.delete(win.document)));
     this.addSettingTab(new WorkbenchSettings(this.app,this));
@@ -158,10 +160,16 @@ class WorkbenchPlugin extends Plugin {
     for(const name of [...body.classList])if(name.startsWith('aw-palette-')&&name!==wanted)body.classList.remove(name);
     body.classList.add(wanted);
   }
+  applyPaletteEverywhere(){
+    const docs=new Set(this.paletteDocs);
+    docs.add(this.app.workspace.containerEl?.ownerDocument);
+    this.app.workspace.iterateAllLeaves?.(leaf=>docs.add(leaf.view?.containerEl?.ownerDocument));
+    for(const doc of docs)this.applyPalette(doc);
+  }
   setPalette(id){
     if(!Core.PALETTES.some(p=>p.id===id)||this.data.settings.palette===id)return;
     this.data.settings.palette=id;
-    for(const doc of this.paletteDocs)this.applyPalette(doc);
+    this.applyPaletteEverywhere();
     this.changed();
   }
   onunload(){

@@ -245,8 +245,10 @@ body.theme-dark.aw-palette-celadon .aw-view, body.theme-dark.aw-palette-celadon 
   .aw-view :is(.aw-chip,.aw-tab,.aw-segment-item,.aw-file-row,.aw-day-row,.aw-cell) {transition:none;transform:none !important;}
 }
 @media (prefers-reduced-transparency:reduce), (forced-colors:active) {
-  .aw-view :is(.aw-card,.aw-chip,.aw-tab,.aw-brand-mark) {-webkit-backdrop-filter:none;backdrop-filter:none;background:var(--ds-glass-solid);}
-  .aw-view .aw-panel {background:var(--ds-paper);}
+  /* Listed with the dark-theme selector too: it must outrank `.theme-dark .aw-view .aw-card`. */
+  .aw-view :is(.aw-card,.aw-chip,.aw-tab,.aw-brand-mark),
+  .theme-dark .aw-view :is(.aw-card,.aw-chip,.aw-tab,.aw-brand-mark) {-webkit-backdrop-filter:none;backdrop-filter:none;background:var(--ds-glass-solid);}
+  .aw-view .aw-panel,.theme-dark .aw-view .aw-panel {background:var(--ds-paper);}
   .aw-view .aw-ambient {display:none;}
 }
 @media print {

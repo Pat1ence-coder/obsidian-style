@@ -133,3 +133,17 @@ test('every palette ships light and dark twins with identical properties, scoped
     assert.ok(snippet.includes(`body.aw-palette-${id} {`));
   }
 });
+test('print resets outrank every palette selector and keep headings and tones dark',()=>{
+  const root=path.resolve(__dirname,'..'),print=fs.readFileSync(path.join(root,'src/styles/print.css'),'utf8');
+  const reset=/@media print \{[^{]*?(body,[^{]*)\{([^}]*)\}/.exec(print);assert.ok(reset);
+  assert.match(reset[1],/body\.theme-dark\[class\*="aw-palette-"\]/);
+  for(const token of ['--ds-text:#111','--ds-heading:#111','--ds-tone-accent:34,34,34','--ds-tone-5:68,68,68'])assert.ok(reset[2].includes(token),token);
+  const snippet=fs.readFileSync(path.join(root,'dist/snippets/style.css'),'utf8');
+  assert.ok(snippet.indexOf('body.theme-dark.aw-palette-celadon {')<snippet.indexOf('body.theme-dark[class*="aw-palette-"]'),'print rules load after palettes');
+});
+test('reduced transparency also replaces the dark glass card background',()=>{
+  const root=path.resolve(__dirname,'..'),css=fs.readFileSync(path.join(root,'src/styles/materials.css'),'utf8');
+  const block=css.slice(css.indexOf('@media (prefers-reduced-transparency:reduce)'));
+  assert.match(block,/\.theme-dark \.aw-view :is\(\.aw-card[^{]*\{[^}]*background:var\(--ds-glass-solid\)/);
+  assert.ok(css.indexOf('.theme-dark .aw-view .aw-card {')<css.indexOf('@media (prefers-reduced-transparency:reduce)'));
+});
