@@ -3,7 +3,11 @@
 // names, so the document snippet can be eyeballed. HOST approximates how Obsidian's own
 // app.css consumes theme variables; it is not Obsidian's stylesheet.
 const fs=require('node:fs'),path=require('node:path');
-const root=path.resolve(__dirname,'..');
+const root=fs.realpathSync(path.resolve(__dirname,'..'));
+const {checkedPath}=require('./safe-paths');
+const out=path.join(root,'artifacts/preview');
+checkedPath(root,path.join(out,'theme-static.html'));
+checkedPath(root,path.join(root,'dist/snippets/style.css'));
 const snippet=fs.readFileSync(path.join(root,'dist/snippets/style.css'),'utf8');
 const HOST=`*{box-sizing:border-box}html,body{margin:0;height:100%}
 body{font-family:var(--font-interface);font-size:13px;color:var(--text-normal);background:var(--background-secondary);--tab-container-background:var(--background-secondary)}
@@ -60,7 +64,7 @@ const html=`<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta 
 <div class="workspace-split mod-vertical mod-root"><div class="workspace-tabs"><div class="workspace-tab-header-container"><div class="workspace-tab-header"><div class="workspace-tab-header-inner"><div class="workspace-tab-header-inner-title">知识脉冲</div></div></div><div class="workspace-tab-header is-active"><div class="workspace-tab-header-inner"><div class="workspace-tab-header-inner-title">Attention 机制与梯度推导</div></div></div></div></div>
 <div class="workspace-tab-container"><div class="workspace-leaf-content" data-type="markdown"><div class="view-header"><div class="view-header-title">研究 / Attention 机制与梯度推导</div></div><div class="view-content"><div class="markdown-preview-view markdown-rendered"><div class="markdown-preview-sizer">${note}</div></div></div></div></div></div>
 </div><div class="status-bar">1,286 字 · 编辑 74 分钟</div></body></html>`;
-const out=path.join(root,'artifacts/preview');fs.mkdirSync(out,{recursive:true});
-fs.writeFileSync(path.join(out,'theme-static.html'),html);
 if(/<script\b/i.test(html))throw Error('Static preview unexpectedly contains a script');
+fs.mkdirSync(out,{recursive:true});
+fs.writeFileSync(path.join(out,'theme-static.html'),html);
 console.log('Script-free theme preview written:',path.join(out,'theme-static.html'));

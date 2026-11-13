@@ -7,6 +7,7 @@ import os
 import shutil
 import tempfile
 import uuid
+from safe_paths import checked_path
 
 FILES = ('main.js', 'manifest.json', 'styles.css')
 PLUGIN_ID = 'algorithm-workbench'
@@ -27,7 +28,14 @@ def atomic_write(path, content):
 
 
 def install(source, target, apply=False):
-    source, target = Path(source).resolve(), Path(target).resolve()
+    source, target = checked_path(source), checked_path(target)
+    config = target.parent.parent
+    for name in FILES:
+        checked_path(source / name, source)
+    for name in (*FILES, 'data.json'):
+        checked_path(target / name, config)
+    checked_path(config / 'community-plugins.json', config)
+    checked_path(config / 'algorithm-workbench-backups', config)
     if target.name != PLUGIN_ID or target.parent.name != 'plugins':
         raise ValueError('目标必须是 plugins/algorithm-workbench。')
     if json.loads((source / 'manifest.json').read_text())['id'] != PLUGIN_ID:
@@ -55,6 +63,7 @@ def install(source, target, apply=False):
         # does not also erase these recovery copies.
         stamp = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')
         backup = target.parent.parent / 'algorithm-workbench-backups' / (stamp + '-' + uuid.uuid4().hex[:8])
+        checked_path(backup, config)
         backup.mkdir(parents=True)
         for name in (*FILES, 'data.json'):
             if (target / name).is_file():

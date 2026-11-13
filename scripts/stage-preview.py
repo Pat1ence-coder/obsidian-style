@@ -2,22 +2,42 @@
 from pathlib import Path
 import shutil
 import json
+from safe_paths import checked_path, checked_tree
 
 root = Path(__file__).resolve().parents[1]
 source = root / 'dist'
 config = root / 'sandbox-vault' / '.obsidian'
 plugin = config / 'plugins' / 'algorithm-workbench'
 snippets = config / 'snippets'
-plugin.mkdir(parents=True, exist_ok=True)
-snippets.mkdir(parents=True, exist_ok=True)
-shutil.copy2(source / 'snippets' / 'style.css', snippets / 'style.css')
-for name in ('main.js', 'styles.css', 'manifest.json'):
-    shutil.copy2(source / 'algorithm-workbench' / name, plugin / name)
-# Only authored sample notes and synthetic assets enter the preview vault.
-for item in (root/'examples/notes').iterdir():
-    destination=root/'sandbox-vault'/item.name
-    if item.is_dir():shutil.copytree(item,destination,dirs_exist_ok=True)
-    else:shutil.copy2(item,destination)
+# Build and validate the complete copy plan before modifying the preview vault.
+copies = [(source / 'snippets/style.css', snippets / 'style.css')]
+copies += [(source / 'algorithm-workbench' / name, plugin / name)
+           for name in ('main.js', 'styles.css', 'manifest.json')]
+directories = [plugin, snippets]
+examples = root / 'examples/notes'
+for item in checked_tree(examples, root):
+    destination = root / 'sandbox-vault' / item.relative_to(examples)
+    if item.is_dir():
+        directories.append(destination)
+    else:
+        copies.append((item, destination))
+for src, dst in copies:
+    checked_path(src, root)
+    if not src.is_file():
+        raise ValueError('Expected source file: ' + str(src))
+    checked_path(dst, root)
+    if dst.exists() and not dst.is_file():
+        raise ValueError('Expected destination file: ' + str(dst))
+for directory in directories:
+    checked_path(directory, root)
+    if directory.exists() and not directory.is_dir():
+        raise ValueError('Expected directory: ' + str(directory))
+for name in ('appearance.json', 'app.json', 'community-plugins.json'):
+    checked_path(config / name, root)
+for directory in directories:
+    directory.mkdir(parents=True, exist_ok=True)
+for src, dst in copies:
+    shutil.copy2(src, dst)
 # Initialize this isolated vault once; never overwrite a later test session's settings.
 def initial(name,data):
     file=config/name

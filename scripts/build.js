@@ -1,7 +1,11 @@
 'use strict';
 const fs=require('node:fs');
 const path=require('node:path');
-const root=path.resolve(__dirname,'..'), source=path.join(root,'src'), modules=new Map();
+const root=fs.realpathSync(path.resolve(__dirname,'..')), source=path.join(root,'src'), modules=new Map();
+const {checkedPath,checkedTree}=require('./safe-paths');
+checkedTree(root,source);checkedPath(root,path.join(root,'manifest.json'));
+for(const name of ['algorithm-workbench/main.js','algorithm-workbench/styles.css','algorithm-workbench/manifest.json','snippets/style.css'])
+  checkedPath(root,path.join(root,'dist',name));
 // Bundle local feature modules; runtime dependencies remain supplied by Obsidian.
 function collect(file) {
   const id=path.relative(source,file).split(path.sep).join('/');

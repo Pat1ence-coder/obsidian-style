@@ -2,7 +2,13 @@
 // Standard-library only. Render project-owned view code against a local stand-in.
 // Output is script-free HTML: no browser, server, downloaded package or real-vault data.
 const fs=require('node:fs'),path=require('node:path');
-const root=path.resolve(__dirname,'..');
+const root=fs.realpathSync(path.resolve(__dirname,'..'));
+const {checkedPath}=require('./safe-paths');
+const tab=process.argv[2];
+if(process.argv.length>3||(tab!==undefined&&!['board','recent','monthly'].includes(tab)))throw Error('Invalid preview view; use board, recent or monthly');
+const out=path.join(root,'artifacts/preview');
+const name=tab?`workbench-${tab}.html`:'workbench-static.html';
+for(const file of [path.join(out,name),path.join(out,'preview-meta.json'),path.join(root,'dist/algorithm-workbench/styles.css')])checkedPath(root,file);
 const {fixture,serialize}=require(path.join(root,'tests/helpers/workbench-host'));
 const f=fixture(),today=f.Core.dayKey();
 // Synthetic history: about six active weeks, with gaps and varied intensity.
@@ -19,9 +25,8 @@ if(process.argv[2])f.view.tab=process.argv[2];
 f.view.render();
 const css=fs.readFileSync(path.join(root,'dist/algorithm-workbench/styles.css'),'utf8');
 const html=`<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'"><title>知识脉冲看板 · 静态示例</title><style>*{box-sizing:border-box}body{margin:0;background:#eceef2}.preview-notice{padding:8px 20px;text-align:center;background:#fff;color:#686d7e;font:12px system-ui}.aw-view{min-height:100vh}${css}</style></head><body class="theme-light"><div class="preview-notice">静态版式示例 · 演示数据 · 按钮不执行操作</div>${serialize(f.content)}</body></html>`;
-const out=path.join(root,'artifacts/preview');fs.mkdirSync(out,{recursive:true});
-const name=process.argv[2]?`workbench-${process.argv[2]}.html`:'workbench-static.html';
+if(/<script\b/i.test(html))throw Error('Static preview unexpectedly contains a script');
+fs.mkdirSync(out,{recursive:true});
 fs.writeFileSync(path.join(out,name),html);
 fs.writeFileSync(path.join(out,'preview-meta.json'),JSON.stringify({createdAt:new Date().toISOString(),data:'synthetic',scripts:0,network:'blocked by CSP; embedded image only',renderer:'project-owned stand-in; not a browser screenshot'},null,2)+'\n');
-if(/<script\b/i.test(html))throw Error('Static preview unexpectedly contains a script');
 console.log('Script-free preview written:',path.join(out,name));
