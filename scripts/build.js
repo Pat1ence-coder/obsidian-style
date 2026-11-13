@@ -38,11 +38,17 @@ if(hero.length>4*1024*1024)throw Error('Header asset exceeds the 4 MiB packaging
 // Keep the large data URI out of custom properties / var() substitution (2 MiB cap).
 // One declaration serves both the banner and its blurred ambient copy.
 const heroCSS='.aw-view .aw-backdrop, .aw-view .aw-ambient {background-image:url("data:image/png;base64,'+hero.toString('base64')+'");}\n';
+// Soft wallpaper behind the glass chrome (scripts/make-wallpaper.py). It is a few KB, so it
+// can live in a custom property that shell.css layers under the ambient light.
+const wallpaper=fs.readFileSync(path.join(source,'assets/wallpaper.png'));
+if(!wallpaper.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])))throw Error('Wallpaper asset is not a PNG');
+if(wallpaper.length>16*1024)throw Error('Wallpaper asset should stay a small blurred field (< 16 KiB)');
+const wallpaperCSS='body {--ds-wallpaper:url("data:image/png;base64,'+wallpaper.toString('base64')+'");}\n';
 const pluginOut=path.join(root,'dist/algorithm-workbench'),snippetOut=path.join(root,'dist/snippets');
 fs.mkdirSync(pluginOut,{recursive:true});fs.mkdirSync(snippetOut,{recursive:true});
-fs.writeFileSync(path.join(pluginOut,'styles.css'),generated+pluginTokens+'\n'+heroCSS+cssParts(['materials','workbench']));
+fs.writeFileSync(path.join(pluginOut,'styles.css'),generated+pluginTokens+'\n'+heroCSS+cssParts(['materials','workbench','figure-tools']));
 // Build only inside this repository; installation is a separate explicit action.
-fs.writeFileSync(path.join(snippetOut,'style.css'),generated+cssParts(['tokens','shell','typography','components','editor','figures','print']));
+fs.writeFileSync(path.join(snippetOut,'style.css'),generated+cssParts(['tokens'])+'\n'+wallpaperCSS+cssParts(['shell','typography','components','editor','figures','print']));
 fs.writeFileSync(path.join(pluginOut,'main.js'),bundled);
 fs.copyFileSync(path.join(root,'manifest.json'),path.join(pluginOut,'manifest.json'));
 console.log(`Built ${modules.size} source modules and shared CSS into dist/`);

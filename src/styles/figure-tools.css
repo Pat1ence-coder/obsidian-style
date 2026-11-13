@@ -1,0 +1,51 @@
+/* Hover tools on figure callouts (plugin UI inside documents). Theme tokens come from the
+   document snippet; each has an Obsidian fallback so the tools work without it. */
+.callout[data-callout="figure"].aw-figure-editable {position:relative;}
+.aw-figure-bar {
+  position:absolute;top:6px;right:6px;z-index:5;display:flex;align-items:center;gap:2px;padding:3px;
+  border-radius:10px;border:1px solid var(--ds-glass-line,var(--background-modifier-border));
+  background:var(--ds-glass-strong,var(--background-primary));
+  box-shadow:inset 0 1px 0 var(--ds-glass-rim,transparent),0 6px 18px -6px rgba(0,0,0,.25);
+  -webkit-backdrop-filter:blur(18px) saturate(180%);backdrop-filter:blur(18px) saturate(180%);
+  opacity:0;pointer-events:none;transition:opacity 140ms ease;
+}
+.aw-figure-editable:hover > .aw-figure-bar,.aw-figure-resizing > .aw-figure-bar {opacity:1;pointer-events:auto;}
+.aw-figure-bar-label {padding:0 4px 0 7px;font-size:11px;color:var(--ds-faint,var(--text-faint));}
+button.aw-figure-option {
+  display:inline-flex;align-items:center;justify-content:center;width:26px;height:24px;padding:0;margin:0;
+  border:0;border-radius:7px;background:transparent;box-shadow:none;cursor:pointer;
+  color:var(--ds-muted,var(--text-muted));font:600 12px var(--ds-font-numeric,var(--font-monospace));
+}
+button.aw-figure-option svg {width:15px;height:15px;}
+button.aw-figure-option:hover {background:var(--background-modifier-hover);color:var(--ds-text,var(--text-normal));}
+button.aw-figure-option[aria-pressed="true"] {background:var(--ds-accent-soft,var(--background-modifier-hover));color:var(--ds-accent,var(--interactive-accent));}
+.aw-figure-editable .image-embed {position:relative;}
+/* Single images: a round handle at the bottom-right corner, with the live width beside it. */
+.aw-figure-resize {
+  position:absolute;right:-6px;bottom:-6px;z-index:4;width:14px;height:14px;border-radius:50%;
+  border:2px solid var(--ds-accent,var(--interactive-accent));background:var(--ds-paper,var(--background-primary));
+  box-shadow:0 1px 4px rgba(0,0,0,.25);cursor:nwse-resize;opacity:0;transition:opacity 140ms ease;
+}
+.aw-figure-editable .image-embed:hover > .aw-figure-resize,.aw-figure-resizing .aw-figure-resize {opacity:1;}
+.aw-figure-resizing img {outline:1.5px solid var(--ds-accent,var(--interactive-accent));outline-offset:2px;}
+.aw-figure-editable .image-embed[data-aw-width]::after {
+  content:attr(data-aw-width);position:absolute;right:14px;bottom:10px;padding:2px 7px;border-radius:6px;
+  background:var(--ds-glass-strong,var(--background-primary));color:var(--ds-text,var(--text-normal));
+  font:500 11px var(--ds-font-numeric,var(--font-monospace));box-shadow:0 2px 8px rgba(0,0,0,.15);pointer-events:none;
+}
+/* Grids: a grip at the top-left of each image; drop targets get a dashed outline. */
+.aw-figure-grip {
+  position:absolute;left:6px;top:6px;z-index:4;display:flex;align-items:center;justify-content:center;width:24px;height:24px;
+  border-radius:7px;border:1px solid var(--ds-glass-line,var(--background-modifier-border));
+  background:var(--ds-glass-strong,var(--background-primary));color:var(--ds-muted,var(--text-muted));
+  box-shadow:0 2px 8px rgba(0,0,0,.12);cursor:grab;opacity:0;transition:opacity 140ms ease;
+}
+.aw-figure-grip svg {width:14px;height:14px;}
+.aw-figure-editable .image-embed:hover > .aw-figure-grip {opacity:1;}
+.aw-figure-dragging {opacity:.45;}
+.aw-figure-drop img {outline:2px dashed var(--ds-accent,var(--interactive-accent));outline-offset:3px;}
+body.aw-figure-tools-off :is(.aw-figure-bar,.aw-figure-resize,.aw-figure-grip) {display:none;}
+@media print {
+  :is(.aw-figure-bar,.aw-figure-resize,.aw-figure-grip) {display:none !important;}
+  .aw-figure-editable .image-embed[data-aw-width]::after {content:none;}
+}

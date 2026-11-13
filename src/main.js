@@ -6,6 +6,8 @@ const {WorkbenchView,VIEW}=require('./features/workbench');
 const {FolderNotes}=require('./features/folder-notes');
 const {Figures}=require('./features/figures');
 const {ScreenshotNames}=require('./features/screenshot-names');
+const {FigureTools}=require('./features/figure-tools');
+const APPEARANCE=/^aw-(?:palette|caption)-|^aw-figure-tools-off$/;
 
 class WorkbenchSettings extends PluginSettingTab {
   constructor(app,plugin){super(app,plugin);this.plugin=plugin;}
@@ -15,10 +17,15 @@ class WorkbenchSettings extends PluginSettingTab {
     this.plugin.folderNotes.displaySettings(this.containerEl);
     this.containerEl.createEl('h3',{text:'图片与附件'});
     this.plugin.screenshotNames.displaySettings(this.containerEl);
+    this.plugin.figureTools.displaySettings(this.containerEl);
     this.containerEl.createEl('h3',{text:'外观'});
     new Setting(this.containerEl).setName('配色方案').setDesc('同时作用于知识脉冲看板和文档样式；浅色与深色模式各有对应版本。').addDropdown(d=>{
       for(const p of Core.PALETTES)d.addOption(p.id,p.label);
       d.setValue(s.palette).onChange(v=>this.plugin.setPalette(v));
+    });
+    new Setting(this.containerEl).setName('图注与表注字号').setDesc('标准为比正文小一号（打印 9pt，对应小五号）；小为 8pt，大为 10pt。编号「图 1」「表 1」自动加粗。').addDropdown(d=>{
+      for(const c of Core.CAPTION_SIZES)d.addOption(c.id,c.label);
+      d.setValue(s.captionSize).onChange(v=>this.plugin.setCaptionSize(v));
     });
     this.containerEl.createEl('h3',{text:'工作台与写作统计'});
     new Setting(this.containerEl).setName('启动时打开工作台').setDesc('在新标签页打开，保留原有笔记标签页。').addToggle(t=>t.setValue(s.openOnStartup).onChange(v=>{s.openOnStartup=v;this.plugin.changed();}));
@@ -41,6 +48,7 @@ class WorkbenchPlugin extends Plugin {
     catch(error){new Notice('工作台统计数据无法读取，已停止加载，原文件未改动。请先备份 data.json。',10000);throw error;}
     this.folderNotes=this.addChild(new FolderNotes(this));
     this.figures=this.addChild(new Figures(this));
+    this.figureTools=this.addChild(new FigureTools(this));
     this.screenshotNames=this.addChild(new ScreenshotNames(this));
     this.registerView(VIEW,leaf=>new WorkbenchView(leaf,this));
     this.addRibbonIcon('activity','打开知识脉冲看板',()=>this.openWorkbench());
@@ -49,12 +57,12 @@ class WorkbenchPlugin extends Plugin {
       const list=Core.PALETTES,next=list[(list.findIndex(p=>p.id===this.data.settings.palette)+1)%list.length];
       this.setPalette(next.id);new Notice(`配色方案：${next.label}`);
     }});
-    // The palette is a body class read by both stylesheets; popout windows get it too.
-    // Windows already open (plugin re-enabled, restored layout) are collected from their leaves.
-    this.paletteDocs=new Set();this.applyPaletteEverywhere();
-    this.app.workspace.onLayoutReady(()=>{if(!this.stopped)this.applyPaletteEverywhere();});
-    this.registerEvent(this.app.workspace.on('window-open',(_leaf,win)=>this.applyPalette(win.document)));
-    this.registerEvent(this.app.workspace.on('window-close',(_leaf,win)=>this.paletteDocs.delete(win.document)));
+    // Palette and caption size are body classes read by both stylesheets; popout windows get
+    // them too. Windows already open (plugin re-enabled, restored layout) are found via leaves.
+    this.appearanceDocs=new Set();this.applyAppearanceEverywhere();
+    this.app.workspace.onLayoutReady(()=>{if(!this.stopped)this.applyAppearanceEverywhere();});
+    this.registerEvent(this.app.workspace.on('window-open',(_leaf,win)=>this.applyAppearance(win.document)));
+    this.registerEvent(this.app.workspace.on('window-close',(_leaf,win)=>this.appearanceDocs.delete(win.document)));
     this.addSettingTab(new WorkbenchSettings(this.app,this));
     this.registerEditorExtension(EditorView.updateListener.of(update=>this.trackUpdate(update)));
     for(const event of ['create','modify','delete']) this.registerEvent(this.app.vault.on(event,file=>{
@@ -103,7 +111,6 @@ class WorkbenchPlugin extends Plugin {
     if(this.stopped||!this.data.settings.tracking||!(file instanceof TFile)||file.extension!=='md'||Core.isExcluded(file.path,this.data.settings.excludedFolders))return;
     Core.recordNote(this.data,Core.dayKey());this.changed();
   }
-  changed(){this.scheduleSave();this.scheduleRefresh();}
   cleanRecords(date=Core.dayKey()) {
     if(this.recordDay===date)return;
     this.recordDay=date;
@@ -151,27 +158,39 @@ class WorkbenchPlugin extends Plugin {
       await this.app.workspace.revealLeaf(leaf);
     }catch(error){new Notice('工作台打开失败，请尝试重新启用插件。');console.error(error);}
   }
-  applyPalette(doc){
-    if(!doc?.body)return;
-    this.paletteDocs.add(doc);
-    const body=doc.body,wanted='aw-palette-'+this.data.settings.palette;
-    for(const name of [...body.classList])if(name.startsWith('aw-palette-')&&name!==wanted)body.classList.remove(name);
-    body.classList.add(wanted);
+  // Appearance settings are body classes read by both stylesheets.
+  appearanceClasses(){
+    const s=this.data.settings;
+    return ['aw-palette-'+s.palette,'aw-caption-'+s.captionSize].concat(s.figureTools?[]:['aw-figure-tools-off']);
   }
-  applyPaletteEverywhere(){
-    const docs=new Set(this.paletteDocs);
+  applyAppearance(doc){
+    if(!doc?.body)return;
+    this.appearanceDocs.add(doc);
+    const body=doc.body,wanted=this.appearanceClasses();
+    for(const name of [...body.classList])if(APPEARANCE.test(name)&&!wanted.includes(name))body.classList.remove(name);
+    for(const name of wanted)body.classList.add(name);
+  }
+  applyAppearanceEverywhere(){
+    const docs=new Set(this.appearanceDocs);
     docs.add(this.app.workspace.containerEl?.ownerDocument);
     this.app.workspace.iterateAllLeaves?.(leaf=>docs.add(leaf.view?.containerEl?.ownerDocument));
-    for(const doc of docs)this.applyPalette(doc);
+    for(const doc of docs)this.applyAppearance(doc);
   }
   setPalette(id){
     if(!Core.PALETTES.some(p=>p.id===id)||this.data.settings.palette===id)return;
     this.data.settings.palette=id;
-    this.applyPaletteEverywhere();
+    this.applyAppearanceEverywhere();
     this.changed();
   }
+  setCaptionSize(id){
+    if(!Core.CAPTION_SIZES.some(c=>c.id===id)||this.data.settings.captionSize===id)return;
+    this.data.settings.captionSize=id;
+    this.applyAppearanceEverywhere();
+    this.changed();
+  }
+  changed(){this.scheduleSave();this.scheduleRefresh();}
   onunload(){
-    for(const doc of this.paletteDocs??[])for(const name of [...doc.body.classList])if(name.startsWith('aw-palette-'))doc.body.classList.remove(name);
+    for(const doc of this.appearanceDocs??[])for(const name of [...doc.body.classList])if(APPEARANCE.test(name))doc.body.classList.remove(name);
     this.stopped=true;clearTimeout(this.saveTimer);clearTimeout(this.refreshTimer);this.documentCounts=new WeakMap();if(this.data)void this.flush();this.app.workspace.detachLeavesOfType(VIEW);}
 }
 module.exports=WorkbenchPlugin;

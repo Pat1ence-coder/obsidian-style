@@ -148,3 +148,11 @@ test('palette setting defaults to sea and ignores unknown ids',()=>{
   const load=palette=>C.loadState({...JSON.parse(JSON.stringify(d)),settings:{palette}},new Date(2026,9,12,12)).settings.palette;
   assert.equal(load('sand'),'sand');assert.equal(load('celadon'),'celadon');assert.equal(load('neon'),'sea');
 });
+
+test('caption size and figure tools settings default sensibly and reject bad values',()=>{
+  const d=setup();assert.equal(d.settings.captionSize,'normal');assert.equal(d.settings.figureTools,true);
+  assert.deepEqual(C.CAPTION_SIZES.map(c=>c.id),['small','normal','large']);
+  const load=settings=>C.loadState({...JSON.parse(JSON.stringify(d)),settings},new Date(2026,9,12,12)).settings;
+  assert.equal(load({captionSize:'small'}).captionSize,'small');assert.equal(load({captionSize:'tiny'}).captionSize,'normal');
+  assert.equal(load({figureTools:false}).figureTools,false);assert.equal(load({figureTools:'no'}).figureTools,true);
+});

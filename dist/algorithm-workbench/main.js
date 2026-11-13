@@ -8,6 +8,8 @@ const {WorkbenchView,VIEW}=__awRequire("features/workbench.js");
 const {FolderNotes}=__awRequire("features/folder-notes.js");
 const {Figures}=__awRequire("features/figures.js");
 const {ScreenshotNames}=__awRequire("features/screenshot-names.js");
+const {FigureTools}=__awRequire("features/figure-tools.js");
+const APPEARANCE=/^aw-(?:palette|caption)-|^aw-figure-tools-off$/;
 
 class WorkbenchSettings extends PluginSettingTab {
   constructor(app,plugin){super(app,plugin);this.plugin=plugin;}
@@ -17,10 +19,15 @@ class WorkbenchSettings extends PluginSettingTab {
     this.plugin.folderNotes.displaySettings(this.containerEl);
     this.containerEl.createEl('h3',{text:'图片与附件'});
     this.plugin.screenshotNames.displaySettings(this.containerEl);
+    this.plugin.figureTools.displaySettings(this.containerEl);
     this.containerEl.createEl('h3',{text:'外观'});
     new Setting(this.containerEl).setName('配色方案').setDesc('同时作用于知识脉冲看板和文档样式；浅色与深色模式各有对应版本。').addDropdown(d=>{
       for(const p of Core.PALETTES)d.addOption(p.id,p.label);
       d.setValue(s.palette).onChange(v=>this.plugin.setPalette(v));
+    });
+    new Setting(this.containerEl).setName('图注与表注字号').setDesc('标准为比正文小一号（打印 9pt，对应小五号）；小为 8pt，大为 10pt。编号「图 1」「表 1」自动加粗。').addDropdown(d=>{
+      for(const c of Core.CAPTION_SIZES)d.addOption(c.id,c.label);
+      d.setValue(s.captionSize).onChange(v=>this.plugin.setCaptionSize(v));
     });
     this.containerEl.createEl('h3',{text:'工作台与写作统计'});
     new Setting(this.containerEl).setName('启动时打开工作台').setDesc('在新标签页打开，保留原有笔记标签页。').addToggle(t=>t.setValue(s.openOnStartup).onChange(v=>{s.openOnStartup=v;this.plugin.changed();}));
@@ -43,6 +50,7 @@ class WorkbenchPlugin extends Plugin {
     catch(error){new Notice('工作台统计数据无法读取，已停止加载，原文件未改动。请先备份 data.json。',10000);throw error;}
     this.folderNotes=this.addChild(new FolderNotes(this));
     this.figures=this.addChild(new Figures(this));
+    this.figureTools=this.addChild(new FigureTools(this));
     this.screenshotNames=this.addChild(new ScreenshotNames(this));
     this.registerView(VIEW,leaf=>new WorkbenchView(leaf,this));
     this.addRibbonIcon('activity','打开知识脉冲看板',()=>this.openWorkbench());
@@ -51,12 +59,12 @@ class WorkbenchPlugin extends Plugin {
       const list=Core.PALETTES,next=list[(list.findIndex(p=>p.id===this.data.settings.palette)+1)%list.length];
       this.setPalette(next.id);new Notice(`配色方案：${next.label}`);
     }});
-    // The palette is a body class read by both stylesheets; popout windows get it too.
-    // Windows already open (plugin re-enabled, restored layout) are collected from their leaves.
-    this.paletteDocs=new Set();this.applyPaletteEverywhere();
-    this.app.workspace.onLayoutReady(()=>{if(!this.stopped)this.applyPaletteEverywhere();});
-    this.registerEvent(this.app.workspace.on('window-open',(_leaf,win)=>this.applyPalette(win.document)));
-    this.registerEvent(this.app.workspace.on('window-close',(_leaf,win)=>this.paletteDocs.delete(win.document)));
+    // Palette and caption size are body classes read by both stylesheets; popout windows get
+    // them too. Windows already open (plugin re-enabled, restored layout) are found via leaves.
+    this.appearanceDocs=new Set();this.applyAppearanceEverywhere();
+    this.app.workspace.onLayoutReady(()=>{if(!this.stopped)this.applyAppearanceEverywhere();});
+    this.registerEvent(this.app.workspace.on('window-open',(_leaf,win)=>this.applyAppearance(win.document)));
+    this.registerEvent(this.app.workspace.on('window-close',(_leaf,win)=>this.appearanceDocs.delete(win.document)));
     this.addSettingTab(new WorkbenchSettings(this.app,this));
     this.registerEditorExtension(EditorView.updateListener.of(update=>this.trackUpdate(update)));
     for(const event of ['create','modify','delete']) this.registerEvent(this.app.vault.on(event,file=>{
@@ -105,7 +113,6 @@ class WorkbenchPlugin extends Plugin {
     if(this.stopped||!this.data.settings.tracking||!(file instanceof TFile)||file.extension!=='md'||Core.isExcluded(file.path,this.data.settings.excludedFolders))return;
     Core.recordNote(this.data,Core.dayKey());this.changed();
   }
-  changed(){this.scheduleSave();this.scheduleRefresh();}
   cleanRecords(date=Core.dayKey()) {
     if(this.recordDay===date)return;
     this.recordDay=date;
@@ -153,27 +160,39 @@ class WorkbenchPlugin extends Plugin {
       await this.app.workspace.revealLeaf(leaf);
     }catch(error){new Notice('工作台打开失败，请尝试重新启用插件。');console.error(error);}
   }
-  applyPalette(doc){
-    if(!doc?.body)return;
-    this.paletteDocs.add(doc);
-    const body=doc.body,wanted='aw-palette-'+this.data.settings.palette;
-    for(const name of [...body.classList])if(name.startsWith('aw-palette-')&&name!==wanted)body.classList.remove(name);
-    body.classList.add(wanted);
+  // Appearance settings are body classes read by both stylesheets.
+  appearanceClasses(){
+    const s=this.data.settings;
+    return ['aw-palette-'+s.palette,'aw-caption-'+s.captionSize].concat(s.figureTools?[]:['aw-figure-tools-off']);
   }
-  applyPaletteEverywhere(){
-    const docs=new Set(this.paletteDocs);
+  applyAppearance(doc){
+    if(!doc?.body)return;
+    this.appearanceDocs.add(doc);
+    const body=doc.body,wanted=this.appearanceClasses();
+    for(const name of [...body.classList])if(APPEARANCE.test(name)&&!wanted.includes(name))body.classList.remove(name);
+    for(const name of wanted)body.classList.add(name);
+  }
+  applyAppearanceEverywhere(){
+    const docs=new Set(this.appearanceDocs);
     docs.add(this.app.workspace.containerEl?.ownerDocument);
     this.app.workspace.iterateAllLeaves?.(leaf=>docs.add(leaf.view?.containerEl?.ownerDocument));
-    for(const doc of docs)this.applyPalette(doc);
+    for(const doc of docs)this.applyAppearance(doc);
   }
   setPalette(id){
     if(!Core.PALETTES.some(p=>p.id===id)||this.data.settings.palette===id)return;
     this.data.settings.palette=id;
-    this.applyPaletteEverywhere();
+    this.applyAppearanceEverywhere();
     this.changed();
   }
+  setCaptionSize(id){
+    if(!Core.CAPTION_SIZES.some(c=>c.id===id)||this.data.settings.captionSize===id)return;
+    this.data.settings.captionSize=id;
+    this.applyAppearanceEverywhere();
+    this.changed();
+  }
+  changed(){this.scheduleSave();this.scheduleRefresh();}
   onunload(){
-    for(const doc of this.paletteDocs??[])for(const name of [...doc.body.classList])if(name.startsWith('aw-palette-'))doc.body.classList.remove(name);
+    for(const doc of this.appearanceDocs??[])for(const name of [...doc.body.classList])if(APPEARANCE.test(name))doc.body.classList.remove(name);
     this.stopped=true;clearTimeout(this.saveTimer);clearTimeout(this.refreshTimer);this.documentCounts=new WeakMap();if(this.data)void this.flush();this.app.workspace.detachLeavesOfType(VIEW);}
 }
 module.exports=WorkbenchPlugin;
@@ -181,10 +200,12 @@ module.exports=WorkbenchPlugin;
 },
 "core.js":(module,exports,__awRequire)=>{
 'use strict';
-const DEFAULT_SETTINGS = { nameScreenshots: true, folderNotes: true, openOnStartup: true, tracking: true, recentLimit: 8, range: 90, metric: 'score', palette: 'sea', excludedFolders: ['Templates', 'templates'] };
+const DEFAULT_SETTINGS = { nameScreenshots: true, folderNotes: true, openOnStartup: true, tracking: true, recentLimit: 8, range: 90, metric: 'score', palette: 'sea', captionSize: 'normal', figureTools: true, excludedFolders: ['Templates', 'templates'] };
 const RANGES = [30, 90, 180, 365];
 // Colour palettes; each id maps to a body class aw-palette-<id> defined in tokens.css.
 const PALETTES = [{id:'sea', label:'海盐石墨'}, {id:'sand', label:'暖砂陶土'}, {id:'celadon', label:'青瓷'}];
+// Figure and table caption sizes; body class aw-caption-<id>, defined in figures.css.
+const CAPTION_SIZES = [{id:'small', label:'小'}, {id:'normal', label:'标准'}, {id:'large', label:'大'}];
 // Score weights are documented in the dashboard; values are derived, never stored.
 const METRICS = [
   {key:'score', label:'贡献分', unit:'分'},
@@ -244,10 +265,11 @@ function loadState(raw, now = new Date()) {
   const d = emptyData(now); d.started = raw.started;
   if (raw.version === 2) d.activityStarted = raw.activityStarted;
   const s = raw.settings || {};
-  for (const name of ['openOnStartup', 'tracking', 'folderNotes', 'nameScreenshots']) if (typeof s[name] === 'boolean') d.settings[name] = s[name];
+  for (const name of ['openOnStartup', 'tracking', 'folderNotes', 'nameScreenshots', 'figureTools']) if (typeof s[name] === 'boolean') d.settings[name] = s[name];
   if (RANGES.includes(s.range)) d.settings.range = s.range;
   if (METRICS.some(m => m.key === s.metric)) d.settings.metric = s.metric;
   if (PALETTES.some(x => x.id === s.palette)) d.settings.palette = s.palette;
+  if (CAPTION_SIZES.some(x => x.id === s.captionSize)) d.settings.captionSize = s.captionSize;
   if (Number.isInteger(s.recentLimit)) d.settings.recentLimit = Math.min(30, Math.max(3,s.recentLimit));
   if (Array.isArray(s.excludedFolders)) d.settings.excludedFolders = s.excludedFolders.filter(x=>typeof x==='string').map(x=>x.trim().replace(/^\/+|\/+$/g,'')).filter(Boolean);
   for (const [date, value] of Object.entries(raw.days)) {
@@ -401,7 +423,7 @@ function calendarDays(now, weeks) {
   const start = shiftDay(monday,-7*(weeks-1));
   return Array.from({length:weeks*7},(_,i)=>dayKey(shiftDay(start,i)));
 }
-module.exports = {transactionCounts,pruneRecords,DEFAULT_SETTINGS,RANGES,METRICS,PALETTES,dayKey,shiftDay,countCharacters,emptyData,loadState,isExcluded,recordChange,
+module.exports = {transactionCounts,pruneRecords,DEFAULT_SETTINGS,RANGES,METRICS,PALETTES,CAPTION_SIZES,dayKey,shiftDay,countCharacters,emptyData,loadState,isExcluded,recordChange,
   recordActivity,taskDelta,recordTasks,recordNote,dayScore,metricValue,lastDays,summary,currentStreak,activeValues,intensity,percentile,renamePath,recentFiles,calendarDays};
 
 },
@@ -1113,6 +1135,259 @@ class ScreenshotNames extends Component {
   }
 }
 module.exports={ScreenshotNames,screenshotStem,isDefaultScreenshot};
+
+},
+"features/figure-tools.js":(module,exports,__awRequire)=>{
+'use strict';
+const {Component,Notice,Setting,TFile,setIcon}=require('obsidian');
+const Edit=__awRequire("features/figure-edit.js");
+const FIGURE='.callout[data-callout="figure"]';
+const CAPTIONED='.callout:is([data-callout="figure"],[data-callout="table"]) .callout-title-inner';
+const ALIGN=[['left','align-left','左对齐'],['center','align-center','居中'],['right','align-right','右对齐']];
+const MIN_WIDTH=40;
+
+// Bold the "图 1" / "表 2" label of a caption; the rest stays a plain text node.
+function markLabel(title) {
+  if(title.querySelector('.aw-caption-label'))return;
+  const first=title.firstChild;
+  if(!first||first.nodeType!==3)return;
+  const found=Edit.captionLabel(first.textContent);
+  if(!found)return;
+  const label=title.ownerDocument.createElement('span');
+  label.className='aw-caption-label';label.textContent=found.label;
+  first.textContent=found.rest;title.insertBefore(label,first);
+}
+
+// Hover tools for figure callouts: alignment / column bar, a resize handle on single
+// images and drag grips for reordering grids. Every change is written back to the
+// note's Markdown, so print and PDF follow the same layout.
+class FigureTools extends Component {
+  constructor(plugin){super();this.plugin=plugin;this.app=plugin.app;this.documents=new Map();this.decorated=new WeakSet();this.gesture=null;}
+  onload(){
+    this.attachDocument(this.app.workspace.containerEl?.ownerDocument);
+    this.registerEvent(this.app.workspace.on('window-open',(_leaf,win)=>this.attachDocument(win.document)));
+    this.registerEvent(this.app.workspace.on('window-close',(_leaf,win)=>{
+      const owner=this.documents.get(win.document);
+      if(owner){this.removeChild(owner);this.documents.delete(win.document);}
+    }));
+    this.plugin.registerMarkdownPostProcessor((el,ctx)=>this.process(el,ctx));
+  }
+  onunload(){this.endGesture();this.documents.clear();}
+  enabled(){return this.plugin.data.settings.figureTools!==false;}
+  attachDocument(doc){
+    if(!doc||this.documents.has(doc))return;
+    const owner=this.addChild(new Component());this.documents.set(doc,owner);
+    owner.registerDomEvent(doc,'mouseover',event=>this.hover(event));
+    owner.registerDomEvent(doc,'pointerdown',event=>this.pointerDown(event),true);
+  }
+  // Reading view (and rendered callouts in Live Preview): label captions and remember
+  // which source line each figure starts on.
+  process(el,ctx){
+    const titles=[...el.querySelectorAll(CAPTIONED)];
+    if(el.matches?.(CAPTIONED))titles.push(el);
+    titles.forEach(markLabel);
+    const info=ctx?.getSectionInfo?.(el);
+    if(!info)return;
+    const figures=[...el.querySelectorAll(FIGURE)];
+    if(el.matches?.(FIGURE))figures.push(el);
+    for(const figure of figures){figure.dataset.awLine=String(info.lineStart);figure.dataset.awSource=ctx.sourcePath;}
+  }
+  hover(event){
+    if(!this.enabled()||this.gesture)return;
+    const figure=event.target?.closest?.(FIGURE);
+    if(!figure||this.decorated.has(figure)||!figure.closest('.markdown-preview-view,.markdown-source-view'))return;
+    this.decorate(figure);
+  }
+  decorate(figure){
+    this.decorated.add(figure);
+    const doc=figure.ownerDocument,meta=figure.dataset.calloutMetadata||'center',grid=meta.startsWith('grid-');
+    const title=figure.querySelector(':scope > .callout-title .callout-title-inner');
+    if(title)markLabel(title);
+    figure.classList.add('aw-figure-editable');
+    const bar=doc.createElement('div');bar.className='aw-figure-bar';bar.contentEditable='false';
+    const add=(value,label,iconName,text)=>{
+      const b=doc.createElement('button');b.type='button';b.className='aw-figure-option';
+      b.dataset.awMeta=value;b.title=label;b.setAttribute('aria-label',label);
+      b.setAttribute('aria-pressed',String(value===meta));
+      if(iconName)setIcon(b,iconName);else b.textContent=text;
+      bar.appendChild(b);
+    };
+    if(grid){
+      const caption=doc.createElement('span');caption.className='aw-figure-bar-label';caption.textContent='列';bar.appendChild(caption);
+      for(let n=1;n<=4;n++)add(`grid-${n}`,`${n} 列`,null,String(n));
+    }else for(const [value,iconName,label] of ALIGN)add(value,label,iconName);
+    figure.appendChild(bar);
+    figure.querySelectorAll('.image-embed').forEach((embed,index)=>{
+      const handle=doc.createElement('span');handle.contentEditable='false';handle.dataset.awIndex=String(index);
+      if(grid){handle.className='aw-figure-grip';handle.title='拖到另一张图上交换顺序';setIcon(handle,'grip-vertical');}
+      else{handle.className='aw-figure-resize';handle.title='拖动调整宽度';}
+      embed.appendChild(handle);
+    });
+  }
+  pointerDown(event){
+    if(!this.enabled()||event.button!==0)return;
+    const target=event.target?.closest?.('.aw-figure-option,.aw-figure-resize,.aw-figure-grip');
+    const figure=target?.closest(FIGURE);
+    if(!figure)return;
+    // Keep CodeMirror from moving the cursor into the callout source.
+    event.preventDefault();event.stopPropagation();
+    if(target.classList.contains('aw-figure-option')){
+      const meta=target.dataset.awMeta;
+      if(target.getAttribute('aria-pressed')!=='true')void this.edit(figure,(lines,block)=>Edit.setMeta(lines,block,meta));
+      return;
+    }
+    const index=Number(target.dataset.awIndex),embed=target.closest('.image-embed');
+    if(target.classList.contains('aw-figure-resize'))this.startResize(event,figure,embed,index);
+    else this.startReorder(event,figure,embed,index);
+  }
+  startResize(event,figure,embed,index){
+    const img=embed?.querySelector('img');
+    if(!img)return;
+    const start=img.getBoundingClientRect().width,x=event.clientX;
+    let width=start;
+    figure.classList.add('aw-figure-resizing');
+    this.beginGesture(figure.ownerDocument,move=>{
+      width=Math.max(MIN_WIDTH,Math.round(start+move.clientX-x));
+      img.style.width=width+'px';embed.dataset.awWidth=`${Math.round(width/10)*10}px`;
+    },()=>{
+      figure.classList.remove('aw-figure-resizing');
+      const final=Math.min(4096,Math.max(MIN_WIDTH,Math.round(width/10)*10));
+      if(Math.abs(width-start)<3){img.style.width='';delete embed.dataset.awWidth;return;}
+      void this.edit(figure,(lines,block)=>Edit.setWidth(lines,block,index,final));
+    });
+  }
+  startReorder(event,figure,embed,from){
+    const embeds=[...figure.querySelectorAll('.image-embed')];
+    let to=from;
+    embed.classList.add('aw-figure-dragging');
+    this.beginGesture(figure.ownerDocument,move=>{
+      const over=figure.ownerDocument.elementFromPoint(move.clientX,move.clientY)?.closest?.('.image-embed');
+      const next=embeds.indexOf(over);
+      if(next<0||next===to)return;
+      embeds[to]?.classList.remove('aw-figure-drop');to=next;
+      if(to!==from)embeds[to].classList.add('aw-figure-drop');
+    },()=>{
+      embeds.forEach(e=>e.classList.remove('aw-figure-dragging','aw-figure-drop'));
+      if(to!==from)void this.edit(figure,(lines,block)=>Edit.moveImage(lines,block,from,to));
+    });
+  }
+  beginGesture(doc,onMove,onEnd){
+    this.endGesture();
+    const move=event=>onMove(event);
+    const up=()=>{this.endGesture();onEnd();};
+    doc.addEventListener('pointermove',move);doc.addEventListener('pointerup',up);
+    this.gesture={doc,move,up};
+  }
+  endGesture(){
+    if(!this.gesture)return;
+    const {doc,move,up}=this.gesture;
+    doc.removeEventListener('pointermove',move);doc.removeEventListener('pointerup',up);
+    this.gesture=null;
+  }
+  // Live Preview edits go through the editor (undoable); reading view edits rewrite
+  // the file after checking the recorded block is still where it was rendered.
+  locate(figure){
+    if(figure.closest('.markdown-source-view')){
+      const view=this.app.workspace.getLeavesOfType('markdown').map(leaf=>leaf.view).find(v=>v?.containerEl?.contains(figure));
+      const editor=view?.editor,cm=editor?.cm;
+      if(!editor||typeof cm?.posAtDOM!=='function')return null;
+      const line=cm.state.doc.lineAt(cm.posAtDOM(figure)).number-1;
+      return {apply:change=>{
+        const lines=editor.getValue().split('\n'),block=Edit.findBlock(lines,line);
+        if(!block)throw Error('这里不是插图块。');
+        const next=change(lines,block);
+        editor.replaceRange(next.slice(block.start,block.end+1).join('\n'),{line:block.start,ch:0},{line:block.end,ch:lines[block.end].length});
+      }};
+    }
+    const line=Number(figure.dataset.awLine),file=this.app.vault.getAbstractFileByPath(figure.dataset.awSource||'');
+    if(!Number.isInteger(line)||!(file instanceof TFile))return null;
+    return {apply:change=>this.app.vault.process(file,data=>{
+      const eol=data.includes('\r\n')?'\r\n':'\n',lines=data.split(eol),block=Edit.findBlock(lines,line);
+      if(!block||block.start!==line)throw Error('笔记内容已变化，请刷新后重试。');
+      return change(lines,block).join(eol);
+    })};
+  }
+  async edit(figure,change){
+    try{
+      const located=this.locate(figure);
+      if(!located){new Notice('无法定位这张插图的源码，请在编辑或阅读视图中重试。');return;}
+      await located.apply(change);
+    }catch(error){new Notice(error?.message||'修改插图失败。');}
+  }
+  displaySettings(container){
+    new Setting(container).setName('插图编辑工具').setDesc('悬停插图时显示对齐与列数工具条；单图可拖动右下角调整宽度，多图组可拖动图片交换顺序。修改直接写回 Markdown。')
+      .addToggle(t=>t.setValue(this.enabled()).onChange(v=>{this.plugin.data.settings.figureTools=v;this.plugin.applyAppearanceEverywhere();this.plugin.changed();}));
+  }
+}
+module.exports={FigureTools,markLabel};
+
+},
+"features/figure-edit.js":(module,exports,__awRequire)=>{
+'use strict';
+// Line-level edits of a figure callout. Every function takes the note's lines and
+// returns new lines; nothing here touches the DOM or the vault.
+const HEADER=/^(\s*>\s*)\[!(figure|table)(?:\|([^\]]*))?\]([+-]?)(.*)$/i;
+const QUOTED=/^\s*>/;
+const IMAGE=/!\[\[([^\]|]+)(?:\|(\d+)(?:x\d+)?)?\]\]|!\[([^\]|]*)(?:\|(\d+)(?:x\d+)?)?\]\(([^)]+)\)/g;
+
+function imagesIn(text) {
+  return [...text.matchAll(IMAGE)].map(m=>({text:m[0],index:m.index,width:Number(m[2]||m[4])||null}));
+}
+// Walk up to the callout header and down to its last quoted line.
+function findBlock(lines, line) {
+  if(line<0||line>=lines.length||!QUOTED.test(lines[line]))return null;
+  let start=line;
+  while(start>0&&!HEADER.test(lines[start])&&QUOTED.test(lines[start-1]))start--;
+  const header=HEADER.exec(lines[start]);
+  if(!header||header[2].toLowerCase()!=='figure')return null;
+  let end=start;
+  while(end+1<lines.length&&QUOTED.test(lines[end+1])&&!HEADER.test(lines[end+1]))end++;
+  const images=[];
+  for(let i=start+1;i<=end;i++){
+    const found=imagesIn(lines[i]);
+    if(found.length===1)images.push({line:i,width:found[0].width});
+  }
+  return {start,end,prefix:header[1],meta:(header[3]||'').trim(),fold:header[4],caption:header[5],images};
+}
+function replaceWidth(embed, width) {
+  const size=width?'|'+width:'';
+  if(embed.startsWith('![['))return embed.replace(/^!\[\[([^\]|]+)(?:\|[^\]]*)?\]\]$/,(_m,target)=>`![[${target}${size}]]`);
+  return embed.replace(/^!\[([^\]|]*)(?:\|[^\]]*)?\]/,(_m,alt)=>`![${alt}${size}]`);
+}
+function setWidth(lines, block, imageIndex, width) {
+  const image=block.images[imageIndex];
+  if(!image)throw Error('找不到这张图片。');
+  if(width!==null&&(!Number.isInteger(width)||width<1||width>4096))throw Error('宽度需为 1–4096 的整数。');
+  const text=lines[image.line],[found]=imagesIn(text),next=lines.slice();
+  next[image.line]=text.slice(0,found.index)+replaceWidth(found.text,width)+text.slice(found.index+found.text.length);
+  return next;
+}
+const META=/^(left|center|right|grid-[1-4])$/;
+function setMeta(lines, block, meta) {
+  if(!META.test(meta))throw Error('不支持的布局。');
+  const grid=meta.startsWith('grid-'),wasGrid=block.meta.startsWith('grid-');
+  if(grid!==wasGrid)throw Error(grid?'单图不能切换为多图布局。':'多图组只能调整列数。');
+  const next=lines.slice();
+  next[block.start]=`${block.prefix}[!figure|${meta}]${block.fold}${block.caption}`;
+  return next;
+}
+// Reorder image lines only; captions, blank quoted lines and other content stay put.
+function moveImage(lines, block, from, to) {
+  const slots=block.images.map(image=>image.line);
+  const valid=i=>Number.isInteger(i)&&i>=0&&i<slots.length;
+  if(!valid(from)||!valid(to))throw Error('找不到要移动的图片。');
+  const order=slots.map(line=>lines[line]),[moved]=order.splice(from,1);order.splice(to,0,moved);
+  const next=lines.slice();
+  slots.forEach((line,i)=>{next[line]=order[i];});
+  return next;
+}
+// "图 1"、"表 2-3"、"Figure 4"、"Fig. 5"、"Table 6": the label part of a caption.
+const LABEL=/^\s*((?:图|表|Fig\.?|Figure|Table)\s*\d+(?:[.\-–]\d+)*)/i;
+function captionLabel(text) {
+  const m=LABEL.exec(text);
+  return m?{label:m[1],rest:text.slice(m[0].length)}:null;
+}
+module.exports={findBlock,setWidth,setMeta,moveImage,captionLabel,imagesIn};
 
 }};
 const __awCache=Object.create(null);

@@ -23,6 +23,7 @@ body{font-family:var(--font-interface);font-size:13px;color:var(--text-normal);b
 .workspace-ribbon{width:44px;background:var(--ribbon-background);display:flex;flex-direction:column;align-items:center;gap:14px;padding-top:46px;border-right:1px solid var(--divider-color)}
 .workspace-ribbon i{width:18px;height:18px;border-radius:5px;background:var(--icon-color);opacity:.35}
 .workspace-split.mod-left-split{width:250px;background:var(--background-secondary);border-right:1px solid var(--divider-color);display:flex;flex-direction:column}
+.mod-left-split>.workspace-tabs{flex:1;display:flex;flex-direction:column;min-height:0}
 .workspace-split.mod-root{flex:1;display:flex;flex-direction:column;min-width:0}
 .workspace-tab-header-container{display:flex;gap:4px;height:42px;align-items:flex-end;padding:0 10px 6px;background:var(--tab-container-background)}
 .workspace-tab-header{display:flex;align-items:center;height:30px;padding:0 14px;border-radius:var(--tab-radius);color:var(--tab-text-color)}
@@ -57,8 +58,8 @@ const note=`<div class="inline-title">Attention 机制与梯度推导</div>
 <p>给定 <strong>Q、K、V</strong>，输出为 softmax(QKᵀ/√d)·V。缩放因子防止点积随维度增大而进入 softmax 的饱和区。</p>
 <div class="callout" data-callout="note"><div class="callout-title">ⓘ 记录</div><div class="callout-content"><p>维度 d=64 时，未缩放版本训练前 2k 步的梯度范数下降约 40%。</p></div></div>
 <h2>2. 实验对比</h2>
-<table><thead><tr><th>方法</th><th align="right">MRR@10</th><th align="right">延迟 ms</th><th align="right">参数量</th></tr></thead>
-<tbody><tr><td>Baseline</td><td align="right">0.372</td><td align="right">18.4</td><td align="right">110M</td></tr><tr><td>+ 缩放</td><td align="right">0.391</td><td align="right">18.6</td><td align="right">110M</td></tr><tr><td>+ 缩放 + 温度</td><td align="right">0.398</td><td align="right">18.7</td><td align="right">110M</td></tr></tbody></table>
+<div class="callout" data-callout="table"><div class="callout-title"><div class="callout-icon"></div><div class="callout-title-inner"><span class="aw-caption-label">表 1</span> 不同配置的检索效果与开销</div></div><div class="callout-content"><table><thead><tr><th>方法</th><th align="right">MRR@10</th><th align="right">延迟 ms</th><th align="right">参数量</th></tr></thead>
+<tbody><tr><td>Baseline</td><td align="right">0.372</td><td align="right">18.4</td><td align="right">110M</td></tr><tr><td>+ 缩放</td><td align="right">0.391</td><td align="right">18.6</td><td align="right">110M</td></tr><tr><td>+ 缩放 + 温度</td><td align="right">0.398</td><td align="right">18.7</td><td align="right">110M</td></tr></tbody></table></div></div>
 <pre><code><span class="kw">def</span> <span class="fn">attention</span>(q, k, v, d):
     <span class="cm"># 缩放点积注意力</span>
     w = softmax(q @ k.T / d ** <span class="nu">0.5</span>)
@@ -68,15 +69,15 @@ const note=`<div class="inline-title">Attention 机制与梯度推导</div>
 <blockquote><p>注意力不是解释，但它是一个好的调试入口。</p></blockquote>
 <h2>3. 插图</h2>
 <p>未设置宽度的大截图在屏幕上限制为 720px，并保持比例；多图组的小图不再被拉伸。<mark>打印规则保持不变</mark>。</p>
-<div class="callout" data-callout="figure" data-callout-metadata="center"><div class="callout-title"><div class="callout-icon"></div><div class="callout-title-inner">图 1 · 未设宽度的宽幅截图</div></div><div class="callout-content"><p>${embed(wide,'wide')}</p></div></div>
-<div class="callout" data-callout="figure" data-callout-metadata="grid-2"><div class="callout-title"><div class="callout-icon"></div><div class="callout-title-inner">图 2 · 两列小图保持原始尺寸</div></div><div class="callout-content"><p>${embed(svg('compact-1.svg'),'a')}<br>${embed(svg('compact-2.svg'),'b')}<br>${embed(svg('compact-3.svg'),'c')}</p></div></div>
+<div class="callout" data-callout="figure" data-callout-metadata="center"><div class="callout-title"><div class="callout-icon"></div><div class="callout-title-inner"><span class="aw-caption-label">图 1</span> · 未设宽度的宽幅截图</div></div><div class="callout-content"><p>${embed(wide,'wide')}</p></div></div>
+<div class="callout" data-callout="figure" data-callout-metadata="grid-2"><div class="callout-title"><div class="callout-icon"></div><div class="callout-title-inner"><span class="aw-caption-label">图 2</span> · 两列小图保持原始尺寸</div></div><div class="callout-content"><p>${embed(svg('compact-1.svg'),'a')}<br>${embed(svg('compact-2.svg'),'b')}<br>${embed(svg('compact-3.svg'),'c')}</p></div></div>
 <hr>
 <div class="callout" data-callout="tip"><div class="callout-title">✦ 提示</div><div class="callout-content"><p>温度系数与缩放因子可以合并为一个可学习参数。</p></div></div>
 <div class="callout" data-callout="warning"><div class="callout-title">⚠ 注意</div><div class="callout-content"><p>batch 内的负样本过少时，MRR 波动会明显增大。</p></div></div>
 <div class="callout" data-callout="abstract"><div class="callout-title">≡ 摘要</div><div class="callout-content"><p>缩放 + 温度带来约 2.6 个点的 MRR 提升，延迟几乎不变。</p></div></div>`;
 const html=`<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:"><title>主题外框 · 静态示例</title><style>${HOST}\n${snippet}</style></head>
 <body class="theme-light"><div class="app-container workspace"><div class="workspace-ribbon mod-left"><i></i><i></i><i></i><i></i></div>
-<div class="workspace-split mod-horizontal mod-sidedock mod-left-split"><div class="workspace-tab-header-container"></div><div class="workspace-leaf-content" data-type="file-explorer"><div class="nav-header"><span class="nav-action-button"></span><span class="nav-action-button"></span><span class="nav-action-button"></span></div><div class="nav-files-container">${files}</div></div></div>
+<div class="workspace-split mod-horizontal mod-sidedock mod-left-split"><div class="workspace-tabs"><div class="workspace-tab-header-container"></div><div class="workspace-leaf-content" data-type="file-explorer"><div class="nav-header"><span class="nav-action-button"></span><span class="nav-action-button"></span><span class="nav-action-button"></span></div><div class="nav-files-container">${files}</div></div></div></div>
 <div class="workspace-split mod-vertical mod-root"><div class="workspace-tabs"><div class="workspace-tab-header-container"><div class="workspace-tab-header"><div class="workspace-tab-header-inner"><div class="workspace-tab-header-inner-title">知识脉冲</div></div></div><div class="workspace-tab-header is-active"><div class="workspace-tab-header-inner"><div class="workspace-tab-header-inner-title">Attention 机制与梯度推导</div></div></div></div></div>
 <div class="workspace-tab-container"><div class="workspace-leaf-content" data-type="markdown"><div class="view-header"><div class="view-header-title">研究 / Attention 机制与梯度推导</div></div><div class="view-content"><div class="markdown-preview-view markdown-rendered"><div class="markdown-preview-sizer">${note}</div></div></div></div></div></div>
 </div><div class="menu"><div class="menu-item">在新标签页打开</div><div class="menu-item selected">在右侧打开</div><div class="menu-separator"></div><div class="menu-item">复制链接</div><div class="menu-item">重命名…</div></div><div class="status-bar">1,286 字 · 编辑 74 分钟</div></body></html>`;

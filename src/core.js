@@ -1,8 +1,10 @@
 'use strict';
-const DEFAULT_SETTINGS = { nameScreenshots: true, folderNotes: true, openOnStartup: true, tracking: true, recentLimit: 8, range: 90, metric: 'score', palette: 'sea', excludedFolders: ['Templates', 'templates'] };
+const DEFAULT_SETTINGS = { nameScreenshots: true, folderNotes: true, openOnStartup: true, tracking: true, recentLimit: 8, range: 90, metric: 'score', palette: 'sea', captionSize: 'normal', figureTools: true, excludedFolders: ['Templates', 'templates'] };
 const RANGES = [30, 90, 180, 365];
 // Colour palettes; each id maps to a body class aw-palette-<id> defined in tokens.css.
 const PALETTES = [{id:'sea', label:'海盐石墨'}, {id:'sand', label:'暖砂陶土'}, {id:'celadon', label:'青瓷'}];
+// Figure and table caption sizes; body class aw-caption-<id>, defined in figures.css.
+const CAPTION_SIZES = [{id:'small', label:'小'}, {id:'normal', label:'标准'}, {id:'large', label:'大'}];
 // Score weights are documented in the dashboard; values are derived, never stored.
 const METRICS = [
   {key:'score', label:'贡献分', unit:'分'},
@@ -62,10 +64,11 @@ function loadState(raw, now = new Date()) {
   const d = emptyData(now); d.started = raw.started;
   if (raw.version === 2) d.activityStarted = raw.activityStarted;
   const s = raw.settings || {};
-  for (const name of ['openOnStartup', 'tracking', 'folderNotes', 'nameScreenshots']) if (typeof s[name] === 'boolean') d.settings[name] = s[name];
+  for (const name of ['openOnStartup', 'tracking', 'folderNotes', 'nameScreenshots', 'figureTools']) if (typeof s[name] === 'boolean') d.settings[name] = s[name];
   if (RANGES.includes(s.range)) d.settings.range = s.range;
   if (METRICS.some(m => m.key === s.metric)) d.settings.metric = s.metric;
   if (PALETTES.some(x => x.id === s.palette)) d.settings.palette = s.palette;
+  if (CAPTION_SIZES.some(x => x.id === s.captionSize)) d.settings.captionSize = s.captionSize;
   if (Number.isInteger(s.recentLimit)) d.settings.recentLimit = Math.min(30, Math.max(3,s.recentLimit));
   if (Array.isArray(s.excludedFolders)) d.settings.excludedFolders = s.excludedFolders.filter(x=>typeof x==='string').map(x=>x.trim().replace(/^\/+|\/+$/g,'')).filter(Boolean);
   for (const [date, value] of Object.entries(raw.days)) {
@@ -219,5 +222,5 @@ function calendarDays(now, weeks) {
   const start = shiftDay(monday,-7*(weeks-1));
   return Array.from({length:weeks*7},(_,i)=>dayKey(shiftDay(start,i)));
 }
-module.exports = {transactionCounts,pruneRecords,DEFAULT_SETTINGS,RANGES,METRICS,PALETTES,dayKey,shiftDay,countCharacters,emptyData,loadState,isExcluded,recordChange,
+module.exports = {transactionCounts,pruneRecords,DEFAULT_SETTINGS,RANGES,METRICS,PALETTES,CAPTION_SIZES,dayKey,shiftDay,countCharacters,emptyData,loadState,isExcluded,recordChange,
   recordActivity,taskDelta,recordTasks,recordNote,dayScore,metricValue,lastDays,summary,currentStreak,activeValues,intensity,percentile,renamePath,recentFiles,calendarDays};

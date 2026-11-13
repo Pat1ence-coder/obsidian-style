@@ -9,13 +9,13 @@
 - `dist/algorithm-workbench/main.js`：插件代码。
 - `dist/algorithm-workbench/styles.css`：工作台和弹窗样式，包含内嵌的像素横幅（src/assets/coast-header-pixel.png）。
 - `dist/algorithm-workbench/manifest.json`：插件元信息。
-- `dist/snippets/style.css`：正文、编辑器、插图和打印样式。
+- `dist/snippets/style.css`：正文、编辑器、插图和打印样式，包含内嵌的模糊壁纸（src/assets/wallpaper.png）。
 
 项目版本统一为 `0.0.1`，保存在根目录的 `package.json` 和 `manifest.json`。README 不固定版本号。最低 Obsidian 兼容版本不属于项目发布版本。
 
 ## 验证
 
-在仓库根目录运行 `npm test`，会先构建再执行测试，避免误测旧产物。`node scripts/build-preview.js [recent|monthly]` 生成看板各视图的静态示例；`node scripts/build-theme-preview.js` 生成使用 Obsidian 类名的外框示例，其中模拟宿主样式只是近似。横幅素材变化后运行 `python3 -B scripts/pixelate-header.py`（需要 Pillow），构建本身仍只用标准库。`npm run preview` 生成不含脚本的静态示例，不启动浏览器或服务器。`npm run stage` 从构建产物和 `examples/notes/` 准备预览库，已有配置不会被覆盖，也不会复制用户统计文件。
+在仓库根目录运行 `npm test`，会先构建再执行测试，避免误测旧产物。`node scripts/build-preview.js [recent|monthly]` 生成看板各视图的静态示例；`node scripts/build-theme-preview.js` 生成使用 Obsidian 类名的外框示例，其中模拟宿主样式只是近似。横幅素材变化后运行 `python3 -B scripts/pixelate-header.py` 与 `python3 -B scripts/make-wallpaper.py`（需要 Pillow），构建本身仍只用标准库。`npm run preview` 生成不含脚本的静态示例，不启动浏览器或服务器。`npm run stage` 从构建产物和 `examples/notes/` 准备预览库，已有配置不会被覆盖，也不会复制用户统计文件。
 
 这些检查不替代真实 Obsidian 的加载、编辑器事件和视觉验收。当前没有引入下载依赖；旧浏览器及 PDF 验证工具仅在本地历史归档中保留。
 

@@ -38,6 +38,10 @@
     color:#111;
     background:#fff;
   }
+  /* Caption sizes: 9pt (小五) by default, 8pt small, 10pt large. Same specificity as the
+     reset above and later in the file, so the chosen size survives it. */
+  body.theme-light.aw-caption-small, body.theme-dark.aw-caption-small {--ds-caption-size:8pt;}
+  body.theme-light.aw-caption-large, body.theme-dark.aw-caption-large {--ds-caption-size:10pt;}
   .markdown-preview-view,
   .markdown-source-view.mod-cm6,
   .markdown-preview-view:is(.research,.experiment) {

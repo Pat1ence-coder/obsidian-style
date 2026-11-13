@@ -11,6 +11,7 @@
 - print.css：A4、20mm、100% 缩放的学术导出规范。
 - materials.css：看板卡片外壳、白色内容面、按钮与徽标材质和交互过渡；带减少动态和透明度降级。
 - workbench.css：知识脉冲看板版式与插图弹窗，不包含文档内容样式。
+- figure-tools.css：文档内插图悬停工具条、调整宽度手柄和排序手柄（插件样式，打印时隐藏）。
 
 scripts/build.js 输出两个样式文件：dist/snippets/style.css 管理文档；dist/algorithm-workbench/styles.css 只管理工作台与弹窗。两者共享同一份 tokens.css。figure 样式因此在文档样式启用时无需插件运行也能使用。
 

@@ -111,7 +111,11 @@ test('each metric owns a companion hue shared by its tab, dot and heatmap card',
 });
 test('document snippet ships glass chrome with fallbacks and a screen-only figure size guard',()=>{
   const root=path.resolve(__dirname,'..'),css=fs.readFileSync(path.join(root,'dist/snippets/style.css'),'utf8');
-  assert.match(css,/backdrop-filter:\s*var\(--ds-glass-blur\)/);
+  assert.match(css,/mod-sidedock > \.workspace-tabs \{[^}]*border-radius: 16px[^}]*background: var\(--ds-glass-solid\)/,'floating panels have an opaque fallback');
+  assert.match(css,/backdrop-filter:\s*var\(--ds-glass-panel-blur\)/);
+  assert.match(css,/body \{--ds-wallpaper:url\("data:image\/png;base64,/,'blurred wallpaper is embedded, not fetched');
+  assert.match(css,/\.workspace \{[^}]*var\(--ds-wallpaper-veil\)[^}]*var\(--ds-wallpaper, none\)/);
+  assert.doesNotMatch(css,/url\(["']?https?:/);
   assert.match(css,/prefers-reduced-transparency:reduce/);
   assert.match(css,/@media screen \{\s*\.callout\[data-callout="figure"\] \{--aw-figure-max-width: 720px/);
   assert.match(css,/img:not\(\[width\]\) \{max-width:min\(100%, var\(--aw-figure-max-width\)\);\}/);
@@ -146,4 +150,16 @@ test('reduced transparency also replaces the dark glass card background',()=>{
   const block=css.slice(css.indexOf('@media (prefers-reduced-transparency:reduce)'));
   assert.match(block,/\.theme-dark \.aw-view :is\(\.aw-card[^{]*\{[^}]*background:var\(--ds-glass-solid\)/);
   assert.ok(css.indexOf('.theme-dark .aw-view .aw-card {')<css.indexOf('@media (prefers-reduced-transparency:reduce)'));
+});
+
+test('academic captions: table caption above, bold label, adjustable size, print sizes in points',()=>{
+  const root=path.resolve(__dirname,'..'),css=fs.readFileSync(path.join(root,'dist/snippets/style.css'),'utf8');
+  assert.match(css,/\.aw-caption-label \{[^}]*font-weight:650/);
+  assert.match(css,/body\.aw-caption-small \{[^}]*--ds-caption-size/);assert.match(css,/body\.aw-caption-large \{[^}]*--ds-caption-size/);
+  const table=/\.callout\[data-callout="table"\] > \.callout-title \{([^}]*)\}/.exec(css);assert.ok(table);assert.match(table[1],/padding:0 0 8px/,'title stays first in DOM order, spaced above the table');
+  assert.ok(css.indexOf('body.theme-dark.aw-caption-small')>css.indexOf('body.theme-dark[class*="aw-palette-"]'),'print caption sizes follow the print reset');
+  assert.match(css,/aw-caption-small \{--ds-caption-size:8pt;\}/);assert.match(css,/aw-caption-large \{--ds-caption-size:10pt;\}/);
+  const plugin=fs.readFileSync(path.join(root,'dist/algorithm-workbench/styles.css'),'utf8');
+  assert.match(plugin,/body\.aw-figure-tools-off :is\(\.aw-figure-bar/);
+  assert.match(plugin,/@media print \{\s*:is\(\.aw-figure-bar,\.aw-figure-resize,\.aw-figure-grip\) \{display:none !important;\}/);
 });

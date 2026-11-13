@@ -50,7 +50,7 @@
   margin:0;
   padding:9px 0 0;
   background:transparent;
-  color:var(--text-muted);
+  color:var(--ds-text);
   font-family:var(--font-text);
   font-size:var(--ds-caption-size);
   font-weight:400;
@@ -68,6 +68,8 @@
 @media screen {
   .callout[data-callout="figure"] {--aw-figure-max-width: 720px; --aw-figure-max-height: min(72vh, 680px); --aw-figure-cell-max: 420px;}
   .callout[data-callout="figure"]:not([data-callout-metadata^="grid-"]) img:not([width]) {max-width:min(100%, var(--aw-figure-max-width));}
+  /* Cap the embed box as well, so it hugs the image (the resize handle sits on the image corner). */
+  .callout[data-callout="figure"]:not([data-callout-metadata^="grid-"]) .image-embed:has(> img:not([width])) {max-width:min(100%, var(--aw-figure-max-width));}
   .callout[data-callout="figure"] img {max-height:var(--aw-figure-max-height);object-fit:contain;}
 }
 
@@ -111,4 +113,30 @@
   .callout[data-callout="figure"][data-callout-metadata^="grid-"] {break-inside:auto;page-break-inside:auto;}
   .callout[data-callout="figure"][data-callout-metadata^="grid-"] > .callout-content {grid-template-columns:repeat(var(--aw-figure-columns),minmax(0,1fr));}
   .callout[data-callout="figure"][data-callout-metadata^="grid-"] .image-embed {break-inside:avoid;}
+}
+
+/* Academic captions: figure caption below, table caption above, one size below body text,
+   label ("图 1", "表 2") in the heading face and bold. Sizes: body.aw-caption-small|large. */
+body.aw-caption-small {--ds-caption-size: calc(var(--ds-body-size) * .75);}
+body.aw-caption-large {--ds-caption-size: calc(var(--ds-body-size) * .875);}
+.callout:is([data-callout="figure"],[data-callout="table"]) .aw-caption-label {
+  font-family:var(--ds-font-heading);font-weight:650;color:var(--ds-heading);margin-inline-end:.15em;
+}
+
+/* Native callout syntax for table captions: > [!table] 表 1 · 标题, then the table lines. */
+:is(.markdown-rendered,.markdown-preview-view,.markdown-source-view) .callout[data-callout="table"] {
+  display:flex;flex-direction:column;
+  background:transparent;border:0;border-radius:0;padding:0;margin:1.4em 0;
+  box-shadow:none;mix-blend-mode:normal;overflow:visible;
+}
+.callout[data-callout="table"] > .callout-title {
+  display:flex;justify-content:center;margin:0;padding:0 0 8px;background:transparent;
+  color:var(--ds-text);font-family:var(--font-text);font-size:var(--ds-caption-size);font-weight:400;line-height:1.5;text-align:center;
+}
+.callout[data-callout="table"] > .callout-title > .callout-icon {display:none;}
+.callout[data-callout="table"] .callout-title-inner {font-weight:400;overflow-wrap:anywhere;}
+:is(.markdown-rendered,.markdown-preview-view,.markdown-source-view) .callout[data-callout="table"] > .callout-content {padding:0;background:transparent;}
+.callout[data-callout="table"] > .callout-content table {margin-block:0;}
+@media print {
+  .callout[data-callout="table"] > .callout-title {break-after:avoid;page-break-after:avoid;}
 }
