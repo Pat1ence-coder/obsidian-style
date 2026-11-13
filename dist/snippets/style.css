@@ -1,0 +1,507 @@
+/* GENERATED from src/styles. Edit the source modules, then run npm run build. */
+/* Source: src/styles/tokens.css */
+/* Shared design source. Only namespaced tokens live here; no app-wide resets. */
+body {
+  --ds-font-ui: system-ui, -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  --ds-font-mono: "SF Mono", "SFMono-Regular", "JetBrains Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --ds-font-academic: "Times New Roman", "Songti SC", "Noto Serif CJK SC", "SimSun", serif;
+  --ds-font-academic-heading: "Times New Roman", "Heiti SC", "PingFang SC", "Noto Sans CJK SC", sans-serif;
+  /* Figures, badges and chips use the monospace face, as in the dashboard. */
+  --ds-font-numeric: var(--ds-font-mono);
+  --ds-font-body: var(--ds-font-ui);
+  --ds-font-heading: var(--ds-font-ui);
+  /* One scale, respecting Obsidian's overall text-size preference. */
+  --ds-body-size: var(--font-text-size, 16px);
+  --ds-title-size: calc(var(--ds-body-size) * 2);
+  --ds-h1-size: calc(var(--ds-body-size) * 1.75);
+  --ds-h2-size: calc(var(--ds-body-size) * 1.5);
+  --ds-h3-size: calc(var(--ds-body-size) * 1.25);
+  --ds-h4-size: calc(var(--ds-body-size) * 1.125);
+  --ds-h5-size: var(--ds-body-size);
+  --ds-h6-size: var(--ds-body-size);
+  --ds-table-size: calc(var(--ds-body-size) * .875);
+  --ds-caption-size: calc(var(--ds-body-size) * .75);
+  --ds-code-size: calc(var(--ds-body-size) * .875);
+  --ds-body-leading: 1.7;
+  --ds-heading-leading: 1.3;
+  --ds-code-leading: 1.55;
+  --ds-paragraph-gap: .8em;
+  --ds-page-width: 1000px;
+  --ds-page-inset: 24px;
+  --ds-space-1: 4px; --ds-space-2: 8px; --ds-space-3: 12px;
+  --ds-space-4: 16px; --ds-space-6: 24px; --ds-space-8: 32px;
+  --ds-radius-control: 8px; --ds-radius-content: 12px; --ds-radius-card: 18px;
+  /* Crisp pulse: neutral cool greys, white panels, periwinkle-indigo accent. */
+  --ds-bg: #eceef2;
+  --ds-paper: #ffffff;
+  --ds-shell: #f5f6f8;
+  --ds-surface: #f3f4f7;
+  --ds-surface-hover: #eaecf2;
+  --ds-text: #1f2330;
+  --ds-muted: #686d7e;
+  --ds-faint: #8b90a0;
+  --ds-accent: #5b5fc7;
+  --ds-accent-hover: #4549b0;
+  --ds-accent-soft: #ebecfa;
+  --ds-warm: #d4573a;
+  --ds-border: #e3e5eb;
+  --ds-rule: #cdd1db;
+  --ds-selection: rgba(91,95,199,.16);
+  --ds-shadow: 0 1px 2px rgba(31,35,48,.04), 0 8px 24px rgba(31,35,48,.06);
+  --ds-shadow-soft: 0 1px 2px rgba(31,35,48,.06), 0 2px 6px rgba(31,35,48,.04);
+  --ds-code-bg: #f4f5f8;
+  --ds-heat-0: #eef0f4; --ds-heat-1: #d5d7f4; --ds-heat-2: #aeb1ec;
+  --ds-heat-3: #8387dc; --ds-heat-4: #5b5fc7;
+}
+body.theme-dark {
+  --ds-bg:#16181d; --ds-paper:#1f2228; --ds-shell:#1b1e23; --ds-surface:#262a31;
+  --ds-surface-hover:#2f343d;
+  --ds-text:#e4e6ec; --ds-muted:#a3a8b6; --ds-faint:#80869a;
+  --ds-accent:#9da0f2; --ds-accent-hover:#babcf7; --ds-accent-soft:#2c2f4d;
+  --ds-warm:#ee8a6c;
+  --ds-border:#30343d; --ds-rule:#454b58; --ds-selection:rgba(157,160,242,.24);
+  --ds-shadow:0 1px 2px rgba(0,0,0,.2),0 8px 24px rgba(0,0,0,.22);
+  --ds-shadow-soft:0 1px 2px rgba(0,0,0,.25);
+  --ds-code-bg:#262a31;
+  --ds-heat-0:#2a2e36; --ds-heat-1:#363a69; --ds-heat-2:#4b509c;
+  --ds-heat-3:#6d72cf; --ds-heat-4:#9da0f2;
+}
+
+/* Source: src/styles/shell.css */
+/* App surfaces. Document metrics are owned by typography/content, not body. */
+body:is(.theme-light,.theme-dark) {
+  --font-interface-theme: var(--ds-font-ui);
+  --font-interface: var(--ds-font-ui);
+  --font-text-theme: var(--ds-font-body);
+  --font-text: var(--ds-font-body);
+  --font-monospace-theme: var(--ds-font-mono);
+  --font-monospace: var(--ds-font-mono);
+  --background-primary: var(--ds-paper);
+  --background-primary-alt: var(--ds-surface);
+  --background-secondary: var(--ds-bg);
+  --background-secondary-alt: var(--ds-surface);
+  --background-modifier-border: var(--ds-border);
+  --background-modifier-border-hover: var(--ds-rule);
+  --background-modifier-hover: var(--ds-surface-hover);
+  --background-modifier-form-field: var(--ds-paper);
+  --text-normal: var(--ds-text);
+  --text-muted: var(--ds-muted);
+  --text-faint: var(--ds-faint);
+  --text-accent: var(--ds-accent);
+  --text-accent-hover: var(--ds-accent-hover);
+  --text-selection: var(--ds-selection);
+  --interactive-normal: var(--ds-paper);
+  --interactive-hover: var(--ds-surface-hover);
+  --interactive-accent: var(--ds-accent);
+  --interactive-accent-hover: var(--ds-accent-hover);
+  --text-on-accent: #fff;
+  --radius-s: var(--ds-radius-control);
+  --radius-m: var(--ds-radius-content);
+  --radius-l: var(--ds-radius-card);
+  --input-radius: var(--ds-radius-control);
+  --tab-radius-active: var(--ds-radius-control);
+  --nav-item-radius: 6px;
+  --nav-item-background-active: var(--ds-accent-soft);
+  --nav-item-color-active: var(--ds-accent);
+  --tag-color: var(--ds-accent);
+  --tag-background: var(--ds-accent-soft);
+  --scrollbar-thumb-bg: color-mix(in srgb, var(--ds-muted) 24%, transparent);
+  --scrollbar-active-thumb-bg: color-mix(in srgb, var(--ds-muted) 42%, transparent);
+}
+body.theme-dark {--text-on-accent: #15171c;}
+/* Chrome: one cool-grey frame; the open note sits in it as a white card. */
+body:is(.theme-light,.theme-dark) {
+  --titlebar-background: var(--ds-bg);
+  --titlebar-background-focused: var(--ds-bg);
+  --ribbon-background: var(--ds-bg);
+  --ribbon-background-collapsed: var(--ds-bg);
+  --tab-container-background: var(--ds-bg);
+  --tab-background-active: var(--ds-paper);
+  --tab-text-color: var(--ds-muted);
+  --tab-text-color-focused: var(--ds-muted);
+  --tab-text-color-focused-active: var(--ds-text);
+  --tab-text-color-focused-active-current: var(--ds-text);
+  --tab-outline-color: transparent;
+  --tab-divider-color: transparent;
+  --tab-curve: 0px;
+  --tab-radius: var(--ds-radius-control);
+  --status-bar-background: var(--ds-bg);
+  --status-bar-border-color: transparent;
+  --status-bar-text-color: var(--ds-muted);
+  --divider-color: var(--ds-border);
+  --nav-item-color: var(--ds-text);
+  --nav-item-color-hover: var(--ds-text);
+  --nav-item-background-hover: var(--ds-surface-hover);
+  --nav-item-weight-active: 600;
+  --nav-indentation-guide-color: var(--ds-border);
+  --icon-color: var(--ds-muted);
+  --icon-color-hover: var(--ds-text);
+  --icon-color-active: var(--ds-accent);
+  --modal-radius: var(--ds-radius-card);
+  --modal-border-color: var(--ds-border);
+  --checkbox-radius: 5px;
+  --checkbox-color: var(--ds-accent);
+  --checkbox-color-hover: var(--ds-accent-hover);
+  --checkbox-border-color: var(--ds-rule);
+  --checklist-done-color: var(--ds-muted);
+  --tag-radius: 6px;
+  --tag-padding-x: .5em;
+  --tag-padding-y: .15em;
+  --tag-weight: 500;
+  --tag-background-hover: var(--ds-accent-soft);
+}
+.workspace-split.mod-root {background: var(--ds-bg);}
+.workspace-split.mod-root .workspace-tab-container {padding: 0 8px 8px;}
+.workspace-split.mod-root .workspace-leaf-content {
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-card);
+  background: var(--background-primary);
+  box-shadow: var(--ds-shadow-soft);
+  overflow: hidden;
+}
+.workspace-tab-header-container {border-bottom: 0;}
+.workspace-tab-header.is-active {box-shadow: var(--ds-shadow-soft);}
+.workspace-tab-header.is-active .workspace-tab-header-inner-title {font-weight: 600;}
+.workspace-split.mod-sidedock {background: var(--ds-bg);}
+.workspace-leaf-content[data-type="file-explorer"] .nav-header {padding-block: 8px;}
+.workspace-leaf-content[data-type="file-explorer"] .nav-action-button {border-radius: var(--ds-radius-control);}
+.workspace-leaf-content[data-type="file-explorer"] .nav-folder-title,
+.workspace-leaf-content[data-type="file-explorer"] .nav-file-title {font-family: var(--ds-font-ui);border-radius: 7px;}
+.workspace-leaf-content[data-type="file-explorer"] .nav-folder-title {font-weight: 500;}
+.status-bar {font-family: var(--ds-font-numeric);font-size: 11.5px;}
+/* Decorative translucency stays out of paragraphs and documents. */
+.modal {border: 1px solid var(--ds-border);border-radius: var(--ds-radius-card);box-shadow: var(--ds-shadow);}
+.vertical-tab-header {background: var(--ds-bg);}
+button.mod-cta {box-shadow: 0 2px 8px color-mix(in srgb, var(--ds-accent) 30%, transparent);}
+
+/* Source: src/styles/typography.css */
+/* These Obsidian variables drive both rendered headings and CM6 line headings. */
+body {
+  --file-line-width: var(--ds-page-width);
+  --file-margins: var(--ds-page-inset);
+  --line-height-normal: var(--ds-body-leading);
+  --line-height-tight: 1.45;
+  --p-spacing: var(--ds-paragraph-gap);
+  --heading-spacing: 1.5em;
+  --h1-size: var(--ds-h1-size); --h2-size: var(--ds-h2-size); --h3-size: var(--ds-h3-size);
+  --h4-size: var(--ds-h4-size); --h5-size: var(--ds-h5-size); --h6-size: var(--ds-h6-size);
+  --h1-font: var(--ds-font-heading); --h2-font: var(--ds-font-heading); --h3-font: var(--ds-font-heading);
+  --h4-font: var(--ds-font-heading); --h5-font: var(--ds-font-heading); --h6-font: var(--ds-font-heading);
+  --h1-weight: 700; --h2-weight: 650; --h3-weight: 650; --h4-weight: 600; --h5-weight: 600; --h6-weight: 500;
+  --h1-line-height: 1.25; --h2-line-height: 1.3; --h3-line-height: 1.3;
+  --h4-line-height: 1.35; --h5-line-height: 1.4; --h6-line-height: 1.4;
+  --h1-color: var(--ds-text); --h2-color: var(--ds-text); --h3-color: var(--ds-text);
+  --h4-color: var(--ds-text); --h5-color: var(--ds-text); --h6-color: var(--ds-muted);
+  --h1-style: normal; --h2-style: normal; --h3-style: normal;
+  --h4-style: normal; --h5-style: normal; --h6-style: normal;
+  --inline-title-font: var(--ds-font-heading);
+  --inline-title-size: var(--ds-title-size);
+  --inline-title-line-height: 1.25;
+  --inline-title-weight: 700;
+  --inline-title-color: var(--ds-text);
+  --bold-color: inherit;
+  --bold-weight: 600;
+  --italic-color: inherit;
+  --link-color: var(--ds-accent);
+  --link-color-hover: var(--ds-accent-hover);
+  --link-external-color: var(--ds-accent);
+  --link-external-color-hover: var(--ds-accent-hover);
+  --link-decoration: none;
+  --link-decoration-hover: underline;
+}
+.markdown-preview-view,
+.markdown-source-view.mod-cm6 {font-family: var(--ds-font-body);font-size: var(--ds-body-size);line-height: var(--ds-body-leading);}
+.markdown-rendered {font-family: var(--ds-font-body);}
+.markdown-rendered :is(h1,h2,h3,h4,h5,h6) {letter-spacing: 0;margin-block-start: 1.5em;margin-block-end: .55em;}
+.markdown-rendered > :is(h1,h2,h3,h4,h5,h6):first-child {margin-block-start: 0;}
+.markdown-preview-view .inline-title,
+.markdown-source-view.mod-cm6 .inline-title {text-align: left;margin-bottom: 1em;letter-spacing: -.025em;}
+.markdown-rendered :is(p,ul,ol,dl,blockquote) {margin-block: 0 var(--ds-paragraph-gap);}
+.markdown-rendered :is(ul,ol) {padding-inline-start: 1.6em;}
+.markdown-rendered li {padding-inline-start: .15em;}
+.markdown-rendered li > :is(ul,ol) {margin-block: .25em 0;}
+.markdown-rendered strong {font-family: inherit;font-weight: var(--bold-weight);color: inherit;}
+.markdown-rendered .footnotes {font-size: var(--ds-caption-size);color: var(--ds-muted);}
+/* Width is explicit even if Obsidian's readable-line-length preference is off. */
+.markdown-preview-view .markdown-preview-sizer,
+.markdown-source-view.mod-cm6 .cm-sizer {width: 100%;max-width: var(--file-line-width);margin-inline: auto;}
+.markdown-preview-view.research,
+.markdown-source-view.research {--file-line-width: var(--ds-page-width);}
+.markdown-preview-view.experiment,
+.markdown-source-view.experiment {--file-line-width: 1120px;}
+:is(.research,.experiment):is(.markdown-preview-view,.markdown-source-view) {
+  --metadata-display-reading: none;
+  --metadata-display-editing: none;
+}
+@media screen and (max-width:600px) {body {--ds-page-inset: 20px;}}
+
+/* Source: src/styles/components.css */
+body {
+  --blockquote-border-color: color-mix(in srgb, var(--ds-accent) 55%, transparent);
+  --blockquote-border-thickness: 2px;
+  --blockquote-background-color: var(--ds-surface);
+  --blockquote-color: var(--ds-muted);
+  --blockquote-font-style: normal;
+  --callout-radius: var(--ds-radius-content);
+  --callout-border-width: 1px;
+  --callout-border-opacity: .2;
+  --callout-padding: 14px 18px;
+  --callout-title-weight: 600;
+  --callout-content-padding: 8px 0 0;
+  --code-normal: var(--ds-text);
+  --code-background: var(--ds-code-bg);
+  --code-size: var(--ds-code-size);
+  --code-radius: 4px;
+  --code-comment: var(--ds-muted);
+  --code-keyword: #5b5fc7;
+  --code-string: #2f7a5c;
+  --code-function: #3b63c4;
+  --code-property: #3b63c4;
+  --code-value: #b0532c;
+  --code-important: #c0432f;
+  --code-operator: var(--ds-text);
+  --table-text-size: var(--ds-table-size);
+  --table-header-size: var(--ds-table-size);
+  --table-header-font: var(--ds-font-body);
+  --table-header-weight: 500;
+  --table-header-color: var(--ds-muted);
+  --table-header-background: var(--ds-surface);
+  --table-text-color: var(--ds-text);
+  --table-background: transparent;
+  --table-line-height: 1.5;
+  --table-border-color: var(--ds-border);
+  --table-border-width: 0;
+  --table-row-background-hover: var(--ds-surface-hover);
+  --table-cell-vertical-alignment: top;
+  --table-white-space: normal;
+}
+body.theme-dark {--code-keyword:#a9acf5;--code-string:#8fcfae;--code-function:#93b1f2;--code-property:#93b1f2;--code-value:#efa784;--code-important:#f08c78;}
+.markdown-rendered blockquote:not(.callout) {padding: .6em 1em;border-radius: 0 var(--ds-radius-control) var(--ds-radius-control) 0;}
+.markdown-rendered blockquote:not(.callout) > :last-child {margin-bottom: 0;}
+.callout-content > :last-child {margin-bottom: 0;}
+:is(.markdown-rendered,.markdown-source-view) .callout[data-callout="note"] {--callout-color: 91,95,199;}
+:is(.markdown-rendered,.markdown-source-view) .callout[data-callout="info"] {--callout-color: 59,99,196;}
+:is(.markdown-rendered,.markdown-source-view) .callout[data-callout="success"] {--callout-color: 47,122,92;}
+:is(.markdown-rendered,.markdown-source-view) .callout[data-callout="warning"] {--callout-color: 192,110,32;}
+/* Callouts read as dashboard cards: neutral shell, colour kept in the title only.
+   The figure callout overrides this with its own higher-specificity rule. */
+:is(.markdown-rendered,.markdown-source-view) .callout {background: var(--ds-shell);border: 1px solid var(--ds-border);border-radius: var(--ds-radius-content);}
+:is(.markdown-rendered,.markdown-source-view) .callout-title {color: rgb(var(--callout-color));}
+:is(.markdown-rendered,.markdown-source-view) .callout-content {color: var(--ds-text);}
+:is(.markdown-rendered,.markdown-source-view) :is(a.tag,.cm-hashtag) {font-family: var(--ds-font-numeric);font-size: .82em;}
+:is(.markdown-rendered,.markdown-source-view) table {
+  width:100%;border-collapse:collapse;border-spacing:0;
+  margin-block:.6em 1em;border-block:1px solid var(--ds-rule);box-shadow:none;
+}
+:is(.markdown-rendered,.markdown-source-view) table :is(th,td) {
+  font-family:var(--ds-font-body);font-size:var(--ds-table-size);line-height:1.5;
+  border:0;border-bottom:1px solid var(--ds-border);padding:10px 14px;
+  vertical-align:top;font-variant-numeric:lining-nums tabular-nums;
+}
+:is(.markdown-rendered,.markdown-source-view) table th {font-weight:500;color:var(--ds-muted);background:var(--ds-surface);}
+:is(.markdown-rendered,.markdown-source-view) table tbody tr:last-child > :is(td,th) {border-bottom:0;}
+:is(.markdown-rendered,.markdown-source-view) table th:not([align]) {text-align:start;}
+:is(.markdown-rendered,.markdown-source-view) table :is(th,td)[align="left"] {text-align:left;}
+:is(.markdown-rendered,.markdown-source-view) table :is(th,td)[align="center"] {text-align:center;}
+:is(.markdown-rendered,.markdown-source-view) table :is(th,td)[align="right"] {text-align:right;}
+:is(.markdown-rendered,.markdown-source-view).experiment table :is(th,td) {padding:8px 12px;}
+/* Legacy class remains a three-line academic table, with no competing preset. */
+:is(.markdown-rendered,.markdown-source-view).academia table {width:auto;border-block:2px solid var(--ds-text);}
+:is(.markdown-rendered,.markdown-source-view).academia table :is(th,td) {border:0;background:transparent;}
+:is(.markdown-rendered,.markdown-source-view).academia table thead {border-bottom:1px solid var(--ds-text);}
+:is(.markdown-rendered,.markdown-source-view).wideTable table {min-width:100%;}
+.markdown-rendered .table-wrapper {max-width:100%;overflow-x:auto;}
+.markdown-rendered pre {font-family:var(--ds-font-mono);font-size:var(--ds-code-size);line-height:var(--ds-code-leading);border:1px solid var(--ds-border);border-radius:var(--ds-radius-content);padding:16px 18px;background:var(--ds-code-bg);}
+.markdown-rendered pre code {font-size:inherit;font-family:inherit;line-height:inherit;padding:0;background:transparent;border:0;}
+.markdown-rendered :not(pre) > code {font-family:var(--ds-font-mono);font-size:var(--ds-code-size);border-radius:4px;padding:.08em .3em;background:var(--ds-code-bg);color:var(--ds-text);}
+.markdown-rendered hr {height:1px;border:0;background:var(--ds-border);margin:1.8em 0;}
+/* Do not change math fonts; CHTML glyph metrics and baselines stay native. */
+:is(.markdown-rendered,.markdown-source-view) .math-block {min-width:0;max-width:100%;}
+:is(.markdown-rendered,.markdown-source-view) mjx-container[display="true"] {display:block;max-width:100%;overflow-x:auto;margin:1em 0;padding:.5em 0;}
+
+/* Source: src/styles/editor.css */
+/* CM6 adapters: leave line geometry, list indentation and code background layers native. */
+.markdown-source-view.mod-cm6 .cm-scroller {font-family:var(--ds-font-body);line-height:var(--ds-body-leading);}
+.markdown-source-view.mod-cm6 .cm-content {font-family:var(--ds-font-body);}
+.markdown-source-view.mod-cm6 .cm-line.HyperMD-header {letter-spacing:0;}
+/* The line owns the heading size. Sizing token spans again would compound ems. */
+.markdown-source-view.mod-cm6 .HyperMD-header :is(.cm-header-1,.cm-header-2,.cm-header-3,.cm-header-4,.cm-header-5,.cm-header-6) {font-size:inherit;font-family:inherit;line-height:inherit;font-weight:inherit;}
+.markdown-source-view.mod-cm6 .cm-strong {font-family:inherit;font-weight:var(--bold-weight);}
+.markdown-source-view.mod-cm6 .HyperMD-codeblock {font-family:var(--ds-font-mono);font-size:var(--ds-code-size);line-height:var(--ds-code-leading);}
+.markdown-source-view.mod-cm6 .HyperMD-codeblock :is(.cm-line,.cm-formatting) {font-family:inherit;}
+.cm-s-obsidian span.cm-inline-code {font-family:var(--ds-font-mono);font-size:var(--ds-code-size);border-radius:4px;}
+/* Quote line padding/indentation is managed by CM6, including nested quotes. */
+.markdown-source-view.mod-cm6 .HyperMD-quote {color:var(--blockquote-color);}
+
+/* Source: src/styles/figures.css */
+/* Native callout syntax: > [!figure|center] Caption, then > ![[image|640]]. */
+:is(.markdown-rendered,.markdown-preview-view,.markdown-source-view) .callout[data-callout="figure"] {
+  --aw-figure-align:center;
+  --aw-figure-justify:center;
+  display:flex;
+  flex-direction:column;
+  background:transparent;
+  border:0;
+  border-radius:0;
+  padding:0;
+  margin:1.4em 0;
+  box-shadow:none;
+  mix-blend-mode:normal;
+  overflow:visible;
+}
+:is(.markdown-rendered,.markdown-preview-view,.markdown-source-view) .callout[data-callout="figure"][data-callout-metadata="left"] {
+  --aw-figure-align:left; --aw-figure-justify:flex-start;
+}
+:is(.markdown-rendered,.markdown-preview-view,.markdown-source-view) .callout[data-callout="figure"][data-callout-metadata="right"] {
+  --aw-figure-align:right; --aw-figure-justify:flex-end;
+}
+.callout[data-callout="figure"] > .callout-content {
+  order:0;
+  padding:0;
+  min-width:0;
+  background:transparent;
+  text-align:var(--aw-figure-align,center);
+}
+:is(.markdown-rendered,.markdown-preview-view,.markdown-source-view) .callout[data-callout="figure"] > .callout-content > p {
+  margin:0;
+  padding:0;
+  text-align:inherit;
+}
+.callout[data-callout="figure"] .image-embed {
+  display:inline-block;
+  max-width:100%;
+  vertical-align:middle;
+}
+.callout[data-callout="figure"] img {
+  max-width:100%;
+  height:auto;
+  border-radius:0;
+  box-shadow:none;
+  vertical-align:middle;
+}
+.callout[data-callout="figure"] > .callout-title {
+  order:1;
+  display:flex;
+  justify-content:var(--aw-figure-justify,center);
+  margin:0;
+  padding:9px 0 0;
+  background:transparent;
+  color:var(--text-muted);
+  font-family:var(--font-text);
+  font-size:var(--ds-caption-size);
+  font-weight:400;
+  line-height:1.5;
+  text-align:var(--aw-figure-align,center);
+}
+.callout[data-callout="figure"] > .callout-title > .callout-icon {display:none;}
+.callout[data-callout="figure"] .callout-title-inner {font-weight:400;overflow-wrap:anywhere;}
+@media print {
+  .callout[data-callout="figure"] {break-inside:avoid;page-break-inside:avoid;}
+}
+
+/* Native multi-image groups; grid-N controls columns, never image count. */
+.callout[data-callout="figure"][data-callout-metadata^="grid-"] {
+  container: aw-figure / inline-size;
+  --aw-figure-columns:2;
+}
+.callout[data-callout="figure"][data-callout-metadata="grid-1"] {--aw-figure-columns:1;}
+.callout[data-callout="figure"][data-callout-metadata="grid-3"] {--aw-figure-columns:3;}
+.callout[data-callout="figure"][data-callout-metadata="grid-4"] {--aw-figure-columns:4;}
+.callout[data-callout="figure"][data-callout-metadata^="grid-"] > .callout-content {
+  display:grid;
+  grid-template-columns:repeat(var(--aw-figure-columns),minmax(0,1fr));
+  align-items:start;
+  gap:16px;
+}
+.callout[data-callout="figure"][data-callout-metadata^="grid-"] > .callout-content > p {display:contents;}
+.callout[data-callout="figure"][data-callout-metadata^="grid-"] > .callout-content br {display:none;}
+.callout[data-callout="figure"][data-callout-metadata^="grid-"] .image-embed,
+.callout[data-callout="figure"][data-callout-metadata^="grid-"] img {
+  display:block;width:100%;min-width:0;max-width:100%;height:auto;
+}
+@container aw-figure (max-width:720px) {
+  .callout[data-callout="figure"]:is([data-callout-metadata="grid-3"],[data-callout-metadata="grid-4"]) > .callout-content {grid-template-columns:repeat(2,minmax(0,1fr));}
+}
+@container aw-figure (max-width:520px) {
+  .callout[data-callout="figure"][data-callout-metadata^="grid-"] > .callout-content {grid-template-columns:minmax(0,1fr);}
+}
+@media print {
+  .callout[data-callout="figure"][data-callout-metadata^="grid-"] {break-inside:auto;page-break-inside:auto;}
+  .callout[data-callout="figure"][data-callout-metadata^="grid-"] > .callout-content {grid-template-columns:repeat(var(--aw-figure-columns),minmax(0,1fr));}
+  .callout[data-callout="figure"][data-callout-metadata^="grid-"] .image-embed {break-inside:avoid;}
+}
+
+/* Source: src/styles/print.css */
+/* Export contract: A4, 20 mm, 100% scale. Screen scrollbars are not a print solution. */
+@page {size:A4; margin:20mm;}
+@page aw-landscape {size:A4 landscape; margin:20mm;}
+@media print {
+  body, body.theme-light, body.theme-dark {
+    --ds-font-body:var(--ds-font-academic);
+    --ds-font-heading:var(--ds-font-academic-heading);
+    --font-text:var(--ds-font-academic);
+    --font-text-theme:var(--ds-font-academic);
+    --font-print:var(--ds-font-academic);
+    --ds-body-size:10.5pt;
+    --ds-title-size:22pt;
+    --ds-h1-size:18pt; --ds-h2-size:16pt; --ds-h3-size:14pt;
+    --ds-h4-size:12pt; --ds-h5-size:11pt; --ds-h6-size:10.5pt;
+    --ds-table-size:9.5pt; --ds-caption-size:9pt; --ds-code-size:9.5pt;
+    --ds-body-leading:1.5;
+    --ds-paragraph-gap:6pt;
+    --ds-page-width:100%; --ds-page-inset:0;
+    --file-line-width:100%; --file-margins:0;
+    --font-text-size:10.5pt;
+    --ds-bg:#fff; --ds-paper:#fff; --ds-surface:#fff; --ds-surface-hover:#fff;
+    --ds-text:#111; --ds-muted:#444; --ds-faint:#555;
+    --ds-accent:#222; --ds-accent-hover:#222; --ds-accent-soft:#fff;
+    --ds-border:#ccc; --ds-rule:#777; --ds-code-bg:#f5f5f5;
+    --ds-shadow:none;
+    --code-keyword:#333; --code-string:#333; --code-function:#222; --code-property:#222; --code-value:#333;
+    --text-normal:#111; --text-muted:#444; --text-faint:#555; --text-on-accent:#fff;
+    --background-primary:#fff; --background-secondary:#fff;
+    font-family:var(--ds-font-academic);
+    font-size:10.5pt;
+    color:#111;
+    background:#fff;
+  }
+  .markdown-preview-view,
+  .markdown-source-view.mod-cm6,
+  .markdown-preview-view:is(.research,.experiment) {
+    --file-line-width:100%;
+    padding:0;
+    margin:0;
+    font-size:var(--ds-body-size);
+    font-family:var(--ds-font-academic);
+    line-height:var(--ds-body-leading);
+    overflow:visible;
+  }
+  .print .markdown-preview-view {color:var(--ds-text);}
+  .markdown-preview-view .markdown-preview-sizer {width:100%;max-width:none;margin:0;padding:0;min-height:0;}
+  .markdown-rendered .inline-title {font-size:var(--ds-title-size);font-family:var(--ds-font-academic-heading);text-align:center;margin:0 0 16pt;}
+  .markdown-rendered :is(h1,h2,h3,h4,h5,h6) {break-after:avoid;page-break-after:avoid;margin-block-start:14pt;margin-block-end:6pt;}
+  .markdown-rendered :is(p,li) {orphans:3;widows:3;}
+  .markdown-rendered a {color:inherit;text-decoration:none;}
+  .markdown-rendered :is(.table-wrapper,.el-table) {overflow:visible;max-width:100%;}
+  .markdown-rendered table {width:100%;max-width:100%;table-layout:auto;break-inside:auto;box-shadow:none;}
+  .markdown-rendered table :is(th,td) {padding:5pt 6pt;font-size:var(--ds-table-size);overflow-wrap:anywhere;white-space:normal;}
+  .markdown-rendered table thead {display:table-header-group;}
+  .markdown-rendered table tfoot {display:table-footer-group;}
+  .markdown-rendered table tr {break-inside:avoid;page-break-inside:avoid;}
+  .markdown-rendered table th {background:#f5f5f5;}
+  .markdown-rendered.academia table {width:100%;}
+  .markdown-rendered pre {white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;overflow:visible;break-inside:avoid;border-radius:0;padding:8pt;box-shadow:none;}
+  .markdown-rendered p:has(+pre), .markdown-rendered .el-p:has(+.el-pre) {break-after:avoid;}
+  .markdown-rendered pre code {white-space:inherit;font-size:inherit;}
+  .markdown-rendered :not(pre) > code {border-radius:0;background:transparent;padding:0 .12em;}
+  .markdown-rendered mjx-container[display="true"] {overflow:visible;break-inside:avoid;margin:8pt 0;padding:3pt 0;}
+  .markdown-rendered .callout {box-shadow:none;background:transparent;mix-blend-mode:normal;border-color:#bbb;}
+  .print .markdown-preview-view .callout-content,
+  .markdown-rendered .callout-content {display:block !important;height:auto !important;overflow:visible;}
+  .markdown-rendered .callout-title {color:#222;}
+  .markdown-rendered img {max-width:100%;}
+  .markdown-rendered .callout[data-callout="figure"] img {max-height:190mm;object-fit:contain;}
+  /* The generic export rule must not destroy the figure grid. */
+  .markdown-rendered .callout[data-callout="figure"][data-callout-metadata^="grid-"] > .callout-content {display:grid !important;}
+  .print-wide {page:aw-landscape;}
+}

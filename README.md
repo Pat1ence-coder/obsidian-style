@@ -17,7 +17,7 @@ npm run stage    # 准备独立的 sandbox-vault 预览库
 
 ## 安装
 
-构建后，将 `dist/algorithm-workbench/` 中的三个文件放入笔记库的 `.obsidian/plugins/algorithm-workbench/`，在 Obsidian 中启用插件。将 `dist/snippets/style.css` 复制到 `.obsidian/snippets/`，在外观设置中启用。
+仓库的 `dist/` 已包含可直接安装的构建文件。下载仓库 ZIP 并解压，或克隆仓库后，将 `dist/algorithm-workbench/` 中的三个文件放入笔记库的 `.obsidian/plugins/algorithm-workbench/`，在 Obsidian 中启用插件。将 `dist/snippets/style.css` 复制到 `.obsidian/snippets/`，在外观设置中启用。直接安装这些文件无需 Node.js 或 Python；修改源码后再执行构建。
 
 更新已有插件时，先禁用插件，再使用安装工具。默认只预览；确认目标后加 `--apply` 执行：
 
@@ -35,7 +35,8 @@ python3 -B scripts/install.py --target /path/to/vault/.obsidian/plugins/algorith
 - `scripts/`：构建、安装、静态预览及预览库准备工具。
 - `examples/notes/`：排版验收笔记与图片；`examples/templates/`：笔记模板。
 - `docs/`：使用说明、样式规范和开发约定。
-- `dist/`：构建产物；`sandbox-vault/`：本地预览库；`artifacts/`：本地产物与历史归档。这三个目录均不提交 Git。
+- `dist/`：仅提交三个插件运行文件和一个 CSS snippet，供直接下载安装。源码变更后重新构建并一并提交对应产物。
+- `sandbox-vault/`：本地预览库；`artifacts/`：本地产物与历史归档。这两个目录不提交 Git。
 
 详细说明见 [使用指南](docs/usage.md)、[样式规范](docs/style-spec.md) 和 [开发说明](docs/development.md)。
 

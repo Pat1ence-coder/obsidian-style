@@ -3,7 +3,16 @@ node_modules/
 __pycache__/
 *.pyc
 .venv/
-/dist/
+# Publish only the four installable build files; keep runtime data excluded.
+/dist/*
+!/dist/algorithm-workbench/
+/dist/algorithm-workbench/*
+!/dist/algorithm-workbench/main.js
+!/dist/algorithm-workbench/manifest.json
+!/dist/algorithm-workbench/styles.css
+!/dist/snippets/
+/dist/snippets/*
+!/dist/snippets/style.css
 /sandbox-vault/
 /artifacts/
 /backups/
