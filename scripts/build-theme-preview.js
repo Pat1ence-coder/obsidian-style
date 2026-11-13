@@ -9,9 +9,17 @@ const out=path.join(root,'artifacts/preview');
 checkedPath(root,path.join(out,'theme-static.html'));
 checkedPath(root,path.join(root,'dist/snippets/style.css'));
 const snippet=fs.readFileSync(path.join(root,'dist/snippets/style.css'),'utf8');
+const assets=path.join(root,'examples/notes/assets');
+const svg=name=>{const file=checkedPath(root,path.join(assets,name));return 'data:image/svg+xml;base64,'+fs.readFileSync(file).toString('base64');};
+// A wide, unsized "screenshot" exercises the screen size guard for single figures.
+const wide='data:image/svg+xml;base64,'+Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1000"><rect width="1800" height="1000" fill="#f5f5f7"/><rect x="60" y="60" width="1680" height="80" rx="16" fill="#e6e8ec"/><rect x="60" y="190" width="520" height="740" rx="20" fill="#dde8f0"/><rect x="640" y="190" width="1100" height="340" rx="20" fill="#e9e6ef"/><rect x="640" y="590" width="1100" height="340" rx="20" fill="#e1eeea"/></svg>').toString('base64');
+const embed=(src,alt)=>`<span class="internal-embed media-embed image-embed is-loaded"><img src="${src}" alt="${alt}"></span>`;
 const HOST=`*{box-sizing:border-box}html,body{margin:0;height:100%}
 body{font-family:var(--font-interface);font-size:13px;color:var(--text-normal);background:var(--background-secondary);--tab-container-background:var(--background-secondary)}
 .app-container{display:flex;height:100vh}
+.markdown-rendered mark{background:var(--text-highlight-bg)}
+.markdown-rendered ul{padding-inline-start:1.4em}.markdown-rendered li::marker{color:var(--list-marker-color)}
+.menu{position:fixed;right:64px;top:120px;width:210px;padding:6px;z-index:5}.menu-item{padding:6px 10px;border-radius:6px;font-size:13px}.menu-item.selected{background:var(--background-modifier-hover)}.menu-separator{height:1px;margin:4px 8px;background:var(--divider-color)}
 .workspace-ribbon{width:44px;background:var(--ribbon-background);display:flex;flex-direction:column;align-items:center;gap:14px;padding-top:46px;border-right:1px solid var(--divider-color)}
 .workspace-ribbon i{width:18px;height:18px;border-radius:5px;background:var(--icon-color);opacity:.35}
 .workspace-split.mod-left-split{width:250px;background:var(--background-secondary);border-right:1px solid var(--divider-color);display:flex;flex-direction:column}
@@ -57,13 +65,21 @@ const note=`<div class="inline-title">Attention 机制与梯度推导</div>
     <span class="kw">return</span> w @ v  <span class="st">"weighted sum"</span></code></pre>
 <h3>待办</h3>
 <ul class="contains-task-list"><li class="task-list-item is-checked"><input type="checkbox" checked>推导 softmax 雅可比</li><li class="task-list-item is-checked"><input type="checkbox" checked>补充温度系数实验</li><li class="task-list-item"><input type="checkbox">整理成组会报告</li></ul>
-<blockquote><p>注意力不是解释，但它是一个好的调试入口。</p></blockquote>`;
+<blockquote><p>注意力不是解释，但它是一个好的调试入口。</p></blockquote>
+<h2>3. 插图</h2>
+<p>未设置宽度的大截图在屏幕上限制为 720px，并保持比例；多图组的小图不再被拉伸。<mark>打印规则保持不变</mark>。</p>
+<div class="callout" data-callout="figure" data-callout-metadata="center"><div class="callout-title"><div class="callout-icon"></div><div class="callout-title-inner">图 1 · 未设宽度的宽幅截图</div></div><div class="callout-content"><p>${embed(wide,'wide')}</p></div></div>
+<div class="callout" data-callout="figure" data-callout-metadata="grid-2"><div class="callout-title"><div class="callout-icon"></div><div class="callout-title-inner">图 2 · 两列小图保持原始尺寸</div></div><div class="callout-content"><p>${embed(svg('compact-1.svg'),'a')}<br>${embed(svg('compact-2.svg'),'b')}<br>${embed(svg('compact-3.svg'),'c')}</p></div></div>
+<hr>
+<div class="callout" data-callout="tip"><div class="callout-title">✦ 提示</div><div class="callout-content"><p>温度系数与缩放因子可以合并为一个可学习参数。</p></div></div>
+<div class="callout" data-callout="warning"><div class="callout-title">⚠ 注意</div><div class="callout-content"><p>batch 内的负样本过少时，MRR 波动会明显增大。</p></div></div>
+<div class="callout" data-callout="abstract"><div class="callout-title">≡ 摘要</div><div class="callout-content"><p>缩放 + 温度带来约 2.6 个点的 MRR 提升，延迟几乎不变。</p></div></div>`;
 const html=`<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:"><title>主题外框 · 静态示例</title><style>${HOST}\n${snippet}</style></head>
-<body class="theme-light"><div class="app-container"><div class="workspace-ribbon mod-left"><i></i><i></i><i></i><i></i></div>
+<body class="theme-light"><div class="app-container workspace"><div class="workspace-ribbon mod-left"><i></i><i></i><i></i><i></i></div>
 <div class="workspace-split mod-horizontal mod-sidedock mod-left-split"><div class="workspace-tab-header-container"></div><div class="workspace-leaf-content" data-type="file-explorer"><div class="nav-header"><span class="nav-action-button"></span><span class="nav-action-button"></span><span class="nav-action-button"></span></div><div class="nav-files-container">${files}</div></div></div>
 <div class="workspace-split mod-vertical mod-root"><div class="workspace-tabs"><div class="workspace-tab-header-container"><div class="workspace-tab-header"><div class="workspace-tab-header-inner"><div class="workspace-tab-header-inner-title">知识脉冲</div></div></div><div class="workspace-tab-header is-active"><div class="workspace-tab-header-inner"><div class="workspace-tab-header-inner-title">Attention 机制与梯度推导</div></div></div></div></div>
 <div class="workspace-tab-container"><div class="workspace-leaf-content" data-type="markdown"><div class="view-header"><div class="view-header-title">研究 / Attention 机制与梯度推导</div></div><div class="view-content"><div class="markdown-preview-view markdown-rendered"><div class="markdown-preview-sizer">${note}</div></div></div></div></div></div>
-</div><div class="status-bar">1,286 字 · 编辑 74 分钟</div></body></html>`;
+</div><div class="menu"><div class="menu-item">在新标签页打开</div><div class="menu-item selected">在右侧打开</div><div class="menu-separator"></div><div class="menu-item">复制链接</div><div class="menu-item">重命名…</div></div><div class="status-bar">1,286 字 · 编辑 74 分钟</div></body></html>`;
 if(/<script\b/i.test(html))throw Error('Static preview unexpectedly contains a script');
 fs.mkdirSync(out,{recursive:true});
 fs.writeFileSync(path.join(out,'theme-static.html'),html);

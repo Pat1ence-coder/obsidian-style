@@ -24,7 +24,7 @@ body:is(.theme-light,.theme-dark) {
   --interactive-hover: var(--ds-surface-hover);
   --interactive-accent: var(--ds-accent);
   --interactive-accent-hover: var(--ds-accent-hover);
-  --text-on-accent: #fff;
+  --text-on-accent: var(--ds-on-accent);
   --radius-s: var(--ds-radius-control);
   --radius-m: var(--ds-radius-content);
   --radius-l: var(--ds-radius-card);
@@ -38,68 +38,101 @@ body:is(.theme-light,.theme-dark) {
   --scrollbar-thumb-bg: color-mix(in srgb, var(--ds-muted) 24%, transparent);
   --scrollbar-active-thumb-bg: color-mix(in srgb, var(--ds-muted) 42%, transparent);
 }
-body.theme-dark {--text-on-accent: #15171c;}
-/* Chrome: one cool-grey frame; the open note sits in it as a white card. */
+/* Chrome: glass over one ambient light; the open note floats on it as a paper card. */
 body:is(.theme-light,.theme-dark) {
-  --titlebar-background: var(--ds-bg);
-  --titlebar-background-focused: var(--ds-bg);
-  --ribbon-background: var(--ds-bg);
-  --ribbon-background-collapsed: var(--ds-bg);
-  --tab-container-background: var(--ds-bg);
-  --tab-background-active: var(--ds-paper);
+  --titlebar-background: transparent;
+  --titlebar-background-focused: transparent;
+  --ribbon-background: transparent;
+  --ribbon-background-collapsed: transparent;
+  --tab-container-background: transparent;
+  --tab-background-active: var(--ds-glass-strong);
   --tab-text-color: var(--ds-muted);
   --tab-text-color-focused: var(--ds-muted);
-  --tab-text-color-focused-active: var(--ds-text);
-  --tab-text-color-focused-active-current: var(--ds-text);
+  --tab-text-color-focused-active: var(--ds-heading);
+  --tab-text-color-focused-active-current: var(--ds-heading);
   --tab-outline-color: transparent;
   --tab-divider-color: transparent;
   --tab-curve: 0px;
   --tab-radius: var(--ds-radius-control);
-  --status-bar-background: var(--ds-bg);
+  --status-bar-background: transparent;
   --status-bar-border-color: transparent;
   --status-bar-text-color: var(--ds-muted);
-  --divider-color: var(--ds-border);
+  --divider-color: var(--ds-glass-line);
   --nav-item-color: var(--ds-text);
-  --nav-item-color-hover: var(--ds-text);
-  --nav-item-background-hover: var(--ds-surface-hover);
+  --nav-item-color-hover: var(--ds-heading);
+  --nav-item-background-hover: rgba(var(--ds-tone-neutral),.09);
+  --nav-item-background-active: rgba(var(--ds-tone-accent),.13);
   --nav-item-weight-active: 600;
-  --nav-indentation-guide-color: var(--ds-border);
+  --nav-indentation-guide-color: var(--ds-glass-line);
   --icon-color: var(--ds-muted);
-  --icon-color-hover: var(--ds-text);
+  --icon-color-hover: var(--ds-heading);
   --icon-color-active: var(--ds-accent);
   --modal-radius: var(--ds-radius-card);
-  --modal-border-color: var(--ds-border);
+  --modal-border-color: var(--ds-glass-line);
   --checkbox-radius: 5px;
   --checkbox-color: var(--ds-accent);
   --checkbox-color-hover: var(--ds-accent-hover);
   --checkbox-border-color: var(--ds-rule);
-  --checklist-done-color: var(--ds-muted);
+  --checklist-done-color: var(--ds-faint);
   --tag-radius: 6px;
   --tag-padding-x: .5em;
   --tag-padding-y: .15em;
   --tag-weight: 500;
-  --tag-background-hover: var(--ds-accent-soft);
+  --tag-background: rgba(var(--ds-tone-accent),.1);
+  --tag-background-hover: rgba(var(--ds-tone-accent),.16);
+  --tag-border-color: rgba(var(--ds-tone-accent),.14);
+  --tag-border-width: 1px;
+  --ds-ambient-veil: rgba(242,242,245,.4);
 }
-.workspace-split.mod-root {background: var(--ds-bg);}
-.workspace-split.mod-root .workspace-tab-container {padding: 0 8px 8px;}
+body.theme-dark {--ds-ambient-veil: rgba(18,18,20,.45);}
+.workspace {background: var(--ds-ambient), var(--ds-ambient-base);background-color: var(--ds-bg);}
+/* With Obsidian's translucent window, a thin veil lets the native vibrancy through. */
+body.is-translucent:not(.is-fullscreen) .workspace {background: var(--ds-ambient), var(--ds-ambient-veil);}
+.workspace-ribbon.mod-left {border-right: 1px solid var(--ds-glass-line);}
+.workspace .workspace-split.mod-sidedock {
+  background: var(--ds-glass-solid);
+  box-shadow: inset 0 0 0 1px var(--ds-glass-rim);
+}
+.workspace-split.mod-sidedock :is(.workspace-tabs,.workspace-leaf,.workspace-leaf-content,.workspace-tab-header-container,.view-content) {background-color: transparent;}
+.workspace-split.mod-root,
+.workspace-split.mod-root :is(.workspace-tabs,.workspace-leaf,.workspace-tab-header-container) {background-color: transparent;}
+.workspace-split.mod-root .workspace-tab-container {padding: 0 10px 10px;}
 .workspace-split.mod-root .workspace-leaf-content {
-  border: 1px solid var(--ds-border);
+  border: 1px solid var(--ds-glass-line);
   border-radius: var(--ds-radius-card);
   background: var(--background-primary);
-  box-shadow: var(--ds-shadow-soft);
+  box-shadow: inset 0 1px 0 var(--ds-glass-rim), var(--ds-glass-shadow);
   overflow: hidden;
 }
 .workspace-tab-header-container {border-bottom: 0;}
-.workspace-tab-header.is-active {box-shadow: var(--ds-shadow-soft);}
+.workspace-tab-header.is-active {box-shadow: inset 0 1px 0 var(--ds-glass-rim), 0 0 0 1px var(--ds-glass-line), 0 4px 12px -4px rgba(var(--ds-ink-rgb),.18);}
 .workspace-tab-header.is-active .workspace-tab-header-inner-title {font-weight: 600;}
-.workspace-split.mod-sidedock {background: var(--ds-bg);}
 .workspace-leaf-content[data-type="file-explorer"] .nav-header {padding-block: 8px;}
 .workspace-leaf-content[data-type="file-explorer"] .nav-action-button {border-radius: var(--ds-radius-control);}
 .workspace-leaf-content[data-type="file-explorer"] .nav-folder-title,
 .workspace-leaf-content[data-type="file-explorer"] .nav-file-title {font-family: var(--ds-font-ui);border-radius: 7px;}
 .workspace-leaf-content[data-type="file-explorer"] .nav-folder-title {font-weight: 500;}
+.workspace-leaf-content[data-type="file-explorer"] .nav-file-title.is-active {box-shadow: inset 0 0 0 1px rgba(var(--ds-tone-accent),.12);}
 .status-bar {font-family: var(--ds-font-numeric);font-size: 11.5px;}
-/* Decorative translucency stays out of paragraphs and documents. */
-.modal {border: 1px solid var(--ds-border);border-radius: var(--ds-radius-card);box-shadow: var(--ds-shadow);}
-.vertical-tab-header {background: var(--ds-bg);}
-button.mod-cta {box-shadow: 0 2px 8px color-mix(in srgb, var(--ds-accent) 30%, transparent);}
+/* Floating surfaces are glass, like macOS menus and sheets. Documents never are. */
+:is(.menu,.suggestion-container,.prompt,.popover.hover-popover,.modal,.notice) {
+  border: 1px solid var(--ds-glass-line);
+  background: var(--ds-glass-paper);
+  box-shadow: var(--ds-glass-highlight), var(--ds-glass-shadow);
+}
+.modal {border-radius: var(--ds-radius-card);}
+:is(.menu,.suggestion-container,.prompt) {border-radius: 12px;}
+.vertical-tab-header {background: rgba(var(--ds-tone-neutral),.05);}
+button.mod-cta {background: linear-gradient(180deg, color-mix(in srgb, var(--ds-accent) 88%, #fff), var(--ds-accent));box-shadow: inset 0 1px 0 rgba(255,255,255,.25), 0 4px 12px -4px rgba(var(--ds-tone-accent),.7);}
+@supports ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))) {
+  .workspace .workspace-split.mod-sidedock {background: var(--ds-glass);-webkit-backdrop-filter: var(--ds-glass-blur);backdrop-filter: var(--ds-glass-blur);}
+  :is(.menu,.suggestion-container,.prompt,.popover.hover-popover,.notice) {
+    background: var(--ds-glass-strong);
+    -webkit-backdrop-filter: blur(30px) saturate(180%);backdrop-filter: blur(30px) saturate(180%);
+  }
+  .modal-container .modal-bg {-webkit-backdrop-filter: blur(3px);backdrop-filter: blur(3px);}
+}
+@media (prefers-reduced-transparency:reduce), (forced-colors:active) {
+  .workspace .workspace-split.mod-sidedock,
+  :is(.menu,.suggestion-container,.prompt,.popover.hover-popover,.notice) {-webkit-backdrop-filter: none;backdrop-filter: none;background: var(--ds-glass-solid);}
+}

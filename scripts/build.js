@@ -27,15 +27,17 @@ const generated='/* GENERATED from src/styles. Edit the source modules, then run
 // Scope the shared tokens in the plugin output so stylesheet load order cannot
 // override document print tokens (especially when exporting from dark mode).
 const pluginTokens=fs.readFileSync(path.join(styleSource,'tokens.css'),'utf8')
-  .replace(/body\.theme-dark/g,'.theme-dark .aw-view, .theme-dark .aw-figure-modal')
-  .replace(/\bbody\s*\{/g,'.aw-view, .aw-figure-modal {');
+  // body → the plugin's own roots; body.theme-dark / body.aw-palette-* keep their class
+  // qualifiers so dark mode and palette switching apply inside the plugin too.
+  .replace(/\bbody((?:\.[\w-]+)*)\s*\{/g,(_match,classes)=>classes?`body${classes} .aw-view, body${classes} .aw-figure-modal {`:'.aw-view, .aw-figure-modal {');
 // Pixel-art banner derived by scripts/pixelate-header.py; scaled up crisply in CSS.
 const hero=fs.readFileSync(path.join(source,'assets/coast-header-pixel.png'));
 if(!hero.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])))throw Error('Header asset is not a PNG');
 if(hero.length>4*1024*1024)throw Error('Header asset exceeds the 4 MiB packaging limit');
 // A data URI keeps installation to three runtime files and needs no remote requests.
 // Keep the large data URI out of custom properties / var() substitution (2 MiB cap).
-const heroCSS='.aw-view .aw-backdrop {background-image:url("data:image/png;base64,'+hero.toString('base64')+'");}\n';
+// One declaration serves both the banner and its blurred ambient copy.
+const heroCSS='.aw-view .aw-backdrop, .aw-view .aw-ambient {background-image:url("data:image/png;base64,'+hero.toString('base64')+'");}\n';
 const pluginOut=path.join(root,'dist/algorithm-workbench'),snippetOut=path.join(root,'dist/snippets');
 fs.mkdirSync(pluginOut,{recursive:true});fs.mkdirSync(snippetOut,{recursive:true});
 fs.writeFileSync(path.join(pluginOut,'styles.css'),generated+pluginTokens+'\n'+heroCSS+cssParts(['materials','workbench']));

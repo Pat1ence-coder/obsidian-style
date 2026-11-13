@@ -16,11 +16,13 @@ function fixture() {
     async loadData(){return this.initialData??null;}
     async saveData(data){this.saved.push(data);}
     registerView(type,create){this.makeView=create;}
-    addRibbonIcon(){} addCommand(command){this.command=command;} addSettingTab(){}
+    addRibbonIcon(){} addCommand(command){(this.commands??={})[command.id]=command;} addSettingTab(){}
     registerEditorExtension(ext){this.extension=ext;} registerEvent(){} registerInterval(){}
   }
   class TFile {constructor(path){this.path=path;this.extension='md';}}
-  const workspace={on(){return {};},onLayoutReady(fn){this.ready=fn;},getLeavesOfType(){return [];},detachLeavesOfType(){this.detached=true;}};
+  const classes=new Set(['theme-light']);
+  const body={classList:{add:n=>classes.add(n),remove:n=>classes.delete(n),[Symbol.iterator]:()=>classes.values()}};
+  const workspace={containerEl:{ownerDocument:{body}},on(){return {};},onLayoutReady(fn){this.ready=fn;},getLeavesOfType(){return [];},detachLeavesOfType(){this.detached=true;}};
   const mod={exports:{}};
   const context={module:mod,require:name=>{
     if(name==='obsidian')return {Plugin,Component,TFile,TFolder:class{},Platform:{isMacOS:true},Modal:class{},FuzzySuggestModal:class{},ItemView:class{},PluginSettingTab:class{},Setting:class{},Notice:class{constructor(text){notices.push(text);}},editorInfoField:'info'};
@@ -45,7 +47,7 @@ function fixture() {
     }]};
   };
 
-  return {plugin,workspace,notices,update,docs,timers,handlers,TFile};
+  return {plugin,workspace,notices,update,docs,timers,handlers,TFile,classes};
 }
 test('bundled plugin loads, counts actual transactions, filters folders and saves',async()=>{
   const {plugin,update}=fixture();await plugin.onload();
@@ -161,4 +163,16 @@ test('new notes count only after the vault finishes loading, outside excluded fo
   for(const fn of handlers.create){fn(new TFile('新笔记.md'));fn(new TFile('Templates/模板.md'));}
   assert.equal(plugin.data.days[Core.dayKey()].notes,1);
   plugin.onunload();await plugin.saveQueue;
+});
+
+test('palette is a body class: applied on load, switched in place, cycled by command, removed on unload',async()=>{
+  const {plugin,classes,notices}=fixture();plugin.initialData={...Core.emptyData(),settings:{...Core.DEFAULT_SETTINGS,palette:'celadon'}};
+  await plugin.onload();
+  assert.deepEqual([...classes].sort(),['aw-palette-celadon','theme-light']);
+  plugin.setPalette('sand');assert.ok(classes.has('aw-palette-sand'));assert.ok(!classes.has('aw-palette-celadon'));
+  plugin.setPalette('neon');assert.equal(plugin.data.settings.palette,'sand');
+  plugin.commands['cycle-palette'].callback();assert.equal(plugin.data.settings.palette,'celadon');assert.match(notices.at(-1),/青瓷/);
+  plugin.commands['cycle-palette'].callback();assert.equal(plugin.data.settings.palette,'sea');assert.ok(classes.has('aw-palette-sea'));
+  await plugin.flush();assert.equal(plugin.saved.at(-1).settings.palette,'sea');
+  plugin.onunload();assert.deepEqual([...classes],['theme-light']);await plugin.saveQueue;
 });

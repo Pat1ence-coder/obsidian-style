@@ -15,6 +15,11 @@ class WorkbenchSettings extends PluginSettingTab {
     this.plugin.folderNotes.displaySettings(this.containerEl);
     this.containerEl.createEl('h3',{text:'图片与附件'});
     this.plugin.screenshotNames.displaySettings(this.containerEl);
+    this.containerEl.createEl('h3',{text:'外观'});
+    new Setting(this.containerEl).setName('配色方案').setDesc('同时作用于知识脉冲看板和文档样式；浅色与深色模式各有对应版本。').addDropdown(d=>{
+      for(const p of Core.PALETTES)d.addOption(p.id,p.label);
+      d.setValue(s.palette).onChange(v=>this.plugin.setPalette(v));
+    });
     this.containerEl.createEl('h3',{text:'工作台与写作统计'});
     new Setting(this.containerEl).setName('启动时打开工作台').setDesc('在新标签页打开，保留原有笔记标签页。').addToggle(t=>t.setValue(s.openOnStartup).onChange(v=>{s.openOnStartup=v;this.plugin.changed();}));
     new Setting(this.containerEl).setName('记录写作量').setDesc('从启用后开始，仅统计本机编辑；关闭时不补记。').addToggle(t=>t.setValue(s.tracking).onChange(v=>{s.tracking=v;this.plugin.data.records={};this.plugin.changed();}));
@@ -40,6 +45,14 @@ class WorkbenchPlugin extends Plugin {
     this.registerView(VIEW,leaf=>new WorkbenchView(leaf,this));
     this.addRibbonIcon('activity','打开知识脉冲看板',()=>this.openWorkbench());
     this.addCommand({id:'open-workbench',name:'打开知识脉冲看板',callback:()=>this.openWorkbench()});
+    this.addCommand({id:'cycle-palette',name:'切换配色方案',callback:()=>{
+      const list=Core.PALETTES,next=list[(list.findIndex(p=>p.id===this.data.settings.palette)+1)%list.length];
+      this.setPalette(next.id);new Notice(`配色方案：${next.label}`);
+    }});
+    // The palette is a body class read by both stylesheets; popout windows get it too.
+    this.paletteDocs=new Set();this.applyPalette(this.app.workspace.containerEl?.ownerDocument);
+    this.registerEvent(this.app.workspace.on('window-open',(_leaf,win)=>this.applyPalette(win.document)));
+    this.registerEvent(this.app.workspace.on('window-close',(_leaf,win)=>this.paletteDocs.delete(win.document)));
     this.addSettingTab(new WorkbenchSettings(this.app,this));
     this.registerEditorExtension(EditorView.updateListener.of(update=>this.trackUpdate(update)));
     for(const event of ['create','modify','delete']) this.registerEvent(this.app.vault.on(event,file=>{
@@ -136,6 +149,21 @@ class WorkbenchPlugin extends Plugin {
       await this.app.workspace.revealLeaf(leaf);
     }catch(error){new Notice('工作台打开失败，请尝试重新启用插件。');console.error(error);}
   }
-  onunload(){this.stopped=true;clearTimeout(this.saveTimer);clearTimeout(this.refreshTimer);this.documentCounts=new WeakMap();if(this.data)void this.flush();this.app.workspace.detachLeavesOfType(VIEW);}
+  applyPalette(doc){
+    if(!doc?.body)return;
+    this.paletteDocs.add(doc);
+    const body=doc.body,wanted='aw-palette-'+this.data.settings.palette;
+    for(const name of [...body.classList])if(name.startsWith('aw-palette-')&&name!==wanted)body.classList.remove(name);
+    body.classList.add(wanted);
+  }
+  setPalette(id){
+    if(!Core.PALETTES.some(p=>p.id===id)||this.data.settings.palette===id)return;
+    this.data.settings.palette=id;
+    for(const doc of this.paletteDocs)this.applyPalette(doc);
+    this.changed();
+  }
+  onunload(){
+    for(const doc of this.paletteDocs??[])for(const name of [...doc.body.classList])if(name.startsWith('aw-palette-'))doc.body.classList.remove(name);
+    this.stopped=true;clearTimeout(this.saveTimer);clearTimeout(this.refreshTimer);this.documentCounts=new WeakMap();if(this.data)void this.flush();this.app.workspace.detachLeavesOfType(VIEW);}
 }
 module.exports=WorkbenchPlugin;

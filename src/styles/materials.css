@@ -1,74 +1,68 @@
-/* Material roles: card shell, white panel, chips and pills. Layout lives in workbench.css. */
+/* Material roles: glass shell, frosted panel, chips and pills. Layout lives in workbench.css. */
 .aw-view {
-  --aw-radius-shell:20px;
-  --aw-radius-panel:14px;
-  --aw-radius-control:8px;
-  --aw-radius-chip:7px;
+  --aw-radius-shell:22px;
+  --aw-radius-panel:15px;
+  --aw-radius-control:9px;
+  --aw-radius-chip:8px;
   --aw-radius-cell:3px;
-  --aw-shell:var(--ds-shell);
-  --aw-shell-edge:rgba(255,255,255,.95);
-  --aw-panel:var(--ds-paper);
-  --aw-panel-edge:rgba(31,35,48,.045);
-  --aw-chip:rgba(255,255,255,.86);
-  --aw-chip-edge:rgba(255,255,255,.95);
-  --aw-tile:#eceef3;
-  --aw-shell-shadow:0 1px 2px rgba(31,35,48,.035),0 6px 20px rgba(31,35,48,.045);
-  --aw-panel-shadow:0 1px 2px rgba(31,35,48,.04),0 4px 14px rgba(31,35,48,.035);
-  --aw-chip-shadow:0 1px 2px rgba(31,35,48,.08),0 2px 8px rgba(31,35,48,.06);
-  --aw-motion:140ms cubic-bezier(.2,.7,.2,1);
+  --aw-hue:var(--ds-tone-accent);
+  --aw-motion:160ms cubic-bezier(.2,.7,.2,1);
 }
-.theme-dark .aw-view {
-  --aw-shell-edge:rgba(255,255,255,.05);
-  --aw-panel-edge:rgba(255,255,255,.04);
-  --aw-chip:rgba(38,42,49,.86);
-  --aw-chip-edge:rgba(255,255,255,.08);
-  --aw-tile:#2a2e36;
-  --aw-shell-shadow:0 1px 2px rgba(0,0,0,.25),0 8px 22px rgba(0,0,0,.2);
-  --aw-panel-shadow:0 1px 2px rgba(0,0,0,.2);
-  --aw-chip-shadow:0 1px 2px rgba(0,0,0,.3);
-}
+/* Opaque fallback first; glass only where backdrop filtering exists. */
 .aw-view .aw-card {
-  border:1px solid var(--aw-shell-edge);
+  border:1px solid var(--ds-glass-line);
   border-radius:var(--aw-radius-shell);
-  background:var(--aw-shell);
-  box-shadow:var(--aw-shell-shadow);
+  background:var(--ds-glass-solid);
+  box-shadow:var(--ds-glass-highlight),var(--ds-glass-shadow);
 }
 .aw-view .aw-panel {
-  border:1px solid var(--aw-panel-edge);
+  border:1px solid var(--ds-glass-line);
   border-radius:var(--aw-radius-panel);
-  background:var(--aw-panel);
-  box-shadow:var(--aw-panel-shadow);
+  background:var(--ds-paper);
+  box-shadow:inset 0 1px 0 var(--ds-glass-rim),0 1px 2px rgba(var(--ds-ink-rgb),.04);
 }
 .aw-view :is(.aw-chip,.aw-tab,.aw-brand-mark) {
-  border:1px solid var(--aw-chip-edge);
-  background:var(--aw-chip);
-  box-shadow:var(--aw-chip-shadow);
+  border:1px solid var(--ds-glass-line);
+  background:var(--ds-paper);
+  box-shadow:inset 0 1px 0 var(--ds-glass-rim),0 1px 2px rgba(var(--ds-ink-rgb),.08),0 4px 12px -4px rgba(var(--ds-ink-rgb),.14);
 }
-/* Only the controls floating on the banner are blurred; cards and rows never are. */
 @supports ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))) {
-  .aw-view .aw-hero :is(.aw-chip,.aw-tab,.aw-brand-mark) {-webkit-backdrop-filter:blur(10px) saturate(1.1);backdrop-filter:blur(10px) saturate(1.1);}
+  .aw-view .aw-card {
+    background:linear-gradient(160deg,rgba(255,255,255,.34),rgba(255,255,255,0) 46%),var(--ds-glass);
+    -webkit-backdrop-filter:var(--ds-glass-blur);backdrop-filter:var(--ds-glass-blur);
+  }
+  .theme-dark .aw-view .aw-card {background:linear-gradient(160deg,rgba(255,255,255,.05),rgba(255,255,255,0) 46%),var(--ds-glass);}
+  /* Panels sit on blurred glass already; a denser tint keeps text crisp without a second blur. */
+  .aw-view .aw-panel {background:var(--ds-glass-paper);}
+  .aw-view :is(.aw-chip,.aw-tab,.aw-brand-mark) {
+    background:var(--ds-glass-strong);
+    -webkit-backdrop-filter:blur(18px) saturate(180%);backdrop-filter:blur(18px) saturate(180%);
+  }
 }
 .aw-view .aw-badge {
-  border-radius:6px;
-  background:var(--ds-accent-soft);
-  color:var(--ds-accent);
+  border-radius:7px;
+  background:rgba(var(--aw-hue),.11);
+  color:rgb(var(--aw-hue));
+  box-shadow:inset 0 0 0 1px rgba(var(--aw-hue),.12);
 }
 .aw-view :is(.aw-chip,.aw-tab,.aw-segment-item,.aw-file-row,.aw-day-row,.aw-cell) {
   transition:background-color var(--aw-motion),border-color var(--aw-motion),box-shadow var(--aw-motion),color var(--aw-motion),transform var(--aw-motion);
 }
 @media (hover:hover) {
   .aw-view :is(.aw-chip,.aw-tab):not(.aw-chip-static):not([aria-pressed="true"]):hover {color:var(--ds-accent);transform:translateY(-1px);}
-  .aw-view .aw-segment-item:not([aria-pressed="true"]):hover {color:var(--ds-text);}
-  .aw-view :is(.aw-file-row,.aw-day-row):hover:not(:disabled) {background-color:var(--ds-surface);}
+  .aw-view .aw-segment-item:not([aria-pressed="true"]):hover {color:var(--ds-text);background:rgba(255,255,255,.45);}
+  .aw-view :is(.aw-file-row,.aw-day-row):hover:not(:disabled) {background-color:rgba(var(--aw-hue),.06);}
 }
-.aw-view :is(.aw-chip,.aw-tab):active:not(.aw-chip-static) {transform:translateY(1px);box-shadow:none;}
+.aw-view :is(.aw-chip,.aw-tab):active:not(.aw-chip-static) {transform:translateY(1px);}
 .aw-view button:focus-visible,.aw-view summary:focus-visible {outline:2px solid var(--ds-accent);outline-offset:2px;}
 @media (prefers-reduced-motion:reduce) {
   .aw-view :is(.aw-chip,.aw-tab,.aw-segment-item,.aw-file-row,.aw-day-row,.aw-cell) {transition:none;transform:none !important;}
 }
 @media (prefers-reduced-transparency:reduce), (forced-colors:active) {
-  .aw-view .aw-hero :is(.aw-chip,.aw-tab,.aw-brand-mark) {-webkit-backdrop-filter:none;backdrop-filter:none;background:var(--aw-panel);}
+  .aw-view :is(.aw-card,.aw-chip,.aw-tab,.aw-brand-mark) {-webkit-backdrop-filter:none;backdrop-filter:none;background:var(--ds-glass-solid);}
+  .aw-view .aw-panel {background:var(--ds-paper);}
+  .aw-view .aw-ambient {display:none;}
 }
 @media print {
-  .aw-view :is(.aw-card,.aw-panel,.aw-chip,.aw-tab) {-webkit-backdrop-filter:none;backdrop-filter:none;box-shadow:none;}
+  .aw-view :is(.aw-card,.aw-panel,.aw-chip,.aw-tab) {-webkit-backdrop-filter:none;backdrop-filter:none;box-shadow:none;background:#fff;}
 }

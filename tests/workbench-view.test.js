@@ -78,9 +78,15 @@ test('closing releases view references and preserves statistics',async()=>{
   const f=fixture();f.view.render();const before=JSON.stringify(f.plugin.data);await f.view.onClose();
   assert.equal(f.content.children.length,0);assert.equal(f.view.heatCells,null);assert.equal(f.view.statNumbers,null);assert.equal(JSON.stringify(f.plugin.data),before);
 });
-test('indigo palette and local pixel banner are shipped without remote CSS resources',()=>{
+test('palette lives in tone roles, and the pixel banner ships without remote CSS resources',()=>{
   const root=path.resolve(__dirname,'..'),tokens=fs.readFileSync(path.join(root,'src/styles/tokens.css'),'utf8');
-  assert.match(tokens,/--ds-paper: #ffffff/);assert.match(tokens,/--ds-accent: #5b5fc7/);
+  for(const role of ['accent','1','2','3','4','5','neutral'])assert.match(tokens,new RegExp(`--ds-tone-${role}: \\d+,\\d+,\\d+;`));
+  assert.match(tokens,/--ds-accent: rgb\(var\(--ds-tone-accent\)\)/);
+  // Components derive colour from the tones; no stray hex hues outside tokens.css.
+  for(const name of ['shell','typography','components','materials','workbench','figures']){
+    const source=fs.readFileSync(path.join(root,`src/styles/${name}.css`),'utf8');
+    assert.doesNotMatch(source,/#(?!fff\b|000\b)[0-9a-f]{6}\b/i,name);
+  }
   const css=fs.readFileSync(path.join(root,'dist/algorithm-workbench/styles.css'),'utf8');
   assert.match(css,/data:image\/png;base64,/);assert.doesNotMatch(css,/url\(["']?https?:/i);
   assert.ok(css.includes('.aw-card'));assert.ok(css.includes('@container aw'));
@@ -88,9 +94,42 @@ test('indigo palette and local pixel banner are shipped without remote CSS resou
 });
 test('header image is a direct background value with a separate fade overlay',()=>{
   const root=path.resolve(__dirname,'..'),css=fs.readFileSync(path.join(root,'dist/algorithm-workbench/styles.css'),'utf8');
-  const direct=/\.aw-view \.aw-backdrop\s*\{background-image:url\("data:image\/png;base64,([A-Za-z0-9+/=]+)"\);\}/.exec(css);
+  const direct=/\.aw-view \.aw-backdrop, \.aw-view \.aw-ambient\s*\{background-image:url\("data:image\/png;base64,([A-Za-z0-9+/=]+)"\);\}/.exec(css);
   assert.ok(direct,'The data URL must be the entire direct background-image value');
   assert.doesNotMatch(css,/--aw-coast-image/);
   const source=fs.readFileSync(path.join(root,'src/styles/workbench.css'),'utf8');
   assert.match(source,/\.aw-backdrop::after\s*\{[^}]*linear-gradient/);
+});
+test('each metric owns a companion hue shared by its tab, dot and heatmap card',async()=>{
+  const f=fixture();f.view.render();
+  const pulse=f.content.querySelector('.aw-card-pulse');assert.equal(pulse.style.values['--aw-hue'],'var(--ds-tone-accent)');
+  const dots=f.content.querySelector('.aw-card-overview').querySelectorAll('.aw-dot').map(d=>d.style.values['--aw-hue']);
+  assert.deepEqual(dots,['var(--ds-tone-accent)','var(--ds-tone-1)','var(--ds-tone-2)','var(--ds-tone-3)']);
+  await f.content.querySelector('[data-aw-focus="metric-tasks"]').click();
+  assert.equal(f.content.querySelector('.aw-card-pulse').style.values['--aw-hue'],'var(--ds-tone-5)');
+  assert.ok(f.content.querySelector('.aw-ambient'),'ambient light layer sits behind the glass cards');
+});
+test('document snippet ships glass chrome with fallbacks and a screen-only figure size guard',()=>{
+  const root=path.resolve(__dirname,'..'),css=fs.readFileSync(path.join(root,'dist/snippets/style.css'),'utf8');
+  assert.match(css,/backdrop-filter:\s*var\(--ds-glass-blur\)/);
+  assert.match(css,/prefers-reduced-transparency:reduce/);
+  assert.match(css,/@media screen \{\s*\.callout\[data-callout="figure"\] \{--aw-figure-max-width: 720px/);
+  assert.match(css,/img:not\(\[width\]\) \{max-width:min\(100%, var\(--aw-figure-max-width\)\);\}/);
+});
+test('palette chip switches through the plugin and shows the current palette',async()=>{
+  const f=fixture();f.view.render();const chip=f.content.querySelector('[data-aw-focus="palette"]');
+  assert.match(chip.textContent,/海盐石墨/);
+  await chip.click();assert.equal(f.plugin.data.settings.palette,'sand');assert.equal(f.plugin.changes,1);
+  f.view.render();assert.match(f.content.querySelector('[data-aw-focus="palette"]').textContent,/暖砂陶土/);
+});
+test('every palette ships light and dark twins with identical properties, scoped for plugin and snippet',()=>{
+  const root=path.resolve(__dirname,'..'),tokens=fs.readFileSync(path.join(root,'src/styles/tokens.css'),'utf8');
+  const block=selector=>{const m=new RegExp(selector.replace(/\./g,'\\.')+'\\s*\\{([^}]*)\\}').exec(tokens);assert.ok(m,selector);return new Set(m[1].match(/--[\w-]+(?=\s*:)/g));};
+  const plugin=fs.readFileSync(path.join(root,'dist/algorithm-workbench/styles.css'),'utf8');
+  const snippet=fs.readFileSync(path.join(root,'dist/snippets/style.css'),'utf8');
+  for(const id of ['sand','celadon']){
+    assert.deepEqual([...block(`body.aw-palette-${id}`)].sort(),[...block(`body.theme-dark.aw-palette-${id}`)].sort());
+    assert.ok(plugin.includes(`body.theme-dark.aw-palette-${id} .aw-view, body.theme-dark.aw-palette-${id} .aw-figure-modal {`));
+    assert.ok(snippet.includes(`body.aw-palette-${id} {`));
+  }
 });

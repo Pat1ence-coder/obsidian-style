@@ -61,7 +61,7 @@ function fixture(){
   vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../../src/features/workbench.js'),'utf8'),{module,require:name=>{if(name==='obsidian')return obsidian;if(name==='../core')return Core;throw Error('Disallowed import: '+name);},Intl,Date});
   const data=Core.emptyData(now);data.started=Core.dayKey(Core.shiftDay(now,-180));
   data.days[Core.dayKey(now)]={characters:1286,files:{[files[0].path]:846,[files[1].path]:440}};
-  const plugin={data,saveError:false,changes:0,changed(){this.changes++;},folderNotes:{getFolder:()=>null,createNote:async()=>{}}};
+  const plugin={data,saveError:false,changes:0,changed(){this.changes++;},setPalette(id){this.data.settings.palette=id;this.changed();},folderNotes:{getFolder:()=>null,createNote:async()=>{}}};
   const view=new module.exports.WorkbenchView({},plugin);
   return {view,plugin,app,document,content,files,opened,nativeCommands,notices,created,TFile,Core,...module.exports};
 }

@@ -1,7 +1,7 @@
 body {
-  --blockquote-border-color: color-mix(in srgb, var(--ds-accent) 55%, transparent);
-  --blockquote-border-thickness: 2px;
-  --blockquote-background-color: var(--ds-surface);
+  --blockquote-border-color: rgba(var(--ds-tone-accent),.55);
+  --blockquote-border-thickness: 3px;
+  --blockquote-background-color: transparent;
   --blockquote-color: var(--ds-muted);
   --blockquote-font-style: normal;
   --callout-radius: var(--ds-radius-content);
@@ -15,39 +15,52 @@ body {
   --code-size: var(--ds-code-size);
   --code-radius: 4px;
   --code-comment: var(--ds-muted);
-  --code-keyword: #5b5fc7;
-  --code-string: #2f7a5c;
-  --code-function: #3b63c4;
-  --code-property: #3b63c4;
-  --code-value: #b0532c;
-  --code-important: #c0432f;
+  --code-keyword: rgb(var(--ds-tone-accent));
+  --code-string: rgb(var(--ds-tone-2));
+  --code-function: rgb(var(--ds-tone-1));
+  --code-property: rgb(var(--ds-tone-1));
+  --code-value: rgb(var(--ds-tone-4));
+  --code-important: rgb(var(--ds-tone-5));
   --code-operator: var(--ds-text);
   --table-text-size: var(--ds-table-size);
   --table-header-size: var(--ds-table-size);
   --table-header-font: var(--ds-font-body);
   --table-header-weight: 500;
   --table-header-color: var(--ds-muted);
-  --table-header-background: var(--ds-surface);
+  --table-header-background: rgba(var(--ds-tone-accent),.05);
   --table-text-color: var(--ds-text);
   --table-background: transparent;
   --table-line-height: 1.5;
   --table-border-color: var(--ds-border);
+  --table-row-alt-background: transparent;
   --table-border-width: 0;
-  --table-row-background-hover: var(--ds-surface-hover);
+  --table-row-background-hover: rgba(var(--ds-tone-accent),.035);
   --table-cell-vertical-alignment: top;
   --table-white-space: normal;
 }
-body.theme-dark {--code-keyword:#a9acf5;--code-string:#8fcfae;--code-function:#93b1f2;--code-property:#93b1f2;--code-value:#efa784;--code-important:#f08c78;}
-.markdown-rendered blockquote:not(.callout) {padding: .6em 1em;border-radius: 0 var(--ds-radius-control) var(--ds-radius-control) 0;}
+/* Quote: an accent thread and a faint wash that fades to the right. */
+.markdown-rendered blockquote:not(.callout) {padding: .6em 1em;border-radius: 0 var(--ds-radius-control) var(--ds-radius-control) 0;
+  border-image: linear-gradient(180deg, rgb(var(--ds-tone-accent)), rgba(var(--ds-tone-3),.55)) 1;
+  background: linear-gradient(90deg, rgba(var(--ds-tone-accent),.07), rgba(var(--ds-tone-accent),0) 72%);}
 .markdown-rendered blockquote:not(.callout) > :last-child {margin-bottom: 0;}
 .callout-content > :last-child {margin-bottom: 0;}
-:is(.markdown-rendered,.markdown-source-view) .callout[data-callout="note"] {--callout-color: 91,95,199;}
-:is(.markdown-rendered,.markdown-source-view) .callout[data-callout="info"] {--callout-color: 59,99,196;}
-:is(.markdown-rendered,.markdown-source-view) .callout[data-callout="success"] {--callout-color: 47,122,92;}
-:is(.markdown-rendered,.markdown-source-view) .callout[data-callout="warning"] {--callout-color: 192,110,32;}
-/* Callouts read as dashboard cards: neutral shell, colour kept in the title only.
+/* Callout families map onto the companion hues; dark mode lifts them automatically. */
+.callout[data-callout] {--callout-color: var(--ds-tone-accent);}
+.callout:is([data-callout="abstract"],[data-callout="summary"],[data-callout="tldr"],[data-callout="example"]) {--callout-color: var(--ds-tone-3);}
+.callout:is([data-callout="info"],[data-callout="todo"]) {--callout-color: var(--ds-tone-1);}
+.callout:is([data-callout="tip"],[data-callout="hint"],[data-callout="important"],[data-callout="success"],[data-callout="check"],[data-callout="done"]) {--callout-color: var(--ds-tone-2);}
+.callout:is([data-callout="question"],[data-callout="help"],[data-callout="faq"],[data-callout="warning"],[data-callout="caution"],[data-callout="attention"]) {--callout-color: var(--ds-tone-4);}
+.callout:is([data-callout="failure"],[data-callout="fail"],[data-callout="missing"],[data-callout="danger"],[data-callout="error"],[data-callout="bug"]) {--callout-color: var(--ds-tone-5);}
+.callout:is([data-callout="quote"],[data-callout="cite"]) {--callout-color: var(--ds-tone-neutral);}
+/* A tinted pane with a bright top rim: the dashboard card, translated to documents.
    The figure callout overrides this with its own higher-specificity rule. */
-:is(.markdown-rendered,.markdown-source-view) .callout {background: var(--ds-shell);border: 1px solid var(--ds-border);border-radius: var(--ds-radius-content);}
+:is(.markdown-rendered,.markdown-source-view) .callout {
+  background: linear-gradient(140deg, rgba(var(--callout-color),.085), rgba(var(--callout-color),.025) 70%);
+  border: 1px solid rgba(var(--callout-color),.17);
+  border-radius: var(--ds-radius-content);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.55);
+}
+body.theme-dark :is(.markdown-rendered,.markdown-source-view) .callout {box-shadow: inset 0 1px 0 rgba(255,255,255,.04);}
 :is(.markdown-rendered,.markdown-source-view) .callout-title {color: rgb(var(--callout-color));}
 :is(.markdown-rendered,.markdown-source-view) .callout-content {color: var(--ds-text);}
 :is(.markdown-rendered,.markdown-source-view) :is(a.tag,.cm-hashtag) {font-family: var(--ds-font-numeric);font-size: .82em;}
@@ -60,7 +73,7 @@ body.theme-dark {--code-keyword:#a9acf5;--code-string:#8fcfae;--code-function:#9
   border:0;border-bottom:1px solid var(--ds-border);padding:10px 14px;
   vertical-align:top;font-variant-numeric:lining-nums tabular-nums;
 }
-:is(.markdown-rendered,.markdown-source-view) table th {font-weight:500;color:var(--ds-muted);background:var(--ds-surface);}
+:is(.markdown-rendered,.markdown-source-view) table th {font-weight:500;color:var(--ds-muted);background:linear-gradient(180deg,rgba(var(--ds-tone-accent),.075),rgba(var(--ds-tone-accent),.03));}
 :is(.markdown-rendered,.markdown-source-view) table tbody tr:last-child > :is(td,th) {border-bottom:0;}
 :is(.markdown-rendered,.markdown-source-view) table th:not([align]) {text-align:start;}
 :is(.markdown-rendered,.markdown-source-view) table :is(th,td)[align="left"] {text-align:left;}
@@ -73,10 +86,10 @@ body.theme-dark {--code-keyword:#a9acf5;--code-string:#8fcfae;--code-function:#9
 :is(.markdown-rendered,.markdown-source-view).academia table thead {border-bottom:1px solid var(--ds-text);}
 :is(.markdown-rendered,.markdown-source-view).wideTable table {min-width:100%;}
 .markdown-rendered .table-wrapper {max-width:100%;overflow-x:auto;}
-.markdown-rendered pre {font-family:var(--ds-font-mono);font-size:var(--ds-code-size);line-height:var(--ds-code-leading);border:1px solid var(--ds-border);border-radius:var(--ds-radius-content);padding:16px 18px;background:var(--ds-code-bg);}
+.markdown-rendered pre {font-family:var(--ds-font-mono);font-size:var(--ds-code-size);line-height:var(--ds-code-leading);border:1px solid var(--ds-border);border-radius:var(--ds-radius-content);padding:16px 18px;background:linear-gradient(180deg,rgba(var(--ds-tone-accent),.035),rgba(var(--ds-tone-accent),0) 60%),var(--ds-code-bg);box-shadow:inset 0 1px 0 rgba(255,255,255,.6);}
 .markdown-rendered pre code {font-size:inherit;font-family:inherit;line-height:inherit;padding:0;background:transparent;border:0;}
-.markdown-rendered :not(pre) > code {font-family:var(--ds-font-mono);font-size:var(--ds-code-size);border-radius:4px;padding:.08em .3em;background:var(--ds-code-bg);color:var(--ds-text);}
-.markdown-rendered hr {height:1px;border:0;background:var(--ds-border);margin:1.8em 0;}
+.markdown-rendered :not(pre) > code {font-family:var(--ds-font-mono);font-size:var(--ds-code-size);border-radius:5px;padding:.08em .35em;background:rgba(var(--ds-tone-accent),.075);color:color-mix(in srgb,rgb(var(--ds-tone-accent)) 78%,var(--ds-text));box-shadow:inset 0 0 0 1px rgba(var(--ds-tone-accent),.1);}
+.markdown-rendered hr {height:1px;border:0;background:linear-gradient(90deg,transparent,rgba(var(--ds-tone-accent),.35) 30%,rgba(var(--ds-tone-3),.3) 70%,transparent);margin:1.8em 0;}
 /* Do not change math fonts; CHTML glyph metrics and baselines stay native. */
 :is(.markdown-rendered,.markdown-source-view) .math-block {min-width:0;max-width:100%;}
 :is(.markdown-rendered,.markdown-source-view) mjx-container[display="true"] {display:block;max-width:100%;overflow-x:auto;margin:1em 0;padding:.5em 0;}
