@@ -1,6 +1,6 @@
 /* GENERATED from src/styles. Edit the source modules, then run npm run build. */
 /* Shared design source. Only namespaced tokens live here; no app-wide resets. */
-.aw-view, .aw-figure-modal {
+.workspace-leaf-content[data-type="algorithm-workbench"], .aw-view, .aw-figure-modal {
   --ds-font-ui: system-ui, -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
   --ds-font-mono: "SF Mono", "SFMono-Regular", "JetBrains Mono", Menlo, Consolas, "Liberation Mono", monospace;
   --ds-font-academic: "Times New Roman", "Songti SC", "Noto Serif CJK SC", "SimSun", serif;
@@ -89,7 +89,7 @@
   --ds-grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .5 0 0 0 0 .5 0 0 0 0 .5 0 0 0 .055 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
   --ds-wallpaper-veil: rgba(240,240,243,.42);
 }
-body.theme-dark .aw-view, body.theme-dark .aw-figure-modal {
+body.theme-dark .workspace-leaf-content[data-type="algorithm-workbench"], body.theme-dark .aw-view, body.theme-dark .aw-figure-modal {
   --ds-tone-accent: 116,170,214;
   --ds-tone-1: 104,188,186;
   --ds-tone-2: 156,186,128;
@@ -132,7 +132,7 @@ body.theme-dark .aw-view, body.theme-dark .aw-figure-modal {
 /* Alternative palettes, switched by the plugin through a body class. Each light block
    and its dark twin set exactly the same properties, so selector specificity can never
    leak a light value into dark mode. Without the plugin, "sea salt & graphite" applies. */
-body.aw-palette-sand .aw-view, body.aw-palette-sand .aw-figure-modal {
+body.aw-palette-sand .workspace-leaf-content[data-type="algorithm-workbench"], body.aw-palette-sand .aw-view, body.aw-palette-sand .aw-figure-modal {
   --ds-wallpaper-veil: rgba(244,236,226,.56);
   --ds-tone-accent: 182,94,62; --ds-tone-1: 66,112,148; --ds-tone-2: 116,128,74;
   --ds-tone-3: 138,94,118; --ds-tone-4: 192,142,58; --ds-tone-5: 170,78,88;
@@ -148,7 +148,7 @@ body.aw-palette-sand .aw-view, body.aw-palette-sand .aw-figure-modal {
     radial-gradient(820px 640px at -4% 100%, rgba(222,230,210,.5), transparent 60%);
   --ds-ambient-base: linear-gradient(180deg, #f4f1ec, #eeeae4);
 }
-body.theme-dark.aw-palette-sand .aw-view, body.theme-dark.aw-palette-sand .aw-figure-modal {
+body.theme-dark.aw-palette-sand .workspace-leaf-content[data-type="algorithm-workbench"], body.theme-dark.aw-palette-sand .aw-view, body.theme-dark.aw-palette-sand .aw-figure-modal {
   --ds-wallpaper-veil: rgba(20,16,13,.68);
   --ds-tone-accent: 226,140,104; --ds-tone-1: 122,166,206; --ds-tone-2: 170,182,118;
   --ds-tone-3: 194,148,176; --ds-tone-4: 228,182,102; --ds-tone-5: 224,130,138;
@@ -163,7 +163,7 @@ body.theme-dark.aw-palette-sand .aw-view, body.theme-dark.aw-palette-sand .aw-fi
     radial-gradient(820px 640px at -4% 100%, rgba(70,80,50,.22), transparent 60%);
   --ds-ambient-base: linear-gradient(180deg, #1b1816, #141210);
 }
-body.aw-palette-celadon .aw-view, body.aw-palette-celadon .aw-figure-modal {
+body.aw-palette-celadon .workspace-leaf-content[data-type="algorithm-workbench"], body.aw-palette-celadon .aw-view, body.aw-palette-celadon .aw-figure-modal {
   --ds-wallpaper-veil: rgba(232,242,237,.5);
   --ds-tone-accent: 48,118,108; --ds-tone-1: 66,104,146; --ds-tone-2: 112,136,74;
   --ds-tone-3: 124,100,148; --ds-tone-4: 186,138,64; --ds-tone-5: 192,100,88;
@@ -179,7 +179,7 @@ body.aw-palette-celadon .aw-view, body.aw-palette-celadon .aw-figure-modal {
     radial-gradient(820px 640px at -4% 100%, rgba(206,232,222,.55), transparent 60%);
   --ds-ambient-base: linear-gradient(180deg, #eff3f1, #e9eeeb);
 }
-body.theme-dark.aw-palette-celadon .aw-view, body.theme-dark.aw-palette-celadon .aw-figure-modal {
+body.theme-dark.aw-palette-celadon .workspace-leaf-content[data-type="algorithm-workbench"], body.theme-dark.aw-palette-celadon .aw-view, body.theme-dark.aw-palette-celadon .aw-figure-modal {
   --ds-wallpaper-veil: rgba(12,18,16,.68);
   --ds-tone-accent: 104,188,172; --ds-tone-1: 124,164,210; --ds-tone-2: 160,190,118;
   --ds-tone-3: 176,152,206; --ds-tone-4: 224,182,108; --ds-tone-5: 232,146,132;
@@ -285,12 +285,17 @@ body.theme-dark.aw-palette-celadon .aw-view, body.theme-dark.aw-palette-celadon 
   /* Local attachment spreads the blooms over the whole scroll height, not one screen. */
   background-attachment:local;
 }
+/* Inside Obsidian the pane card carries the light, so the view header and the dashboard are one
+   surface. Obsidian pads every view-content by default; the banner must reach the card edge. */
+.workspace .workspace-split .workspace-leaf-content[data-type="algorithm-workbench"] {background:var(--ds-ambient),var(--ds-ambient-base);background-color:var(--ds-bg);}
+.workspace .workspace-split .workspace-leaf-content[data-type="algorithm-workbench"] > .view-header {background:transparent;border-bottom:0;}
+.workspace .workspace-split .workspace-leaf-content[data-type="algorithm-workbench"] > .view-content.aw-view {padding:0;background:transparent;}
 .aw-view button {font-family:inherit;-webkit-tap-highlight-color:transparent;}
 .aw-view .aw-icon,.aw-view .aw-chip-icon,.aw-view .aw-row-icon,.aw-view .aw-row-open {display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;}
 .aw-view .aw-icon svg {width:14px;height:14px;stroke-width:1.75;}
 .aw-view .aw-page {position:relative;isolation:isolate;max-width:1180px;min-height:100%;margin-inline:auto;padding:0 var(--aw-gutter) 28px;box-sizing:border-box;}
 /* The banner again, heavily blurred: coloured light for the glass to pick up. */
-.aw-view .aw-ambient {position:absolute;z-index:-1;top:140px;left:-12%;right:-12%;height:min(1100px,90%);pointer-events:none;background-size:cover;background-position:center 60%;filter:blur(72px) saturate(1.5);opacity:.5;
+.aw-view .aw-ambient {position:absolute;z-index:-1;top:140px;left:calc(-12% - max(0px, (100cqw - 1180px) / 2));right:calc(-12% - max(0px, (100cqw - 1180px) / 2));height:min(1100px,90%);pointer-events:none;background-size:cover;background-position:center 60%;filter:blur(72px) saturate(1.5);opacity:.5;
   -webkit-mask-image:radial-gradient(70% 60% at 50% 30%,#000 30%,transparent 100%);mask-image:radial-gradient(70% 60% at 50% 30%,#000 30%,transparent 100%);}
 .theme-dark .aw-view .aw-ambient {opacity:.28;}
 
@@ -298,7 +303,9 @@ body.theme-dark.aw-palette-celadon .aw-view, body.theme-dark.aw-palette-celadon 
 .aw-view .aw-hero {position:relative;isolation:isolate;margin-inline:calc(-1 * var(--aw-gutter));padding:clamp(120px,15cqw,168px) var(--aw-gutter) 22px;}
 .aw-view .aw-hero::after {content:"";position:absolute;left:var(--aw-gutter);right:var(--aw-gutter);bottom:0;height:1px;background:linear-gradient(90deg,rgba(var(--ds-tone-accent),.6),rgba(var(--ds-tone-1),.4) 55%,transparent);}
 /* The banner melts into the ambient light instead of ending on a flat colour. */
-.aw-view .aw-backdrop {position:absolute;inset:0;z-index:-1;pointer-events:none;background-size:cover;background-position:center 38%;background-repeat:no-repeat;image-rendering:pixelated;
+.aw-view .aw-backdrop {position:absolute;inset:0;
+  /* Panes wider than the page: the banner still runs edge to edge. */
+  inset-inline:calc(-1 * max(0px, (100cqw - 1180px) / 2));z-index:-1;pointer-events:none;background-size:cover;background-position:center 38%;background-repeat:no-repeat;image-rendering:pixelated;
   -webkit-mask-image:linear-gradient(180deg,#000 0%,#000 46%,rgba(0,0,0,.55) 74%,transparent 100%);mask-image:linear-gradient(180deg,#000 0%,#000 46%,rgba(0,0,0,.55) 74%,transparent 100%);}
 .aw-view .aw-backdrop::after {content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 0%,transparent 40%,rgba(255,255,255,.22) 72%,rgba(255,255,255,.4) 100%);}
 .theme-dark .aw-view .aw-backdrop {filter:brightness(.6) saturate(.85);}

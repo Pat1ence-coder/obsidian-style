@@ -23,8 +23,10 @@ Object.assign(f.plugin.data.days[today],{minutes:74,focus:31,notes:2,tasks:3});
 f.plugin.data.settings.recentLimit=6;
 if(process.argv[2])f.view.tab=process.argv[2];
 f.view.render();
+// ItemView.contentEl is Obsidian's .view-content; keep that class so its default padding is exercised.
+f.content.classList.add('view-content');
 const css=fs.readFileSync(path.join(root,'dist/algorithm-workbench/styles.css'),'utf8');
-const html=`<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'"><title>知识脉冲看板 · 静态示例</title><style>*{box-sizing:border-box}body{margin:0;background:#eceef2}.preview-notice{padding:8px 20px;text-align:center;background:#fff;color:#686d7e;font:12px system-ui}.aw-view{min-height:100vh}${css}</style></head><body class="theme-light"><div class="preview-notice">静态版式示例 · 演示数据 · 按钮不执行操作</div>${serialize(f.content)}</body></html>`;
+const html=`<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'"><title>知识脉冲看板 · 静态示例</title><style>*{box-sizing:border-box}body{margin:0;background:#eceef2}.preview-notice{padding:8px 20px;text-align:center;background:#fff;color:#686d7e;font:12px system-ui}.workspace-leaf-content{min-height:100vh;display:flex;flex-direction:column}.view-header{display:flex;align-items:center;height:40px;padding:0 16px;background:#fff;color:#686d7e;font:13px system-ui}.view-content{flex:1;padding:12px 12px 32px}${css}</style></head><body class="theme-light"><div class="preview-notice">静态版式示例 · 演示数据 · 按钮不执行操作</div><div class="workspace"><div class="workspace-split mod-root"><div class="workspace-leaf-content" data-type="algorithm-workbench"><div class="view-header">知识脉冲</div>${serialize(f.content)}</div></div></div></body></html>`;
 if(/<script\b/i.test(html))throw Error('Static preview unexpectedly contains a script');
 fs.mkdirSync(out,{recursive:true});
 fs.writeFileSync(path.join(out,name),html);

@@ -303,12 +303,13 @@ body.is-translucent:not(.is-fullscreen) .workspace {background: var(--ds-ambient
   box-shadow: var(--ds-glass-highlight), var(--ds-glass-shadow);
   overflow: hidden;
 }
-.workspace .workspace-split.mod-left-split > .workspace-tabs {margin-right: 4px;}
-.workspace .workspace-split.mod-right-split > .workspace-tabs {margin-left: 4px;}
+/* One 8px gutter everywhere: window edge, panel, pane card. The card side supplies the gap. */
+.workspace .workspace-split.mod-left-split > .workspace-tabs {margin-right: 0;}
+.workspace .workspace-split.mod-right-split > .workspace-tabs {margin-left: 0;}
 .workspace-split.mod-sidedock :is(.workspace-tab-container,.workspace-leaf,.workspace-leaf-content,.workspace-tab-header-container,.view-content) {background-color: transparent;}
 .workspace-split.mod-root,
 .workspace-split.mod-root :is(.workspace-tabs,.workspace-leaf,.workspace-tab-header-container) {background-color: transparent;}
-.workspace-split.mod-root .workspace-tab-container {padding: 0 10px 10px;}
+.workspace-split.mod-root .workspace-tab-container {padding: 0 8px 8px;}
 .workspace-split.mod-root .workspace-leaf-content {
   border: 1px solid var(--ds-glass-line);
   border-radius: var(--ds-radius-card);
@@ -317,7 +318,7 @@ body.is-translucent:not(.is-fullscreen) .workspace {background: var(--ds-ambient
   overflow: hidden;
 }
 .workspace-tab-header-container {border-bottom: 0;}
-.workspace-tab-header.is-active {box-shadow: inset 0 1px 0 var(--ds-glass-rim), 0 0 0 1px var(--ds-glass-edge), 0 6px 16px -6px rgba(var(--ds-ink-rgb),.22);}
+.workspace-tab-header.is-active {background: var(--background-primary);box-shadow: inset 0 1px 0 var(--ds-glass-rim), 0 0 0 1px var(--ds-glass-edge), 0 6px 16px -6px rgba(var(--ds-ink-rgb),.22);}
 .workspace-tab-header.is-active .workspace-tab-header-inner-title {font-weight: 600;}
 .workspace-leaf-content[data-type="file-explorer"] .nav-header {padding-block: 8px;}
 .workspace-leaf-content[data-type="file-explorer"] .nav-action-button {border-radius: var(--ds-radius-control);}
@@ -341,7 +342,7 @@ button.mod-cta {background: linear-gradient(180deg, color-mix(in srgb, var(--ds-
     background: var(--ds-grain), var(--ds-glass-sheen), var(--ds-glass);
     -webkit-backdrop-filter: var(--ds-glass-panel-blur);backdrop-filter: var(--ds-glass-panel-blur);
   }
-  :is(.workspace-tab-header.is-active,.status-bar) {
+  .status-bar {
     background: var(--ds-glass-sheen), var(--ds-glass-strong);
     -webkit-backdrop-filter: blur(24px) saturate(180%);backdrop-filter: blur(24px) saturate(180%);
   }
@@ -353,7 +354,7 @@ button.mod-cta {background: linear-gradient(180deg, color-mix(in srgb, var(--ds-
 }
 @media (prefers-reduced-transparency:reduce), (forced-colors:active) {
   .workspace .workspace-split.mod-sidedock > .workspace-tabs,
-  :is(.workspace-tab-header.is-active,.status-bar),
+  .status-bar,
   :is(.menu,.suggestion-container,.prompt,.popover.hover-popover,.notice) {-webkit-backdrop-filter: none;backdrop-filter: none;background: var(--ds-glass-solid);}
 }
 

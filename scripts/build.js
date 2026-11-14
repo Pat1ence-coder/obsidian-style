@@ -26,10 +26,12 @@ const cssParts=names=>names.map(name=>`/* Source: src/styles/${name}.css */\n`+f
 const generated='/* GENERATED from src/styles. Edit the source modules, then run npm run build. */\n';
 // Scope the shared tokens in the plugin output so stylesheet load order cannot
 // override document print tokens (especially when exporting from dark mode).
+// The view's pane (leaf) gets the tokens too: it paints the dashboard background behind the header.
+const LEAF='.workspace-leaf-content[data-type="algorithm-workbench"]';
 const pluginTokens=fs.readFileSync(path.join(styleSource,'tokens.css'),'utf8')
-  // body → the plugin's own roots; body.theme-dark / body.aw-palette-* keep their class
+  // body → the plugin's own roots (pane, view, modal); body.theme-dark / body.aw-palette-* keep their class
   // qualifiers so dark mode and palette switching apply inside the plugin too.
-  .replace(/\bbody((?:\.[\w-]+)*)\s*\{/g,(_match,classes)=>classes?`body${classes} .aw-view, body${classes} .aw-figure-modal {`:'.aw-view, .aw-figure-modal {');
+  .replace(/\bbody((?:\.[\w-]+)*)\s*\{/g,(_match,classes)=>classes?`body${classes} ${LEAF}, body${classes} .aw-view, body${classes} .aw-figure-modal {`:`${LEAF}, .aw-view, .aw-figure-modal {`);
 // Pixel-art banner derived by scripts/pixelate-header.py; scaled up crisply in CSS.
 const hero=fs.readFileSync(path.join(source,'assets/coast-header-pixel.png'));
 if(!hero.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])))throw Error('Header asset is not a PNG');

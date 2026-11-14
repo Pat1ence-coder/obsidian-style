@@ -14,12 +14,17 @@
   /* Local attachment spreads the blooms over the whole scroll height, not one screen. */
   background-attachment:local;
 }
+/* Inside Obsidian the pane card carries the light, so the view header and the dashboard are one
+   surface. Obsidian pads every view-content by default; the banner must reach the card edge. */
+.workspace .workspace-split .workspace-leaf-content[data-type="algorithm-workbench"] {background:var(--ds-ambient),var(--ds-ambient-base);background-color:var(--ds-bg);}
+.workspace .workspace-split .workspace-leaf-content[data-type="algorithm-workbench"] > .view-header {background:transparent;border-bottom:0;}
+.workspace .workspace-split .workspace-leaf-content[data-type="algorithm-workbench"] > .view-content.aw-view {padding:0;background:transparent;}
 .aw-view button {font-family:inherit;-webkit-tap-highlight-color:transparent;}
 .aw-view .aw-icon,.aw-view .aw-chip-icon,.aw-view .aw-row-icon,.aw-view .aw-row-open {display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;}
 .aw-view .aw-icon svg {width:14px;height:14px;stroke-width:1.75;}
 .aw-view .aw-page {position:relative;isolation:isolate;max-width:1180px;min-height:100%;margin-inline:auto;padding:0 var(--aw-gutter) 28px;box-sizing:border-box;}
 /* The banner again, heavily blurred: coloured light for the glass to pick up. */
-.aw-view .aw-ambient {position:absolute;z-index:-1;top:140px;left:-12%;right:-12%;height:min(1100px,90%);pointer-events:none;background-size:cover;background-position:center 60%;filter:blur(72px) saturate(1.5);opacity:.5;
+.aw-view .aw-ambient {position:absolute;z-index:-1;top:140px;left:calc(-12% - max(0px, (100cqw - 1180px) / 2));right:calc(-12% - max(0px, (100cqw - 1180px) / 2));height:min(1100px,90%);pointer-events:none;background-size:cover;background-position:center 60%;filter:blur(72px) saturate(1.5);opacity:.5;
   -webkit-mask-image:radial-gradient(70% 60% at 50% 30%,#000 30%,transparent 100%);mask-image:radial-gradient(70% 60% at 50% 30%,#000 30%,transparent 100%);}
 .theme-dark .aw-view .aw-ambient {opacity:.28;}
 
@@ -27,7 +32,9 @@
 .aw-view .aw-hero {position:relative;isolation:isolate;margin-inline:calc(-1 * var(--aw-gutter));padding:clamp(120px,15cqw,168px) var(--aw-gutter) 22px;}
 .aw-view .aw-hero::after {content:"";position:absolute;left:var(--aw-gutter);right:var(--aw-gutter);bottom:0;height:1px;background:linear-gradient(90deg,rgba(var(--ds-tone-accent),.6),rgba(var(--ds-tone-1),.4) 55%,transparent);}
 /* The banner melts into the ambient light instead of ending on a flat colour. */
-.aw-view .aw-backdrop {position:absolute;inset:0;z-index:-1;pointer-events:none;background-size:cover;background-position:center 38%;background-repeat:no-repeat;image-rendering:pixelated;
+.aw-view .aw-backdrop {position:absolute;inset:0;
+  /* Panes wider than the page: the banner still runs edge to edge. */
+  inset-inline:calc(-1 * max(0px, (100cqw - 1180px) / 2));z-index:-1;pointer-events:none;background-size:cover;background-position:center 38%;background-repeat:no-repeat;image-rendering:pixelated;
   -webkit-mask-image:linear-gradient(180deg,#000 0%,#000 46%,rgba(0,0,0,.55) 74%,transparent 100%);mask-image:linear-gradient(180deg,#000 0%,#000 46%,rgba(0,0,0,.55) 74%,transparent 100%);}
 .aw-view .aw-backdrop::after {content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 0%,transparent 40%,rgba(255,255,255,.22) 72%,rgba(255,255,255,.4) 100%);}
 .theme-dark .aw-view .aw-backdrop {filter:brightness(.6) saturate(.85);}

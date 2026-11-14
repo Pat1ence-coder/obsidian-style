@@ -163,3 +163,11 @@ test('academic captions: table caption above, bold label, adjustable size, print
   assert.match(plugin,/body\.aw-figure-tools-off :is\(\.aw-figure-bar/);
   assert.match(plugin,/@media print \{\s*:is\(\.aw-figure-bar,\.aw-figure-resize,\.aw-figure-grip\) \{display:none !important;\}/);
 });
+test('inside an Obsidian pane the dashboard reaches the card edge and shares one surface with the header',()=>{
+  const root=path.resolve(__dirname,'..'),css=fs.readFileSync(path.join(root,'dist/algorithm-workbench/styles.css'),'utf8');
+  const leaf='.workspace .workspace-split .workspace-leaf-content[data-type="algorithm-workbench"]';
+  assert.ok(css.includes(`${leaf} > .view-content.aw-view {padding:0;background:transparent;}`),'beats Obsidian default view padding');
+  assert.ok(css.includes(`${leaf} > .view-header {background:transparent;`));
+  assert.ok(css.includes('.workspace-leaf-content[data-type="algorithm-workbench"], .aw-view, .aw-figure-modal {'),'pane receives the tokens it paints with');
+  assert.match(css,/\.aw-backdrop \{[^}]*inset-inline:calc\(-1 \* max\(0px, \(100cqw - 1180px\) \/ 2\)\)/);
+});
