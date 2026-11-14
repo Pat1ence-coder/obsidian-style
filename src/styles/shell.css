@@ -92,21 +92,27 @@ body.theme-dark {--ds-ambient-veil: rgba(18,18,20,.45);}
 }
 /* With Obsidian's translucent window, a thin veil lets the native vibrancy through. */
 body.is-translucent:not(.is-fullscreen) .workspace {background: var(--ds-ambient), var(--ds-ambient-veil);}
-.workspace-ribbon.mod-left {border-right: 0;}
-/* Sidebars float as rounded glass panels inset from the window edge, macOS style. */
-.workspace .workspace-split.mod-sidedock {background: transparent;border: 0;box-shadow: none;}
-.workspace .workspace-split.mod-sidedock > .workspace-tabs {
-  margin: 8px;
+.workspace .workspace-ribbon.mod-left,
+.workspace .workspace-ribbon.mod-left:not(.is-collapsed) {border-right-color: transparent;box-shadow: none;}
+/* Sidebars: the icon row stays on the window floor next to the macOS traffic lights, like the
+   main tab bar; below it the content floats as a rounded glass panel whose top lines up with
+   the note card. */
+.workspace .workspace-split.mod-sidedock,
+.workspace .workspace-split.mod-sidedock > .workspace-tabs {background: transparent;border: 0;box-shadow: none;}
+.workspace .workspace-split.mod-sidedock .workspace-tabs > .workspace-tab-container {
+  margin: 0 0 8px;
   border: 1px solid var(--ds-glass-edge);
   border-radius: 16px;
   background: var(--ds-glass-solid);
   box-shadow: var(--ds-glass-highlight), var(--ds-glass-shadow);
   overflow: hidden;
 }
-/* One 8px gutter everywhere: window edge, panel, pane card. The card side supplies the gap. */
-.workspace .workspace-split.mod-left-split > .workspace-tabs {margin-right: 0;}
-.workspace .workspace-split.mod-right-split > .workspace-tabs {margin-left: 0;}
-.workspace-split.mod-sidedock :is(.workspace-tab-container,.workspace-leaf,.workspace-leaf-content,.workspace-tab-header-container,.view-content) {background-color: transparent;}
+/* 8px on both sides: from the window edge, and from the native divider (matching the 8px between the divider and the note card). */
+.workspace .workspace-split.mod-left-split .workspace-tabs > .workspace-tab-container {margin-left: 8px;margin-right: 8px;}
+.workspace .workspace-split.mod-right-split .workspace-tabs > .workspace-tab-container {margin-right: 8px;margin-left: 8px;}
+.workspace .workspace-split.mod-sidedock.is-collapsed .workspace-tabs > .workspace-tab-container {margin: 0;border: 0;}
+.workspace-split.mod-sidedock :is(.workspace-leaf,.workspace-leaf-content,.workspace-tab-header-container,.view-content,.workspace-sidedock-vault-profile) {background-color: transparent;}
+.workspace-sidedock-vault-profile {border-top: 0;}
 .workspace-split.mod-root,
 .workspace-split.mod-root :is(.workspace-tabs,.workspace-leaf,.workspace-tab-header-container) {background-color: transparent;}
 .workspace-split.mod-root .workspace-tab-container {padding: 0 8px 8px;}
@@ -118,6 +124,11 @@ body.is-translucent:not(.is-fullscreen) .workspace {background: var(--ds-ambient
   overflow: hidden;
 }
 .workspace-tab-header-container {border-bottom: 0;}
+/* Note tabs are pills centred in the header row, clear of the window top and the card below. */
+.workspace .mod-root .workspace-tab-header-container-inner {margin-block: 0;padding-block: 0;align-items: center;}
+.workspace .mod-root .workspace-tab-header {align-self: center;height: calc(var(--header-height, 40px) - 12px);border-radius: 10px;}
+.workspace .mod-root .workspace-tab-header.is-active::before,
+.workspace .mod-root .workspace-tab-header.is-active::after {display: none;}
 .workspace-tab-header.is-active {background: var(--background-primary);box-shadow: inset 0 1px 0 var(--ds-glass-rim), 0 0 0 1px var(--ds-glass-edge), 0 6px 16px -6px rgba(var(--ds-ink-rgb),.22);}
 .workspace-tab-header.is-active .workspace-tab-header-inner-title {font-weight: 600;}
 .workspace-leaf-content[data-type="file-explorer"] .nav-header {padding-block: 8px;}
@@ -138,7 +149,7 @@ body.is-translucent:not(.is-fullscreen) .workspace {background: var(--ds-ambient
 .vertical-tab-header {background: rgba(var(--ds-tone-neutral),.05);}
 button.mod-cta {background: linear-gradient(180deg, color-mix(in srgb, var(--ds-accent) 88%, #fff), var(--ds-accent));box-shadow: inset 0 1px 0 rgba(255,255,255,.25), 0 4px 12px -4px rgba(var(--ds-tone-accent),.7);}
 @supports ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))) {
-  .workspace .workspace-split.mod-sidedock > .workspace-tabs {
+  .workspace .workspace-split.mod-sidedock .workspace-tabs > .workspace-tab-container {
     background: var(--ds-grain), var(--ds-glass-sheen), var(--ds-glass);
     -webkit-backdrop-filter: var(--ds-glass-panel-blur);backdrop-filter: var(--ds-glass-panel-blur);
   }
@@ -153,7 +164,7 @@ button.mod-cta {background: linear-gradient(180deg, color-mix(in srgb, var(--ds-
   .modal-container .modal-bg {-webkit-backdrop-filter: blur(3px);backdrop-filter: blur(3px);}
 }
 @media (prefers-reduced-transparency:reduce), (forced-colors:active) {
-  .workspace .workspace-split.mod-sidedock > .workspace-tabs,
+  .workspace .workspace-split.mod-sidedock .workspace-tabs > .workspace-tab-container,
   .status-bar,
   :is(.menu,.suggestion-container,.prompt,.popover.hover-popover,.notice) {-webkit-backdrop-filter: none;backdrop-filter: none;background: var(--ds-glass-solid);}
 }

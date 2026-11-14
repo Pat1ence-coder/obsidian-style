@@ -111,7 +111,8 @@ test('each metric owns a companion hue shared by its tab, dot and heatmap card',
 });
 test('document snippet ships glass chrome with fallbacks and a screen-only figure size guard',()=>{
   const root=path.resolve(__dirname,'..'),css=fs.readFileSync(path.join(root,'dist/snippets/style.css'),'utf8');
-  assert.match(css,/mod-sidedock > \.workspace-tabs \{[^}]*border-radius: 16px[^}]*background: var\(--ds-glass-solid\)/,'floating panels have an opaque fallback');
+  assert.match(css,/mod-sidedock \.workspace-tabs > \.workspace-tab-container \{[^}]*border-radius: 16px[^}]*background: var\(--ds-glass-solid\)/,'floating panels have an opaque fallback');
+  assert.match(css,/\.mod-root \.workspace-tab-header \{align-self: center;/,'note tabs clear the window top');
   assert.match(css,/backdrop-filter:\s*var\(--ds-glass-panel-blur\)/);
   assert.match(css,/body \{--ds-wallpaper:url\("data:image\/png;base64,/,'blurred wallpaper is embedded, not fetched');
   assert.match(css,/\.workspace \{[^}]*var\(--ds-wallpaper-veil\)[^}]*var\(--ds-wallpaper, none\)/);

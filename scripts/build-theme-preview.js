@@ -22,11 +22,17 @@ body{font-family:var(--font-interface);font-size:13px;color:var(--text-normal);b
 .menu{position:fixed;right:64px;top:120px;width:210px;padding:6px;z-index:5}.menu-item{padding:6px 10px;border-radius:6px;font-size:13px}.menu-item.selected{background:var(--background-modifier-hover)}.menu-separator{height:1px;margin:4px 8px;background:var(--divider-color)}
 .workspace-ribbon{width:44px;background:var(--ribbon-background);display:flex;flex-direction:column;align-items:center;gap:14px;padding-top:46px;border-right:1px solid var(--divider-color)}
 .workspace-ribbon i{width:18px;height:18px;border-radius:5px;background:var(--icon-color);opacity:.35}
-.workspace-split.mod-left-split{width:250px;background:var(--background-secondary);border-right:1px solid var(--divider-color);display:flex;flex-direction:column}
+.workspace-split.mod-left-split{position:relative;width:250px;background:var(--background-secondary);display:flex;flex-direction:column}
+/* Obsidian draws the sidebar divider with the resize handle on the split's inner edge. */
+.workspace-leaf-resize-handle{position:absolute;top:0;bottom:0;right:0;width:3px;border-right:1px solid var(--divider-color)}
 .mod-left-split>.workspace-tabs{flex:1;display:flex;flex-direction:column;min-height:0}
 .workspace-split.mod-root{flex:1;display:flex;flex-direction:column;min-width:0}
-.workspace-tab-header-container{display:flex;gap:4px;height:42px;align-items:flex-end;padding:0 10px 6px;background:var(--tab-container-background)}
-.workspace-tab-header{display:flex;align-items:center;height:30px;padding:0 14px;border-radius:var(--tab-radius);color:var(--tab-text-color)}
+/* Approximates Obsidian's own header sizing: the inner row sits 6px down and tabs stretch to fill it. */
+.workspace-tab-header-container{display:flex;height:40px;background:var(--tab-container-background)}
+.workspace-tab-header-container-inner{display:flex;flex:1;gap:4px;margin-top:6px;padding:0 10px}
+.workspace-tab-header{display:flex;align-items:center;padding:0 14px;border-radius:var(--tab-radius) var(--tab-radius) 0 0;color:var(--tab-text-color)}
+.mod-left-split .workspace-tab-header-container{padding-left:76px;align-items:center;gap:14px}.mod-left-split .workspace-tab-header-container i{width:18px;height:18px;border-radius:5px;background:var(--icon-color);opacity:.35}
+.traffic{position:fixed;left:12px;top:13px;display:flex;gap:8px;z-index:9}.traffic i{width:12px;height:12px;border-radius:50%;background:#ed6a5e}.traffic i+i{background:#f5bf4f}.traffic i+i+i{background:#61c554}
 .workspace-tab-header.is-active{background:var(--tab-background-active);color:var(--tab-text-color-focused-active)}
 .workspace-tab-container{flex:1;display:flex;min-height:0}
 .workspace-leaf-content{flex:1;display:flex;flex-direction:column;min-width:0}
@@ -77,8 +83,8 @@ const note=`<div class="inline-title">Attention 机制与梯度推导</div>
 <div class="callout" data-callout="abstract"><div class="callout-title">≡ 摘要</div><div class="callout-content"><p>缩放 + 温度带来约 2.6 个点的 MRR 提升，延迟几乎不变。</p></div></div>`;
 const html=`<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:"><title>主题外框 · 静态示例</title><style>${HOST}\n${snippet}</style></head>
 <body class="theme-light"><div class="app-container workspace"><div class="workspace-ribbon mod-left"><i></i><i></i><i></i><i></i></div>
-<div class="workspace-split mod-horizontal mod-sidedock mod-left-split"><div class="workspace-tabs"><div class="workspace-tab-header-container"></div><div class="workspace-leaf-content" data-type="file-explorer"><div class="nav-header"><span class="nav-action-button"></span><span class="nav-action-button"></span><span class="nav-action-button"></span></div><div class="nav-files-container">${files}</div></div></div></div>
-<div class="workspace-split mod-vertical mod-root"><div class="workspace-tabs"><div class="workspace-tab-header-container"><div class="workspace-tab-header"><div class="workspace-tab-header-inner"><div class="workspace-tab-header-inner-title">知识脉冲</div></div></div><div class="workspace-tab-header is-active"><div class="workspace-tab-header-inner"><div class="workspace-tab-header-inner-title">Attention 机制与梯度推导</div></div></div></div></div>
+<div class="traffic"><i></i><i></i><i></i></div><div class="workspace-split mod-horizontal mod-sidedock mod-left-split"><div class="workspace-tabs"><div class="workspace-tab-header-container"><i></i><i></i><i></i></div><div class="workspace-tab-container"><div class="workspace-leaf-content" data-type="file-explorer"><div class="nav-header"><span class="nav-action-button"></span><span class="nav-action-button"></span><span class="nav-action-button"></span></div><div class="nav-files-container">${files}</div></div></div></div><div class="workspace-leaf-resize-handle"></div></div>
+<div class="workspace-split mod-vertical mod-root"><div class="workspace-tabs"><div class="workspace-tab-header-container"><div class="workspace-tab-header-container-inner"><div class="workspace-tab-header"><div class="workspace-tab-header-inner"><div class="workspace-tab-header-inner-title">知识脉冲</div></div></div><div class="workspace-tab-header is-active"><div class="workspace-tab-header-inner"><div class="workspace-tab-header-inner-title">Attention 机制与梯度推导</div></div></div></div></div></div>
 <div class="workspace-tab-container"><div class="workspace-leaf-content" data-type="markdown"><div class="view-header"><div class="view-header-title">研究 / Attention 机制与梯度推导</div></div><div class="view-content"><div class="markdown-preview-view markdown-rendered"><div class="markdown-preview-sizer">${note}</div></div></div></div></div></div>
 </div><div class="menu"><div class="menu-item">在新标签页打开</div><div class="menu-item selected">在右侧打开</div><div class="menu-separator"></div><div class="menu-item">复制链接</div><div class="menu-item">重命名…</div></div><div class="status-bar">1,286 字 · 编辑 74 分钟</div></body></html>`;
 if(/<script\b/i.test(html))throw Error('Static preview unexpectedly contains a script');
