@@ -43,7 +43,13 @@ const iconPaths={
   'calendar-days':'M4 5h16v16H4z M4 10h16 M8 3v4 M16 3v4 M8 14h.01 M12 14h.01 M16 14h.01 M8 18h.01 M12 18h.01',
   history:'M3 12a9 9 0 1 0 3-6.7L3 8 M3 3v5h5 M12 7v5l4 2',
   table:'M3 4h18v16H3z M3 10h18 M3 15h18 M9 4v16',
-  'chevron-down':'M6 9l6 6 6-6'
+  'chevron-down':'M6 9l6 6 6-6',
+  sparkles:'M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z M19 3v4 M17 5h4 M5 17v4 M3 19h4',
+  'pen-line':'M12 20h9 M16.4 3.6a2 2 0 0 1 2.9 2.9L7 18.8 3 20l1.2-4z',
+  clock:'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z M12 7v5l3 2',
+  sun:'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z M12 2v2 M12 20v2 M4.9 4.9l1.4 1.4 M17.7 17.7l1.4 1.4 M2 12h2 M20 12h2 M4.9 19.1l1.4-1.4 M17.7 6.3l1.4-1.4',
+  'trending-up':'M22 7l-8.5 8.5-5-5L2 17 M16 7h6v6',
+  'calendar-range':'M4 5h16v16H4z M4 10h16 M8 3v4 M16 3v4 M8 14h3 M13 18h3'
 };
 function fixture(){
   const document={activeElement:null};document.createElement=tag=>new Element(tag,document);
@@ -58,7 +64,7 @@ function fixture(){
     const drawing=document.createElement('path');drawing.setAttribute('d',iconPaths[name]||iconPaths['file-text']);svg.appendChild(drawing);node.appendChild(svg);
   }};
   const module={exports:{}};
-  vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../../src/features/workbench.js'),'utf8'),{module,require:name=>{if(name==='obsidian')return obsidian;if(name==='../core')return Core;throw Error('Disallowed import: '+name);},Intl,Date});
+  vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../../src/features/workbench.js'),'utf8'),{module,require:name=>{if(name==='obsidian')return obsidian;if(name==='../core')return Core;if(name==='./dashboard-data')return require('../../src/features/dashboard-data');throw Error('Disallowed import: '+name);},Intl,Date});
   const data=Core.emptyData(now);data.started=Core.dayKey(Core.shiftDay(now,-180));
   data.days[Core.dayKey(now)]={characters:1286,files:{[files[0].path]:846,[files[1].path]:440}};
   const plugin={data,saveError:false,changes:0,changed(){this.changes++;},setPalette(id){this.data.settings.palette=id;this.changed();},setStyle(id){this.data.settings.style=id;this.changed();},folderNotes:{getFolder:()=>null,createNote:async()=>{}}};

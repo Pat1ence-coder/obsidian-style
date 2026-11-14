@@ -104,7 +104,7 @@ test('each metric owns a companion hue shared by its tab, dot and heatmap card',
   const f=fixture();f.view.render();
   const pulse=f.content.querySelector('.aw-card-pulse');assert.equal(pulse.style.values['--aw-hue'],'var(--ds-tone-accent)');
   const dots=f.content.querySelector('.aw-card-overview').querySelectorAll('.aw-dot').map(d=>d.style.values['--aw-hue']);
-  assert.deepEqual(dots,['var(--ds-tone-accent)','var(--ds-tone-1)','var(--ds-tone-2)','var(--ds-tone-3)']);
+  assert.deepEqual(dots,['var(--ds-tone-accent)','var(--ds-tone-4)','var(--ds-tone-2)','var(--ds-tone-3)']);
   await f.content.querySelector('[data-aw-focus="metric-tasks"]').click();
   assert.equal(f.content.querySelector('.aw-card-pulse').style.values['--aw-hue'],'var(--ds-tone-5)');
   assert.ok(f.content.querySelector('.aw-ambient'),'ambient light layer sits behind the glass cards');
@@ -178,4 +178,33 @@ test('style chip switches the interface style through the plugin',async()=>{
   assert.match(chip.textContent,/悬浮卡片/);
   await chip.click();assert.equal(f.plugin.data.settings.style,'glass');
   f.view.render();assert.match(f.content.querySelector('[data-aw-focus="style"]').textContent,/通透玻璃/);
+});
+test('glass style lays the board out as a bento grid with KPI, today, trend and monthly modules',()=>{
+  const f=fixture();f.plugin.data.settings.style='glass';f.view.render();
+  assert.ok(f.content.querySelector('.aw-bento'));assert.equal(f.content.querySelector('.aw-stack'),null);
+  assert.deepEqual(cards(f),['aw-card-today','aw-card-trend','aw-card-pulse','aw-card-day','aw-card-months','aw-card-recent']);
+  const kpis=f.content.querySelectorAll('.aw-kpi');
+  assert.deepEqual(kpis.map(k=>k.style.values['--aw-hue']),['var(--ds-tone-accent)','var(--ds-tone-4)','var(--ds-tone-2)']);
+  assert.ok(kpis.every(k=>k.querySelector('.aw-kpi-glow')&&k.querySelector('.aw-kpi-value')));
+  assert.equal(kpis[1].querySelector('strong').textContent,'1,286');
+  assert.equal(f.content.querySelector('.aw-card-today').querySelector('.aw-badge').textContent,'12.9 分');
+  assert.equal(f.content.querySelectorAll('.aw-progress').length,2);
+  const svg=f.content.querySelector('.aw-trend-plot').querySelector('svg');
+  assert.match(svg.getAttribute('aria-label'),/最近 90 天每日贡献分，峰值 12\.9 分/);
+  assert.equal(f.content.querySelectorAll('.aw-trend-hit').length,0,'hit groups carry classes as attributes');
+  assert.equal(svg.querySelectorAll('rect').length,91,'90 hover areas plus one column for the single active day');
+  const bars=f.content.querySelectorAll('.aw-bar-col');assert.equal(bars.length,6);
+  assert.ok(bars.at(-1).className.includes('is-current'));
+  assert.equal(f.content.querySelector('.aw-card-months').querySelector('.aw-badge').textContent,'本月 1 天活跃');
+});
+test('bento modules redraw in place when today changes, and the card style keeps the stack',()=>{
+  const f=fixture();f.plugin.data.settings.style='glass';f.view.render();
+  const today=f.content.querySelector('.aw-card-today'),kpi=f.content.querySelectorAll('.aw-kpi')[1].querySelector('strong');
+  f.plugin.data.days[Object.keys(f.plugin.data.days).sort().at(-1)].characters=2000;
+  f.view.refresh();
+  assert.equal(f.content.querySelector('.aw-card-today'),today,'no full render');
+  assert.equal(today.querySelector('.aw-badge').textContent,'20 分');assert.equal(kpi.textContent,'2,000');
+  assert.match(f.content.querySelector('.aw-trend-plot').querySelector('svg').getAttribute('aria-label'),/今天 20 分/);
+  f.plugin.data.settings.style='card';f.view.render();
+  assert.ok(f.content.querySelector('.aw-stack'));assert.equal(f.content.querySelectorAll('.aw-kpi').length,0);
 });

@@ -452,9 +452,9 @@ body.theme-dark.aw-palette-celadon .workspace-leaf-content[data-type="algorithm-
 
 /* Source: src/styles/workbench-glass.css */
 /* Glass style dashboard (body.aw-style-glass): a light, mostly white workbench with only a
-   hint of sky; the hero banner gives way to a segmented control; cards are white and the
-   overview figures become tiles that glow in their metric's hue. With many components on
-   screen, colour stays in the small accents. Light and dark set the same local properties. */
+   hint of sky; the hero banner gives way to a segmented control and the board becomes a bento
+   grid of white cards. Colour stays in the accents: KPI glows, one chart line, the current bar.
+   Light and dark set the same local properties. */
 body.aw-style-glass .aw-view {
   --aw-g-card: rgba(255,255,255,.88);
   --aw-g-panel: rgba(255,255,255,.97);
@@ -494,27 +494,139 @@ body.aw-style-glass .aw-view :is(.aw-chip,.aw-brand-mark) {border-color: var(--a
 body.aw-style-glass .aw-view .aw-card {border-color: var(--aw-g-edge);border-radius: 22px;background: var(--aw-g-card);box-shadow: inset 0 1px 0 var(--aw-g-rim), var(--aw-g-shadow);}
 body.aw-style-glass .aw-view .aw-panel {border-color: var(--aw-g-edge);background: var(--aw-g-panel);}
 
-/* Overview: each figure is its own tile with a soft glow of its metric colour. */
-body.aw-style-glass .aw-view .aw-card-overview .aw-panel {padding: 4px 10px 10px;border: 0;background: transparent;box-shadow: none;}
-body.aw-style-glass .aw-view .aw-card-overview .aw-stats {gap: 14px;}
-body.aw-style-glass .aw-view .aw-card-overview .aw-stat {
+/* Bento board (only rendered in this style): KPI cards, today, trend, pulse, day, months, recent. */
+.aw-view .aw-bento {display: grid;grid-template-columns: repeat(12,minmax(0,1fr));gap: 18px;margin-top: 26px;align-items: stretch;}
+.aw-view .aw-bento > * {grid-column: span 12;min-width: 0;}
+.aw-view .aw-bento > .aw-kpi,.aw-view .aw-bento > .aw-card-today {grid-column: span 4;}
+.aw-view .aw-bento > .aw-card-trend {grid-column: span 8;}
+.aw-view .aw-bento > .aw-day-slot {grid-column: span 7;display: flex;}
+.aw-view .aw-bento > .aw-card-months {grid-column: span 5;}
+.aw-view .aw-bento .aw-card {display: flex;flex-direction: column;}
+.aw-view .aw-bento .aw-day-slot > .aw-card {flex: 1;}
+.aw-view .aw-bento .aw-card > .aw-panel {flex: 1;padding: 18px 20px;}
+.aw-view .aw-bento .aw-card-day .aw-stats {grid-template-columns: repeat(auto-fit,minmax(96px,1fr));}
+
+/* KPI: white card, a vivid blob of the metric colour bleeding in from one corner. */
+.aw-view .aw-kpi {
   position: relative;
-  padding: 16px 18px 18px;
+  isolation: isolate;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 168px;
+  padding: 18px 22px 18px;
+  box-sizing: border-box;
   border: 1px solid var(--aw-g-edge);
-  border-radius: 16px;
-  background: radial-gradient(180px 110px at 88% -16%, rgba(var(--aw-hue),.32), transparent 72%), var(--aw-g-panel);
-  box-shadow: inset 0 1px 0 var(--aw-g-rim), 0 12px 26px -16px rgba(var(--aw-hue),.45);
+  border-radius: 22px;
+  background: var(--aw-g-panel);
+  box-shadow: inset 0 1px 0 var(--aw-g-rim), var(--aw-g-shadow);
 }
-body.aw-style-glass .aw-view .aw-card-overview .aw-stat-value strong {font-size: 30px;}
+.aw-view .aw-kpi-glow {
+  position: absolute;
+  z-index: -1;
+  top: -70px;
+  right: -60px;
+  width: 230px;
+  height: 200px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(var(--aw-hue),.95), rgba(var(--aw-hue),.55) 45%, rgba(var(--aw-hue),0) 100%);
+  /* Theme tones are muted for text; the glow is pushed back to a vivid colour. */
+  filter: blur(18px) saturate(1.9);
+  opacity: .95;
+  pointer-events: none;
+}
+/* A second, smaller light offsets the blob, as on a lit surface. */
+.aw-view .aw-kpi-glow::after {content: "";position: absolute;left: -24px;bottom: 6px;width: 110px;height: 90px;border-radius: 50%;background: radial-gradient(closest-side, rgba(255,255,255,.75), rgba(255,255,255,0));}
+/* The title never truncates: on a narrow card the badge wraps to its own line instead. */
+.aw-view .aw-kpi-head {display: flex;flex-wrap: wrap;align-items: center;gap: 8px 10px;}
+.aw-view .aw-kpi-icon {display: inline-flex;align-items: center;justify-content: center;width: 32px;height: 32px;border-radius: 10px;flex-shrink: 0;color: rgb(var(--aw-hue));background: rgba(255,255,255,.9);box-shadow: 0 0 0 1px rgba(var(--ds-ink-rgb),.06), 0 4px 10px -4px rgba(var(--aw-hue),.5);}
+.aw-view .aw-kpi-icon svg {width: 17px;height: 17px;stroke-width: 1.9;}
+.aw-view .aw-kpi-label {flex: 1 0 auto;margin: 0;font-size: 14px;font-weight: 600;color: var(--ds-heading);white-space: nowrap;}
+.aw-view .aw-kpi .aw-badge {border: 0;border-radius: 999px;padding: 3px 10px;font-size: 12px;color: var(--ds-heading);background: rgba(255,255,255,.78);box-shadow: 0 0 0 1px rgba(var(--ds-ink-rgb),.06);-webkit-backdrop-filter: blur(8px);backdrop-filter: blur(8px);}
+.aw-view .aw-kpi-value {display: flex;align-items: baseline;gap: 8px;margin-top: auto;padding-top: 20px;white-space: nowrap;}
+.aw-view .aw-kpi-value strong {font-family: var(--ds-font-numeric);font-size: 38px;font-weight: 500;line-height: 1.05;letter-spacing: -.03em;font-variant-numeric: tabular-nums;color: var(--ds-heading);}
+.aw-view .aw-kpi-value .aw-unit {font-size: 13px;color: var(--ds-muted);}
+.aw-view .aw-kpi-foot {display: flex;align-items: baseline;gap: 6px;margin-top: 10px;padding-top: 10px;border-top: 1px dashed rgba(var(--ds-ink-rgb),.1);font-size: 12px;color: var(--ds-muted);}
+.aw-view .aw-kpi-foot strong {margin-left: auto;font-family: var(--ds-font-numeric);font-size: 14px;font-weight: 600;color: var(--ds-heading);font-variant-numeric: tabular-nums;}
+
+/* Today: two progress bars against the recent daily mean, small counts, one primary action. */
+.aw-view .aw-today {display: flex;flex-direction: column;gap: 16px;}
+.aw-view .aw-progress-top {display: flex;align-items: baseline;justify-content: space-between;gap: 8px;font-size: 13px;color: var(--ds-muted);}
+.aw-view .aw-progress-value strong {font-family: var(--ds-font-numeric);font-size: 18px;font-weight: 600;color: var(--ds-heading);font-variant-numeric: tabular-nums;}
+.aw-view .aw-progress-value .aw-unit {margin-left: 4px;font-size: 12px;}
+.aw-view .aw-progress {height: 8px;margin-top: 8px;border-radius: 999px;background: var(--aw-g-track);overflow: hidden;}
+.aw-view .aw-progress > i {display: block;width: calc(var(--aw-progress, 0) * 100%);min-width: 0;height: 100%;border-radius: inherit;background: linear-gradient(90deg, rgba(var(--aw-hue),.65), rgb(var(--aw-hue)));}
+.aw-view .aw-progress-note {margin-top: 6px;font-size: 11px;color: var(--ds-faint);font-variant-numeric: tabular-nums;}
+.aw-view .aw-today-foot {display: grid;grid-template-columns: repeat(3,minmax(0,1fr));gap: 8px;}
+.aw-view .aw-today-item {display: flex;flex-direction: column;gap: 2px;padding: 8px 10px;border-radius: 12px;background: var(--aw-g-track);font-size: 11px;color: var(--ds-muted);}
+.aw-view .aw-today-item strong {font-family: var(--ds-font-numeric);font-size: 16px;font-weight: 600;color: var(--ds-heading);font-variant-numeric: tabular-nums;}
+.aw-view .aw-primary {display: inline-flex;align-items: center;justify-content: center;gap: 6px;width: 100%;min-height: 38px;margin-top: 16px;border: 0;border-radius: 12px;color: #fff;font-size: 13px;font-weight: 600;cursor: pointer;background: linear-gradient(180deg, color-mix(in srgb, rgb(var(--ds-tone-accent)) 88%, #fff), rgb(var(--ds-tone-accent)));box-shadow: inset 0 1px 0 rgba(255,255,255,.3), 0 8px 18px -8px rgba(var(--ds-tone-accent),.8);}
+.aw-view .aw-primary .aw-chip-icon svg {color: #fff;}
+.aw-view .aw-primary:hover {filter: brightness(1.06);}
+.aw-view .aw-primary:focus-visible {outline: 2px solid rgb(var(--ds-tone-accent));outline-offset: 2px;}
+
+/* Trend: pale daily columns under one smooth 7-day mean line with a soft area; recessive grid. */
+.aw-view .aw-chart-legend {display: flex;gap: 18px;margin-bottom: 6px;font-size: 12px;color: var(--ds-muted);}
+.aw-view .aw-key {display: inline-flex;align-items: center;gap: 7px;}
+.aw-view .aw-key-line {display: inline-block;width: 16px;height: 0;border-top: 2px solid rgb(var(--aw-hue, var(--ds-tone-accent)));border-radius: 2px;}
+.aw-view .aw-key-bar {display: inline-block;width: 6px;height: 11px;border-radius: 2px 2px 1px 1px;background: rgba(var(--aw-hue, var(--ds-tone-accent)),.3);}
+.aw-view .aw-trend-plot {position: relative;}
+.aw-view .aw-trend {display: block;width: 100%;height: auto;overflow: visible;}
+.aw-view .aw-trend-grid line {stroke: rgba(var(--ds-ink-rgb),.07);stroke-width: 1;}
+.aw-view .aw-trend-grid text {fill: var(--ds-faint);font-family: var(--ds-font-numeric);font-size: 10px;}
+.aw-view .aw-trend-bars rect {fill: rgba(var(--aw-hue),.22);}
+.aw-view .aw-trend-area {fill: rgba(var(--aw-hue),.1);stroke: none;}
+.aw-view .aw-trend-line {fill: none;stroke: rgb(var(--aw-hue));stroke-width: 2;stroke-linecap: round;stroke-linejoin: round;}
+.aw-view .aw-trend-peak {fill: rgb(var(--aw-hue));stroke: var(--ds-paper);stroke-width: 2;}
+.aw-view .aw-trend-peak-label {fill: var(--ds-heading);font-family: var(--ds-font-numeric);font-size: 11px;font-weight: 600;}
+.aw-view .aw-trend-hit rect {fill: transparent;}
+.aw-view .aw-trend-hit :is(line,circle) {opacity: 0;pointer-events: none;}
+.aw-view .aw-trend-hit line {stroke: rgba(var(--ds-ink-rgb),.25);stroke-width: 1;}
+.aw-view .aw-trend-hit circle {fill: var(--ds-paper);stroke: rgb(var(--aw-hue));stroke-width: 2;}
+.aw-view .aw-trend-hit:hover :is(line,circle) {opacity: 1;}
+.aw-view .aw-tip {position: absolute;top: 0;left: calc(var(--aw-x, 0) * 100%);transform: translate(-50%, -6px);display: none;flex-direction: column;gap: 2px;padding: 7px 10px;border-radius: 10px;background: var(--aw-g-panel);box-shadow: 0 0 0 1px var(--aw-g-edge), 0 10px 24px -10px rgba(var(--ds-ink-rgb),.35);font-size: 12px;color: var(--ds-text);white-space: nowrap;pointer-events: none;}
+.aw-view .aw-tip.is-shown {display: flex;}
+.aw-view .aw-tip-date {font-family: var(--ds-font-numeric);font-size: 11px;color: var(--ds-muted);}
+.aw-view .aw-tip-row {display: inline-flex;align-items: center;gap: 6px;font-variant-numeric: tabular-nums;}
+
+/* Months: striped bars (texture at 135°); this month is solid with light stripes. */
+.aw-view .aw-bars {display: flex;align-items: stretch;gap: 10px;height: 190px;}
+.aw-view .aw-bar-col {flex: 1;min-width: 0;display: flex;flex-direction: column;align-items: center;gap: 6px;}
+.aw-view .aw-bar-value {font-family: var(--ds-font-numeric);font-size: 11px;color: var(--ds-muted);font-variant-numeric: tabular-nums;white-space: nowrap;}
+.aw-view .aw-bar-track {flex: 1;width: 100%;max-width: 44px;display: flex;align-items: flex-end;}
+.aw-view .aw-bar-fill {display: block;width: 100%;height: max(6px, calc(var(--aw-bar, 0) * 100%));border-radius: 10px 10px 4px 4px;background: repeating-linear-gradient(135deg, rgba(var(--aw-hue),.32) 0 5px, rgba(var(--aw-hue),.12) 5px 10px);box-shadow: inset 0 0 0 1px rgba(var(--aw-hue),.2);}
+.aw-view .aw-bar-fill.is-empty {background: var(--aw-g-track);box-shadow: none;}
+.aw-view .is-current .aw-bar-fill:not(.is-empty) {background: repeating-linear-gradient(135deg, rgba(255,255,255,.22) 0 5px, rgba(255,255,255,0) 5px 10px), rgb(var(--aw-hue));box-shadow: 0 10px 20px -10px rgba(var(--aw-hue),.9);}
+.aw-view .is-current .aw-bar-value {padding: 1px 8px;border-radius: 999px;color: #fff;background: var(--ds-heading);}
+.aw-view .aw-bar-label {font-size: 12px;color: var(--ds-muted);}
+.aw-view .is-current .aw-bar-label {color: var(--ds-heading);font-weight: 600;}
+.aw-view .aw-bars-note {margin: 14px 0 0;font-size: 12px;color: var(--ds-faint);text-align: center;}
+
+body.theme-dark.aw-style-glass .aw-view .aw-kpi-glow {opacity: .55;}
+body.theme-dark.aw-style-glass .aw-view .aw-kpi-glow::after {background: none;}
+body.theme-dark.aw-style-glass .aw-view :is(.aw-kpi-icon,.aw-kpi .aw-badge) {background: rgba(255,255,255,.08);}
+body.theme-dark.aw-style-glass .aw-view .is-current .aw-bar-value {color: var(--ds-bg);}
+/* Dark tones are light, so the primary button takes dark text. */
+body.theme-dark.aw-style-glass .aw-view .aw-primary,body.theme-dark.aw-style-glass .aw-view .aw-primary .aw-chip-icon svg {color: #10151d;}
+
+@container aw (max-width:960px) {
+  .aw-view .aw-bento > :is(.aw-card-today,.aw-card-trend,.aw-day-slot,.aw-card-months) {grid-column: span 12;}
+}
+@container aw (max-width:640px) {
+  .aw-view .aw-bento {gap: 14px;}
+  .aw-view .aw-bento > .aw-kpi {grid-column: span 12;min-height: 0;}
+}
 
 @supports ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))) {
   body.aw-style-glass .aw-view .aw-card {-webkit-backdrop-filter: blur(30px) saturate(160%);backdrop-filter: blur(30px) saturate(160%);}
 }
 @media (prefers-reduced-transparency:reduce), (forced-colors:active) {
   body.aw-style-glass .aw-view :is(.aw-card,.aw-tabs,.aw-chip) {-webkit-backdrop-filter: none;backdrop-filter: none;background: var(--ds-glass-solid);}
+  .aw-view .aw-kpi-glow {filter: none;opacity: .35;}
 }
 @media print {
-  body.aw-style-glass .aw-view :is(.aw-card,.aw-panel,.aw-stat,.aw-tabs) {-webkit-backdrop-filter: none;backdrop-filter: none;box-shadow: none;background: #fff;}
+  .aw-view .aw-kpi-glow,.aw-view .aw-tip {display: none;}
+  body.aw-style-glass .aw-view :is(.aw-card,.aw-panel,.aw-kpi,.aw-tabs) {-webkit-backdrop-filter: none;backdrop-filter: none;box-shadow: none;background: #fff;}
 }
 
 /* Source: src/styles/figure-tools.css */

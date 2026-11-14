@@ -14,7 +14,7 @@
 - figure-tools.css：文档内插图悬停工具条、调整宽度手柄和排序手柄（插件样式，打印时隐藏）。
 - blocks.css：批注与 [!diagram] 图解，两种界面风格通用。
 - glass.css：通透玻璃风格（body.aw-style-glass），仅作用于屏幕。
-- workbench-glass.css：通透玻璃风格下的看板（插件样式）。
+- workbench-glass.css：通透玻璃风格下的看板，含便当格布局、指标卡光斑、趋势图与月度柱（插件样式）。
 - reading-tools.css：滚动刻度尺与角落装饰图（插件样式，仅通透玻璃风格显示）。
 
 scripts/build.js 输出两个样式文件：dist/snippets/style.css 管理文档；dist/algorithm-workbench/styles.css 只管理工作台与弹窗。两者共享同一份 tokens.css。figure 样式因此在文档样式启用时无需插件运行也能使用。
