@@ -17,7 +17,7 @@ function fixture() {
     async saveData(data){this.saved.push(data);}
     registerView(type,create){this.makeView=create;}
     addRibbonIcon(){} addCommand(command){(this.commands??={})[command.id]=command;} addSettingTab(){}
-    registerEditorExtension(ext){this.extension=ext;} registerEvent(){} registerInterval(){}
+    registerEditorExtension(ext){(this.extensions??=[]).push(ext);if(typeof ext==='function')this.extension??=ext;} registerEvent(){} registerInterval(){}
     registerMarkdownPostProcessor(fn){(this.postProcessors??=[]).push(fn);}
   }
   class TFile {constructor(path){this.path=path;this.extension='md';}}
@@ -27,12 +27,12 @@ function fixture() {
     onLayoutReady(fn){(this.readyFns??=[]).push(fn);this.ready=()=>this.readyFns.forEach(f=>f());},getLeavesOfType(){return [];},detachLeavesOfType(){this.detached=true;}};
   const mod={exports:{}};
   const context={module:mod,require:name=>{
-    if(name==='obsidian')return {Plugin,Component,TFile,TFolder:class{},Platform:{isMacOS:true},Modal:class{},FuzzySuggestModal:class{},ItemView:class{},PluginSettingTab:class{},Setting:class{},Notice:class{constructor(text){notices.push(text);}},setIcon(){},editorInfoField:'info'};
-    if(name==='@codemirror/view')return {EditorView:{updateListener:{of:fn=>fn}}};
+    if(name==='obsidian')return {Plugin,Component,TFile,TFolder:class{},Platform:{isMacOS:true},Modal:class{},FuzzySuggestModal:class{},ItemView:class{},PluginSettingTab:class{},Setting:class{},Notice:class{constructor(text){notices.push(text);}},setIcon(){},MarkdownView:class{},editorInfoField:'info'};
+    if(name==='@codemirror/view')return {EditorView:{updateListener:{of:fn=>fn}},ViewPlugin:{fromClass:(cls,spec)=>({cls,spec})},Decoration:{none:[],set:list=>list,mark:spec=>({spec,range:(from,to)=>({from,to,spec})}),replace:spec=>({spec,range:(from,to)=>({from,to,spec})})},WidgetType:class{}};
     throw Error(name);
   },window:{setInterval:()=>1},setTimeout:fn=>{timers.set(++timerId,fn);return timerId;},clearTimeout:id=>timers.delete(id),console,Intl,Date};
   vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../dist/algorithm-workbench/main.js'),'utf8'),context);
-  const plugin=new mod.exports();plugin.saved=[];plugin.app={workspace,vault:{on:(name,fn)=>{(handlers[name]??=[]).push(fn);return {};}}};
+  const plugin=new mod.exports();plugin.saved=[];plugin.app={workspace,vault:{getAbstractFileByPath:()=>null,on:(name,fn)=>{(handlers[name]??=[]).push(fn);return {};}}};
   const docs=new Map();
   const doc=text=>{
     if(!docs.has(text))docs.set(text,{length:text.length,scans:0,toString(){this.scans++;return text;},sliceString:(a,b)=>text.slice(a,b),
@@ -170,7 +170,7 @@ test('new notes count only after the vault finishes loading, outside excluded fo
 test('palette is a body class: applied on load, switched in place, cycled by command, removed on unload',async()=>{
   const {plugin,classes,notices}=fixture();plugin.initialData={...Core.emptyData(),settings:{...Core.DEFAULT_SETTINGS,palette:'celadon'}};
   await plugin.onload();
-  assert.deepEqual([...classes].sort(),['aw-caption-normal','aw-palette-celadon','theme-light']);
+  assert.deepEqual([...classes].sort(),['aw-caption-normal','aw-palette-celadon','aw-style-card','theme-light']);
   plugin.setPalette('sand');assert.ok(classes.has('aw-palette-sand'));assert.ok(!classes.has('aw-palette-celadon'));
   plugin.setPalette('neon');assert.equal(plugin.data.settings.palette,'sand');
   plugin.commands['cycle-palette'].callback();assert.equal(plugin.data.settings.palette,'celadon');assert.match(notices.at(-1),/青瓷/);
@@ -187,18 +187,29 @@ test('popout windows already open, or restored with the layout, follow the palet
   leaves.push({view:{containerEl:{ownerDocument:restored}}});workspace.ready();
   assert.ok(restored.classes.has('aw-palette-sea'),'popouts restored with the layout are covered');
   plugin.setPalette('sand');
-  for(const doc of [existing,restored])assert.deepEqual([...doc.classes].sort(),['aw-caption-normal','aw-palette-sand','theme-light']);
+  for(const doc of [existing,restored])assert.deepEqual([...doc.classes].sort(),['aw-caption-normal','aw-palette-sand','aw-style-card','theme-light']);
   plugin.onunload();for(const doc of [existing,restored])assert.deepEqual([...doc.classes],['theme-light']);
   await plugin.saveQueue;
 });
 
 test('caption size and figure tools are body classes that follow settings and leave on unload',async()=>{
   const {plugin,classes}=fixture();await plugin.onload();
-  assert.equal(plugin.postProcessors.length,1,'caption labels are marked by a post processor');
+  assert.equal(plugin.postProcessors.length,2,'caption labels and annotations each use a post processor');
   plugin.setCaptionSize('large');assert.ok(classes.has('aw-caption-large'));assert.ok(!classes.has('aw-caption-normal'));
   plugin.setCaptionSize('huge');assert.equal(plugin.data.settings.captionSize,'large');
   plugin.data.settings.figureTools=false;plugin.applyAppearanceEverywhere();assert.ok(classes.has('aw-figure-tools-off'));
   plugin.data.settings.figureTools=true;plugin.applyAppearanceEverywhere();assert.ok(!classes.has('aw-figure-tools-off'));
   await plugin.flush();assert.equal(plugin.saved.at(-1).settings.captionSize,'large');
+  plugin.onunload();assert.deepEqual([...classes],['theme-light']);await plugin.saveQueue;
+});
+
+test('interface style is a body class, cycled by command and kept when other appearance changes',async()=>{
+  const {plugin,classes,notices}=fixture();await plugin.onload();
+  assert.ok(classes.has('aw-style-card'));
+  plugin.commands['cycle-style'].callback();assert.equal(plugin.data.settings.style,'glass');assert.match(notices.at(-1),/通透玻璃/);
+  assert.ok(classes.has('aw-style-glass'));assert.ok(!classes.has('aw-style-card'));
+  plugin.setPalette('sand');assert.ok(classes.has('aw-style-glass'));
+  plugin.setStyle('neon');assert.equal(plugin.data.settings.style,'glass');
+  await plugin.flush();assert.equal(plugin.saved.at(-1).settings.style,'glass');
   plugin.onunload();assert.deepEqual([...classes],['theme-light']);await plugin.saveQueue;
 });

@@ -1,0 +1,97 @@
+/* Glass style ("通透玻璃", body.aw-style-glass): the note is a sheet of frosted glass over a
+   pale sky, set in a monospace face with warm orange accents. Screen only, so print and PDF
+   keep the shared academic contract in print.css. Light and dark blocks set the same names. */
+@media screen {
+  body.aw-style-glass {
+    --aw-warm: 204,110,48;
+    --aw-glass-note: rgba(255,255,255,.8);
+    --aw-glass-note-edge: rgba(255,255,255,.9);
+    --aw-glass-tab: #ffffff;
+    --aw-glass-table: rgba(255,255,255,.5);
+    --aw-glass-table-head: rgba(var(--ds-tone-neutral),.06);
+    --aw-image-card: #ffffff;
+    --ds-wallpaper-veil: rgba(246,248,251,.74);
+    --ds-font-body: "Maple Mono NF CN", "Maple Mono", "Sarasa Mono SC", "LXGW WenKai Mono", "JetBrains Mono", "SF Mono", Menlo, "PingFang SC", "Microsoft YaHei", monospace;
+    --ds-font-heading: var(--ds-font-body);
+    --font-interface: var(--ds-font-body);
+    --ds-body-leading: 1.85;
+    --link-color: rgb(var(--aw-warm));
+    --link-color-hover: color-mix(in srgb, rgb(var(--aw-warm)) 80%, #000);
+    --link-external-color: rgb(var(--aw-warm));
+    --link-external-color-hover: color-mix(in srgb, rgb(var(--aw-warm)) 80%, #000);
+    --text-highlight-bg: rgba(var(--aw-warm),.2);
+    --text-highlight-bg-active: rgba(var(--aw-warm),.34);
+  }
+  body.theme-dark.aw-style-glass {
+    --aw-warm: 238,154,98;
+    --aw-glass-note: rgba(24,26,31,.64);
+    --aw-glass-note-edge: rgba(255,255,255,.09);
+    --aw-glass-tab: rgba(52,54,60,.82);
+    --aw-glass-table: rgba(255,255,255,.035);
+    --aw-glass-table-head: rgba(255,255,255,.07);
+    --aw-image-card: rgba(255,255,255,.94);
+    --ds-wallpaper-veil: rgba(10,14,22,.64);
+    --link-color-hover: color-mix(in srgb, rgb(var(--aw-warm)) 80%, #fff);
+    --link-external-color-hover: color-mix(in srgb, rgb(var(--aw-warm)) 80%, #fff);
+  }
+
+  /* Window floor: the sky, barely veiled. Listed with the theme classes so it also beats the
+     translucent-window rule in shell.css. */
+  body.aw-style-glass:is(.theme-light,.theme-dark) .workspace {
+    background: linear-gradient(var(--ds-wallpaper-veil), var(--ds-wallpaper-veil)), var(--ds-wallpaper-sky, none) center / cover no-repeat, var(--ds-bg);
+  }
+  /* The note card becomes frosted glass; everything inside it that painted the page colour
+     now shows the glass instead. */
+  body.aw-style-glass .workspace-split.mod-root {--background-primary: transparent;}
+  body.aw-style-glass .workspace-split.mod-root .workspace-leaf-content {
+    border-color: var(--aw-glass-note-edge);
+    background: var(--ds-glass-solid);
+    box-shadow: inset 0 1px 0 var(--aw-glass-note-edge), 0 24px 56px -22px rgba(var(--ds-ink-rgb),.32);
+  }
+  body.aw-style-glass .workspace .mod-root .workspace-tab-header.is-active {background: var(--aw-glass-tab);}
+
+  /* Text: monospace, slightly open, with warm code and highlights. */
+  body.aw-style-glass :is(.markdown-preview-view,.markdown-source-view.mod-cm6) {letter-spacing: .01em;}
+  body.aw-style-glass .markdown-rendered :not(pre) > code,
+  body.aw-style-glass .markdown-source-view.mod-cm6 .cm-inline-code:not(.cm-formatting) {
+    color: rgb(var(--aw-warm));
+    background: rgba(var(--aw-warm),.1);
+    box-shadow: none;
+    border-radius: 4px;
+  }
+  body.aw-style-glass .markdown-rendered mark {padding: .05em .2em;border-radius: 3px;}
+  body.aw-style-glass .markdown-rendered pre {border-color: rgba(var(--ds-ink-rgb),.09);background: var(--aw-glass-table);box-shadow: inset 0 1px 0 var(--aw-glass-note-edge);}
+
+  /* Tables: one rounded glass slab with hairline rows (the three-line academia table stays). */
+  body.aw-style-glass :is(.markdown-rendered,.markdown-source-view):not(.academia) table {
+    border-collapse: separate;
+    border-spacing: 0;
+    border: 1px solid rgba(var(--ds-ink-rgb),.09);
+    border-radius: 14px;
+    overflow: hidden;
+    background: var(--aw-glass-table);
+    box-shadow: inset 0 1px 0 var(--aw-glass-note-edge);
+  }
+  body.aw-style-glass :is(.markdown-rendered,.markdown-source-view):not(.academia) table th {background: var(--aw-glass-table-head);color: var(--ds-heading);font-weight: 600;}
+  body.aw-style-glass :is(.markdown-rendered,.markdown-source-view):not(.academia) table :is(th,td) {border-bottom: 1px solid rgba(var(--ds-ink-rgb),.07);padding: 12px 16px;}
+
+  /* Images sit on white cards, so diagrams with transparent backgrounds stay legible. */
+  body.aw-style-glass :is(.markdown-rendered,.markdown-source-view) :is(.image-embed img,p > img) {
+    box-sizing: border-box;
+    padding: 12px;
+    border-radius: 14px;
+    background: var(--aw-image-card);
+    box-shadow: 0 1px 2px rgba(var(--ds-ink-rgb),.05), 0 14px 32px -16px rgba(var(--ds-ink-rgb),.3);
+  }
+}
+@supports ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))) {
+  @media screen {
+    body.aw-style-glass .workspace-split.mod-root .workspace-leaf-content {
+      background: var(--ds-glass-sheen), var(--aw-glass-note);
+      -webkit-backdrop-filter: blur(40px) saturate(165%);backdrop-filter: blur(40px) saturate(165%);
+    }
+  }
+}
+@media screen and (prefers-reduced-transparency:reduce), screen and (forced-colors:active) {
+  body.aw-style-glass .workspace-split.mod-root .workspace-leaf-content {-webkit-backdrop-filter: none;backdrop-filter: none;background: var(--ds-glass-solid);}
+}

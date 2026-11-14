@@ -156,3 +156,12 @@ test('caption size and figure tools settings default sensibly and reject bad val
   assert.equal(load({captionSize:'small'}).captionSize,'small');assert.equal(load({captionSize:'tiny'}).captionSize,'normal');
   assert.equal(load({figureTools:false}).figureTools,false);assert.equal(load({figureTools:'no'}).figureTools,true);
 });
+
+test('style, scroll ruler and decoration image settings validate and default to the card style',()=>{
+  const d=setup();assert.equal(d.settings.style,'card');assert.equal(d.settings.scrollRuler,true);assert.equal(d.settings.decorImage,'');
+  assert.deepEqual(C.STYLES.map(x=>x.id),['card','glass']);
+  const load=settings=>C.loadState({...JSON.parse(JSON.stringify(d)),settings},new Date(2026,9,12,12)).settings;
+  assert.equal(load({style:'glass'}).style,'glass');assert.equal(load({style:'neon'}).style,'card');
+  assert.equal(load({scrollRuler:false}).scrollRuler,false);assert.equal(load({scrollRuler:1}).scrollRuler,true);
+  assert.equal(load({decorImage:'  /assets/dog.png '}).decorImage,'assets/dog.png');assert.equal(load({decorImage:42}).decorImage,'');
+});

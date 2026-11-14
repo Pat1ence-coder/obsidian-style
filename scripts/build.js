@@ -45,12 +45,18 @@ const heroCSS='.aw-view .aw-backdrop, .aw-view .aw-ambient {background-image:url
 const wallpaper=fs.readFileSync(path.join(source,'assets/wallpaper.png'));
 if(!wallpaper.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])))throw Error('Wallpaper asset is not a PNG');
 if(wallpaper.length>16*1024)throw Error('Wallpaper asset should stay a small blurred field (< 16 KiB)');
-const wallpaperCSS='body {--ds-wallpaper:url("data:image/png;base64,'+wallpaper.toString('base64')+'");}\n';
+// The glass style's sky (same script): the document floor and the dashboard pane both use it.
+const sky=fs.readFileSync(path.join(source,'assets/sky.png'));
+if(!sky.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])))throw Error('Sky asset is not a PNG');
+if(sky.length>16*1024)throw Error('Sky asset should stay a small blurred field (< 16 KiB)');
+const skyURI='url("data:image/png;base64,'+sky.toString('base64')+'")';
+const wallpaperCSS='body {--ds-wallpaper:url("data:image/png;base64,'+wallpaper.toString('base64')+'");--ds-wallpaper-sky:'+skyURI+';}\n';
+const pluginSkyCSS=`${LEAF} {--aw-sky:${skyURI};}\n`;
 const pluginOut=path.join(root,'dist/algorithm-workbench'),snippetOut=path.join(root,'dist/snippets');
 fs.mkdirSync(pluginOut,{recursive:true});fs.mkdirSync(snippetOut,{recursive:true});
-fs.writeFileSync(path.join(pluginOut,'styles.css'),generated+pluginTokens+'\n'+heroCSS+cssParts(['materials','workbench','figure-tools']));
+fs.writeFileSync(path.join(pluginOut,'styles.css'),generated+pluginTokens+'\n'+heroCSS+pluginSkyCSS+cssParts(['materials','workbench','workbench-glass','figure-tools','reading-tools']));
 // Build only inside this repository; installation is a separate explicit action.
-fs.writeFileSync(path.join(snippetOut,'style.css'),generated+cssParts(['tokens'])+'\n'+wallpaperCSS+cssParts(['shell','typography','components','editor','figures','print']));
+fs.writeFileSync(path.join(snippetOut,'style.css'),generated+cssParts(['tokens'])+'\n'+wallpaperCSS+cssParts(['shell','typography','components','editor','figures','blocks','glass','print']));
 fs.writeFileSync(path.join(pluginOut,'main.js'),bundled);
 fs.copyFileSync(path.join(root,'manifest.json'),path.join(pluginOut,'manifest.json'));
 console.log(`Built ${modules.size} source modules and shared CSS into dist/`);

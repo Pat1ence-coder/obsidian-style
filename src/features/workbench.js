@@ -37,6 +37,7 @@ function card(parent,{name,iconName,title,sub,badge,hue='tone-accent'}){
 }
 function stat(parent,label,value,unit,cls='',hue){
   const item=el(parent,'div','aw-stat'+(cls?' '+cls:''));
+  if(hue)tint(item,hue);
   const caption=el(item,'span','aw-stat-label');
   if(hue)tint(el(caption,'i','aw-dot'),hue).setAttribute('aria-hidden','true');
   el(caption,'span','',label);
@@ -152,6 +153,9 @@ class WorkbenchView extends ItemView{
     const palette=button(tools,'','aw-chip aw-palette',event=>this.choosePalette(event));palette.dataset.awFocus='palette';
     el(palette,'span','aw-chip-key','配色:');el(palette,'span','',(Core.PALETTES.find(p=>p.id===settings.palette)||Core.PALETTES[0]).label);
     icon(palette,'chevron-down','aw-chip-icon');
+    const style=button(tools,'','aw-chip aw-style',event=>this.chooseStyle(event));style.dataset.awFocus='style';
+    el(style,'span','aw-chip-key','风格:');el(style,'span','',(Core.STYLES.find(x=>x.id===settings.style)||Core.STYLES[0]).label);
+    icon(style,'chevron-down','aw-chip-icon');
     const create=button(tools,'','aw-chip aw-new-note',()=>this.newNote());icon(create,'plus','aw-chip-icon');el(create,'span','','新建笔记');
     const folder=this.plugin.folderNotes?.getFolder();
     create.title=folder?`在 ${folder.path==='/'?'笔记库根目录':folder.path} 中新建`:'按 Obsidian 当前的新建笔记设置创建';
@@ -171,6 +175,13 @@ class WorkbenchView extends ItemView{
     if(typeof Menu!=='function'){choose(Core.PALETTES[(Core.PALETTES.findIndex(p=>p.id===current)+1)%Core.PALETTES.length].id);return;}
     const menu=new Menu();
     for(const p of Core.PALETTES)menu.addItem(item=>item.setTitle(p.label).setChecked(p.id===current).onClick(()=>choose(p.id)));
+    menu.showAtMouseEvent(event);
+  }
+  chooseStyle(event){
+    const current=this.plugin.data.settings.style,choose=id=>{if(id!==current)this.plugin.setStyle(id);};
+    if(typeof Menu!=='function'){choose(Core.STYLES[(Core.STYLES.findIndex(x=>x.id===current)+1)%Core.STYLES.length].id);return;}
+    const menu=new Menu();
+    for(const x of Core.STYLES)menu.addItem(item=>item.setTitle(x.label).setChecked(x.id===current).onClick(()=>choose(x.id)));
     menu.showAtMouseEvent(event);
   }
   renderOverview(stack){

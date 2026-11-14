@@ -7,7 +7,10 @@ const {FolderNotes}=require('./features/folder-notes');
 const {Figures}=require('./features/figures');
 const {ScreenshotNames}=require('./features/screenshot-names');
 const {FigureTools}=require('./features/figure-tools');
-const APPEARANCE=/^aw-(?:palette|caption)-|^aw-figure-tools-off$/;
+const {Annotations}=require('./features/annotations');
+const {ScrollRuler}=require('./features/scroll-ruler');
+const {Decor}=require('./features/decor');
+const APPEARANCE=/^aw-(?:palette|style|caption)-|^aw-figure-tools-off$/;
 
 class WorkbenchSettings extends PluginSettingTab {
   constructor(app,plugin){super(app,plugin);this.plugin=plugin;}
@@ -19,6 +22,10 @@ class WorkbenchSettings extends PluginSettingTab {
     this.plugin.screenshotNames.displaySettings(this.containerEl);
     this.plugin.figureTools.displaySettings(this.containerEl);
     this.containerEl.createEl('h3',{text:'外观'});
+    new Setting(this.containerEl).setName('界面风格').setDesc('悬浮卡片：白色笔记卡片浮在模糊海岸壁纸上。通透玻璃：天空壁纸上的半透明磨砂笔记区、等宽字体与暖橙色点缀。打印与 PDF 不受影响。').addDropdown(d=>{
+      for(const x of Core.STYLES)d.addOption(x.id,x.label);
+      d.setValue(s.style).onChange(v=>this.plugin.setStyle(v));
+    });
     new Setting(this.containerEl).setName('配色方案').setDesc('同时作用于知识脉冲看板和文档样式；浅色与深色模式各有对应版本。').addDropdown(d=>{
       for(const p of Core.PALETTES)d.addOption(p.id,p.label);
       d.setValue(s.palette).onChange(v=>this.plugin.setPalette(v));
@@ -27,6 +34,8 @@ class WorkbenchSettings extends PluginSettingTab {
       for(const c of Core.CAPTION_SIZES)d.addOption(c.id,c.label);
       d.setValue(s.captionSize).onChange(v=>this.plugin.setCaptionSize(v));
     });
+    this.plugin.scrollRuler.displaySettings(this.containerEl,Setting);
+    this.plugin.decor.displaySettings(this.containerEl,Setting);
     this.containerEl.createEl('h3',{text:'工作台与写作统计'});
     new Setting(this.containerEl).setName('启动时打开工作台').setDesc('在新标签页打开，保留原有笔记标签页。').addToggle(t=>t.setValue(s.openOnStartup).onChange(v=>{s.openOnStartup=v;this.plugin.changed();}));
     new Setting(this.containerEl).setName('记录写作量').setDesc('从启用后开始，仅统计本机编辑；关闭时不补记。').addToggle(t=>t.setValue(s.tracking).onChange(v=>{s.tracking=v;this.plugin.data.records={};this.plugin.changed();}));
@@ -50,12 +59,19 @@ class WorkbenchPlugin extends Plugin {
     this.figures=this.addChild(new Figures(this));
     this.figureTools=this.addChild(new FigureTools(this));
     this.screenshotNames=this.addChild(new ScreenshotNames(this));
+    this.annotations=this.addChild(new Annotations(this));
+    this.scrollRuler=this.addChild(new ScrollRuler(this));
+    this.decor=this.addChild(new Decor(this));
     this.registerView(VIEW,leaf=>new WorkbenchView(leaf,this));
     this.addRibbonIcon('activity','打开知识脉冲看板',()=>this.openWorkbench());
     this.addCommand({id:'open-workbench',name:'打开知识脉冲看板',callback:()=>this.openWorkbench()});
     this.addCommand({id:'cycle-palette',name:'切换配色方案',callback:()=>{
       const list=Core.PALETTES,next=list[(list.findIndex(p=>p.id===this.data.settings.palette)+1)%list.length];
       this.setPalette(next.id);new Notice(`配色方案：${next.label}`);
+    }});
+    this.addCommand({id:'cycle-style',name:'切换界面风格',callback:()=>{
+      const list=Core.STYLES,next=list[(list.findIndex(x=>x.id===this.data.settings.style)+1)%list.length];
+      this.setStyle(next.id);new Notice(`界面风格：${next.label}`);
     }});
     // Palette and caption size are body classes read by both stylesheets; popout windows get
     // them too. Windows already open (plugin re-enabled, restored layout) are found via leaves.
@@ -161,7 +177,7 @@ class WorkbenchPlugin extends Plugin {
   // Appearance settings are body classes read by both stylesheets.
   appearanceClasses(){
     const s=this.data.settings;
-    return ['aw-palette-'+s.palette,'aw-caption-'+s.captionSize].concat(s.figureTools?[]:['aw-figure-tools-off']);
+    return ['aw-palette-'+s.palette,'aw-style-'+s.style,'aw-caption-'+s.captionSize].concat(s.figureTools?[]:['aw-figure-tools-off']);
   }
   applyAppearance(doc){
     if(!doc?.body)return;
@@ -180,6 +196,13 @@ class WorkbenchPlugin extends Plugin {
     if(!Core.PALETTES.some(p=>p.id===id)||this.data.settings.palette===id)return;
     this.data.settings.palette=id;
     this.applyAppearanceEverywhere();
+    this.changed();
+  }
+  setStyle(id){
+    if(!Core.STYLES.some(x=>x.id===id)||this.data.settings.style===id)return;
+    this.data.settings.style=id;
+    this.applyAppearanceEverywhere();
+    this.scrollRuler?.sync();
     this.changed();
   }
   setCaptionSize(id){

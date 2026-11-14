@@ -9,7 +9,10 @@ const {FolderNotes}=__awRequire("features/folder-notes.js");
 const {Figures}=__awRequire("features/figures.js");
 const {ScreenshotNames}=__awRequire("features/screenshot-names.js");
 const {FigureTools}=__awRequire("features/figure-tools.js");
-const APPEARANCE=/^aw-(?:palette|caption)-|^aw-figure-tools-off$/;
+const {Annotations}=__awRequire("features/annotations.js");
+const {ScrollRuler}=__awRequire("features/scroll-ruler.js");
+const {Decor}=__awRequire("features/decor.js");
+const APPEARANCE=/^aw-(?:palette|style|caption)-|^aw-figure-tools-off$/;
 
 class WorkbenchSettings extends PluginSettingTab {
   constructor(app,plugin){super(app,plugin);this.plugin=plugin;}
@@ -21,6 +24,10 @@ class WorkbenchSettings extends PluginSettingTab {
     this.plugin.screenshotNames.displaySettings(this.containerEl);
     this.plugin.figureTools.displaySettings(this.containerEl);
     this.containerEl.createEl('h3',{text:'外观'});
+    new Setting(this.containerEl).setName('界面风格').setDesc('悬浮卡片：白色笔记卡片浮在模糊海岸壁纸上。通透玻璃：天空壁纸上的半透明磨砂笔记区、等宽字体与暖橙色点缀。打印与 PDF 不受影响。').addDropdown(d=>{
+      for(const x of Core.STYLES)d.addOption(x.id,x.label);
+      d.setValue(s.style).onChange(v=>this.plugin.setStyle(v));
+    });
     new Setting(this.containerEl).setName('配色方案').setDesc('同时作用于知识脉冲看板和文档样式；浅色与深色模式各有对应版本。').addDropdown(d=>{
       for(const p of Core.PALETTES)d.addOption(p.id,p.label);
       d.setValue(s.palette).onChange(v=>this.plugin.setPalette(v));
@@ -29,6 +36,8 @@ class WorkbenchSettings extends PluginSettingTab {
       for(const c of Core.CAPTION_SIZES)d.addOption(c.id,c.label);
       d.setValue(s.captionSize).onChange(v=>this.plugin.setCaptionSize(v));
     });
+    this.plugin.scrollRuler.displaySettings(this.containerEl,Setting);
+    this.plugin.decor.displaySettings(this.containerEl,Setting);
     this.containerEl.createEl('h3',{text:'工作台与写作统计'});
     new Setting(this.containerEl).setName('启动时打开工作台').setDesc('在新标签页打开，保留原有笔记标签页。').addToggle(t=>t.setValue(s.openOnStartup).onChange(v=>{s.openOnStartup=v;this.plugin.changed();}));
     new Setting(this.containerEl).setName('记录写作量').setDesc('从启用后开始，仅统计本机编辑；关闭时不补记。').addToggle(t=>t.setValue(s.tracking).onChange(v=>{s.tracking=v;this.plugin.data.records={};this.plugin.changed();}));
@@ -52,12 +61,19 @@ class WorkbenchPlugin extends Plugin {
     this.figures=this.addChild(new Figures(this));
     this.figureTools=this.addChild(new FigureTools(this));
     this.screenshotNames=this.addChild(new ScreenshotNames(this));
+    this.annotations=this.addChild(new Annotations(this));
+    this.scrollRuler=this.addChild(new ScrollRuler(this));
+    this.decor=this.addChild(new Decor(this));
     this.registerView(VIEW,leaf=>new WorkbenchView(leaf,this));
     this.addRibbonIcon('activity','打开知识脉冲看板',()=>this.openWorkbench());
     this.addCommand({id:'open-workbench',name:'打开知识脉冲看板',callback:()=>this.openWorkbench()});
     this.addCommand({id:'cycle-palette',name:'切换配色方案',callback:()=>{
       const list=Core.PALETTES,next=list[(list.findIndex(p=>p.id===this.data.settings.palette)+1)%list.length];
       this.setPalette(next.id);new Notice(`配色方案：${next.label}`);
+    }});
+    this.addCommand({id:'cycle-style',name:'切换界面风格',callback:()=>{
+      const list=Core.STYLES,next=list[(list.findIndex(x=>x.id===this.data.settings.style)+1)%list.length];
+      this.setStyle(next.id);new Notice(`界面风格：${next.label}`);
     }});
     // Palette and caption size are body classes read by both stylesheets; popout windows get
     // them too. Windows already open (plugin re-enabled, restored layout) are found via leaves.
@@ -163,7 +179,7 @@ class WorkbenchPlugin extends Plugin {
   // Appearance settings are body classes read by both stylesheets.
   appearanceClasses(){
     const s=this.data.settings;
-    return ['aw-palette-'+s.palette,'aw-caption-'+s.captionSize].concat(s.figureTools?[]:['aw-figure-tools-off']);
+    return ['aw-palette-'+s.palette,'aw-style-'+s.style,'aw-caption-'+s.captionSize].concat(s.figureTools?[]:['aw-figure-tools-off']);
   }
   applyAppearance(doc){
     if(!doc?.body)return;
@@ -184,6 +200,13 @@ class WorkbenchPlugin extends Plugin {
     this.applyAppearanceEverywhere();
     this.changed();
   }
+  setStyle(id){
+    if(!Core.STYLES.some(x=>x.id===id)||this.data.settings.style===id)return;
+    this.data.settings.style=id;
+    this.applyAppearanceEverywhere();
+    this.scrollRuler?.sync();
+    this.changed();
+  }
   setCaptionSize(id){
     if(!Core.CAPTION_SIZES.some(c=>c.id===id)||this.data.settings.captionSize===id)return;
     this.data.settings.captionSize=id;
@@ -200,10 +223,12 @@ module.exports=WorkbenchPlugin;
 },
 "core.js":(module,exports,__awRequire)=>{
 'use strict';
-const DEFAULT_SETTINGS = { nameScreenshots: true, folderNotes: true, openOnStartup: true, tracking: true, recentLimit: 8, range: 90, metric: 'score', palette: 'sea', captionSize: 'normal', figureTools: true, excludedFolders: ['Templates', 'templates'] };
+const DEFAULT_SETTINGS = { nameScreenshots: true, folderNotes: true, openOnStartup: true, tracking: true, recentLimit: 8, range: 90, metric: 'score', palette: 'sea', style: 'card', captionSize: 'normal', figureTools: true, scrollRuler: true, decorImage: '', excludedFolders: ['Templates', 'templates'] };
 const RANGES = [30, 90, 180, 365];
 // Colour palettes; each id maps to a body class aw-palette-<id> defined in tokens.css.
 const PALETTES = [{id:'sea', label:'海盐石墨'}, {id:'sand', label:'暖砂陶土'}, {id:'celadon', label:'青瓷'}];
+// Interface styles; body class aw-style-<id>. "glass" is screen-only (glass.css), print is shared.
+const STYLES = [{id:'card', label:'悬浮卡片'}, {id:'glass', label:'通透玻璃'}];
 // Figure and table caption sizes; body class aw-caption-<id>, defined in figures.css.
 const CAPTION_SIZES = [{id:'small', label:'小'}, {id:'normal', label:'标准'}, {id:'large', label:'大'}];
 // Score weights are documented in the dashboard; values are derived, never stored.
@@ -265,11 +290,13 @@ function loadState(raw, now = new Date()) {
   const d = emptyData(now); d.started = raw.started;
   if (raw.version === 2) d.activityStarted = raw.activityStarted;
   const s = raw.settings || {};
-  for (const name of ['openOnStartup', 'tracking', 'folderNotes', 'nameScreenshots', 'figureTools']) if (typeof s[name] === 'boolean') d.settings[name] = s[name];
+  for (const name of ['openOnStartup', 'tracking', 'folderNotes', 'nameScreenshots', 'figureTools', 'scrollRuler']) if (typeof s[name] === 'boolean') d.settings[name] = s[name];
   if (RANGES.includes(s.range)) d.settings.range = s.range;
   if (METRICS.some(m => m.key === s.metric)) d.settings.metric = s.metric;
   if (PALETTES.some(x => x.id === s.palette)) d.settings.palette = s.palette;
   if (CAPTION_SIZES.some(x => x.id === s.captionSize)) d.settings.captionSize = s.captionSize;
+  if (STYLES.some(x => x.id === s.style)) d.settings.style = s.style;
+  if (typeof s.decorImage === 'string') d.settings.decorImage = s.decorImage.trim().replace(/^\/+/, '').slice(0, 500);
   if (Number.isInteger(s.recentLimit)) d.settings.recentLimit = Math.min(30, Math.max(3,s.recentLimit));
   if (Array.isArray(s.excludedFolders)) d.settings.excludedFolders = s.excludedFolders.filter(x=>typeof x==='string').map(x=>x.trim().replace(/^\/+|\/+$/g,'')).filter(Boolean);
   for (const [date, value] of Object.entries(raw.days)) {
@@ -423,7 +450,7 @@ function calendarDays(now, weeks) {
   const start = shiftDay(monday,-7*(weeks-1));
   return Array.from({length:weeks*7},(_,i)=>dayKey(shiftDay(start,i)));
 }
-module.exports = {transactionCounts,pruneRecords,DEFAULT_SETTINGS,RANGES,METRICS,PALETTES,CAPTION_SIZES,dayKey,shiftDay,countCharacters,emptyData,loadState,isExcluded,recordChange,
+module.exports = {transactionCounts,pruneRecords,DEFAULT_SETTINGS,RANGES,METRICS,PALETTES,STYLES,CAPTION_SIZES,dayKey,shiftDay,countCharacters,emptyData,loadState,isExcluded,recordChange,
   recordActivity,taskDelta,recordTasks,recordNote,dayScore,metricValue,lastDays,summary,currentStreak,activeValues,intensity,percentile,renamePath,recentFiles,calendarDays};
 
 },
@@ -467,6 +494,7 @@ function card(parent,{name,iconName,title,sub,badge,hue='tone-accent'}){
 }
 function stat(parent,label,value,unit,cls='',hue){
   const item=el(parent,'div','aw-stat'+(cls?' '+cls:''));
+  if(hue)tint(item,hue);
   const caption=el(item,'span','aw-stat-label');
   if(hue)tint(el(caption,'i','aw-dot'),hue).setAttribute('aria-hidden','true');
   el(caption,'span','',label);
@@ -582,6 +610,9 @@ class WorkbenchView extends ItemView{
     const palette=button(tools,'','aw-chip aw-palette',event=>this.choosePalette(event));palette.dataset.awFocus='palette';
     el(palette,'span','aw-chip-key','配色:');el(palette,'span','',(Core.PALETTES.find(p=>p.id===settings.palette)||Core.PALETTES[0]).label);
     icon(palette,'chevron-down','aw-chip-icon');
+    const style=button(tools,'','aw-chip aw-style',event=>this.chooseStyle(event));style.dataset.awFocus='style';
+    el(style,'span','aw-chip-key','风格:');el(style,'span','',(Core.STYLES.find(x=>x.id===settings.style)||Core.STYLES[0]).label);
+    icon(style,'chevron-down','aw-chip-icon');
     const create=button(tools,'','aw-chip aw-new-note',()=>this.newNote());icon(create,'plus','aw-chip-icon');el(create,'span','','新建笔记');
     const folder=this.plugin.folderNotes?.getFolder();
     create.title=folder?`在 ${folder.path==='/'?'笔记库根目录':folder.path} 中新建`:'按 Obsidian 当前的新建笔记设置创建';
@@ -601,6 +632,13 @@ class WorkbenchView extends ItemView{
     if(typeof Menu!=='function'){choose(Core.PALETTES[(Core.PALETTES.findIndex(p=>p.id===current)+1)%Core.PALETTES.length].id);return;}
     const menu=new Menu();
     for(const p of Core.PALETTES)menu.addItem(item=>item.setTitle(p.label).setChecked(p.id===current).onClick(()=>choose(p.id)));
+    menu.showAtMouseEvent(event);
+  }
+  chooseStyle(event){
+    const current=this.plugin.data.settings.style,choose=id=>{if(id!==current)this.plugin.setStyle(id);};
+    if(typeof Menu!=='function'){choose(Core.STYLES[(Core.STYLES.findIndex(x=>x.id===current)+1)%Core.STYLES.length].id);return;}
+    const menu=new Menu();
+    for(const x of Core.STYLES)menu.addItem(item=>item.setTitle(x.label).setChecked(x.id===current).onClick(()=>choose(x.id)));
     menu.showAtMouseEvent(event);
   }
   renderOverview(stack){
@@ -1388,6 +1426,220 @@ function captionLabel(text) {
   return m?{label:m[1],rest:text.slice(m[0].length)}:null;
 }
 module.exports={findBlock,setWidth,setMeta,moveImage,captionLabel,imagesIn};
+
+},
+"features/annotations.js":(module,exports,__awRequire)=>{
+'use strict';
+const {Component,editorLivePreviewField}=require('obsidian');
+const {ViewPlugin,Decoration,WidgetType}=require('@codemirror/view');
+const {parseAnnotation,findAnnotations}=__awRequire("features/annotation-format.js");
+
+// "<--- note" in a handwriting face, placed after the highlighted text.
+function noteNode(doc,note){
+  const span=doc.createElement('span');span.className='aw-annot';span.title='批注：'+note;
+  const arrow=doc.createElement('span');arrow.className='aw-annot-arrow';arrow.textContent='<---';arrow.setAttribute('aria-hidden','true');
+  span.appendChild(arrow);span.appendChild(doc.createTextNode(note));
+  return span;
+}
+const livePreview=state=>!editorLivePreviewField||state.field(editorLivePreviewField,false)===true;
+
+// Live Preview: {note} becomes the handwritten widget unless the cursor is on the annotation,
+// in which case the source stays editable (as Obsidian does for its own formatting).
+function editorExtension(){
+  class NoteWidget extends WidgetType{
+    constructor(note){super();this.note=note;}
+    eq(other){return other.note===this.note;}
+    toDOM(view){return noteNode(view.dom.ownerDocument,this.note);}
+  }
+  const build=view=>{
+    if(!livePreview(view.state))return Decoration.none;
+    const doc=view.state.doc,ranges=view.state.selection.ranges,seen=new Map();
+    for(const {from,to} of view.visibleRanges){
+      // Whole lines, so a match is never cut at the viewport edge.
+      const start=doc.lineAt(from).from,end=doc.lineAt(to).to;
+      for(const a of findAnnotations(view.state.sliceDoc(start,end),start))seen.set(a.from,a);
+    }
+    const decorations=[...seen.values()].sort((a,b)=>a.from-b.from).map(a=>{
+      const editing=ranges.some(r=>r.from<=a.to&&r.to>=a.markFrom);
+      return (editing?Decoration.mark({class:'aw-annot-source'}):Decoration.replace({widget:new NoteWidget(a.note)})).range(a.from,a.to);
+    });
+    return Decoration.set(decorations);
+  };
+  return ViewPlugin.fromClass(class{
+    constructor(view){this.decorations=build(view);}
+    update(update){
+      if(update.docChanged||update.viewportChanged||update.selectionSet||livePreview(update.startState)!==livePreview(update.state))
+        this.decorations=build(update.view);
+    }
+  },{decorations:plugin=>plugin.decorations});
+}
+
+class Annotations extends Component{
+  constructor(plugin){super();this.plugin=plugin;}
+  onload(){
+    this.plugin.registerMarkdownPostProcessor(el=>this.process(el));
+    this.plugin.registerEditorExtension(editorExtension());
+  }
+  // Reading view: Obsidian renders ==text== as <mark>; the {note} is the text right after it.
+  process(el){
+    for(const mark of el.querySelectorAll('mark')){
+      const next=mark.nextSibling;
+      if(!next||next.nodeType!==3)continue;
+      const found=parseAnnotation(next.textContent);
+      if(!found)continue;
+      next.textContent=found.rest;
+      mark.parentNode.insertBefore(noteNode(el.ownerDocument,found.note),next);
+    }
+  }
+}
+module.exports={Annotations,noteNode};
+
+},
+"features/annotation-format.js":(module,exports,__awRequire)=>{
+'use strict';
+// Margin-style annotations: ==highlighted text=={note}. The note sits right after the closing
+// == with no space, on one line, up to 80 characters. Nothing here touches the DOM.
+const NOTE=/^\{([^{}\n]{1,80})\}/;
+const SOURCE=/==([^=\n]+)==\{([^{}\n]{1,80})\}/g;
+
+// Reading view: the text that follows a rendered <mark>.
+function parseAnnotation(text) {
+  const m=NOTE.exec(text||'');
+  if(!m||!m[1].trim())return null;
+  return {note:m[1].trim(),rest:text.slice(m[0].length)};
+}
+// Live Preview: offsets of every {note} in a stretch of source text.
+function findAnnotations(text, offset=0) {
+  const found=[];
+  for(const m of text.matchAll(SOURCE)){
+    if(!m[2].trim())continue;
+    const to=m.index+m[0].length,from=to-m[2].length-2;
+    found.push({markFrom:offset+m.index,from:offset+from,to:offset+to,note:m[2].trim()});
+  }
+  return found;
+}
+module.exports={parseAnnotation,findAnnotations};
+
+},
+"features/scroll-ruler.js":(module,exports,__awRequire)=>{
+'use strict';
+const {Component,MarkdownView}=require('obsidian');
+
+// Reading progress as a fraction, or null when the note does not scroll.
+function progressOf(top,height,client){
+  const range=height-client;
+  return range>4?Math.min(1,Math.max(0,top/range)):null;
+}
+function topFor(fraction,height,client){return Math.round(Math.min(1,Math.max(0,fraction))*Math.max(0,height-client));}
+
+// A thin tick ruler on the right of each note (glass style): a dot marks the reading position
+// with its fraction beside it; click or drag the ruler to jump.
+class ScrollRuler extends Component{
+  constructor(plugin){super();this.plugin=plugin;this.app=plugin.app;this.entries=new Map();}
+  onload(){
+    for(const event of ['layout-change','active-leaf-change','file-open','resize'])this.registerEvent(this.app.workspace.on(event,()=>this.sync()));
+    this.app.workspace.onLayoutReady(()=>this.sync());
+  }
+  onunload(){for(const view of [...this.entries.keys()])this.detach(view);}
+  enabled(){const s=this.plugin.data.settings;return s.scrollRuler!==false&&s.style==='glass';}
+  sync(){
+    const views=this.enabled()?this.app.workspace.getLeavesOfType('markdown').map(leaf=>leaf.view).filter(v=>v instanceof MarkdownView):[];
+    for(const view of [...this.entries.keys()])if(!views.includes(view)||!view.contentEl?.isConnected)this.detach(view);
+    for(const view of views){if(!this.entries.has(view))this.attach(view);this.update(view);}
+  }
+  attach(view){
+    const host=view.contentEl,doc=host.ownerDocument,owner=this.addChild(new Component());
+    const el=doc.createElement('div');el.className='aw-ruler';el.setAttribute('aria-hidden','true');
+    const knob=doc.createElement('div');knob.className='aw-ruler-knob';
+    const label=doc.createElement('span');label.className='aw-ruler-label';
+    knob.appendChild(label);el.appendChild(knob);host.appendChild(el);host.classList.add('aw-has-ruler');
+    const entry={owner,el,knob,label,frame:0};this.entries.set(view,entry);
+    // scroll does not bubble; capture it from whichever scroller the current mode uses.
+    owner.registerDomEvent(host,'scroll',()=>this.schedule(view),{capture:true});
+    owner.registerDomEvent(el,'pointerdown',event=>this.drag(view,event));
+  }
+  detach(view){
+    const entry=this.entries.get(view);if(!entry)return;
+    cancelAnimationFrame(entry.frame);entry.el.remove();view.contentEl?.classList.remove('aw-has-ruler');
+    this.removeChild(entry.owner);this.entries.delete(view);
+  }
+  scroller(view){
+    const preview=view.getMode?.()==='preview';
+    return view.contentEl.querySelector(preview?'.markdown-reading-view .markdown-preview-view':'.markdown-source-view .cm-scroller');
+  }
+  schedule(view){
+    const entry=this.entries.get(view);
+    if(entry&&!entry.frame)entry.frame=requestAnimationFrame(()=>{entry.frame=0;this.update(view);});
+  }
+  update(view){
+    const entry=this.entries.get(view),s=entry&&this.scroller(view);
+    if(!entry)return;
+    const progress=s?progressOf(s.scrollTop,s.scrollHeight,s.clientHeight):null;
+    entry.el.classList.toggle('is-idle',progress===null);
+    if(progress===null)return;
+    entry.knob.style.top=`${(progress*100).toFixed(2)}%`;entry.label.textContent=progress.toFixed(2);
+  }
+  drag(view,event){
+    const entry=this.entries.get(view),s=this.scroller(view);
+    if(!entry||!s||event.button!==0)return;
+    event.preventDefault();
+    const doc=entry.el.ownerDocument,jump=e=>{
+      const rect=entry.el.getBoundingClientRect();
+      s.scrollTop=topFor((e.clientY-rect.top)/rect.height,s.scrollHeight,s.clientHeight);
+    };
+    jump(event);entry.el.classList.add('is-dragging');
+    const up=()=>{doc.removeEventListener('pointermove',jump);doc.removeEventListener('pointerup',up);entry.el.classList.remove('is-dragging');};
+    doc.addEventListener('pointermove',jump);doc.addEventListener('pointerup',up);
+  }
+  displaySettings(container,Setting){
+    new Setting(container).setName('滚动刻度尺').setDesc('通透玻璃风格下，在笔记右侧显示阅读位置刻度；可点击或拖动跳转。')
+      .addToggle(t=>t.setValue(this.plugin.data.settings.scrollRuler!==false).onChange(v=>{this.plugin.data.settings.scrollRuler=v;this.sync();this.plugin.changed();}));
+  }
+}
+module.exports={ScrollRuler,progressOf,topFor};
+
+},
+"features/decor.js":(module,exports,__awRequire)=>{
+'use strict';
+const {Component,TFile}=require('obsidian');
+const IMAGE=/^(png|jpe?g|gif|webp|avif|svg)$/i;
+
+// An optional decoration image from the vault, floating in the window's lower-right corner
+// (glass style only; it never takes clicks and is not printed).
+class Decor extends Component{
+  constructor(plugin){super();this.plugin=plugin;this.app=plugin.app;this.el=null;}
+  onload(){
+    this.app.workspace.onLayoutReady(()=>this.refresh());
+    this.registerEvent(this.app.vault.on('rename',(file,oldPath)=>{
+      if(oldPath!==this.plugin.data.settings.decorImage)return;
+      this.plugin.data.settings.decorImage=file.path;this.plugin.changed();this.refresh();
+    }));
+    this.registerEvent(this.app.vault.on('delete',file=>{if(file.path===this.plugin.data.settings.decorImage)this.refresh(file);}));
+  }
+  onunload(){this.el?.remove();this.el=null;}
+  file(){
+    const file=this.app.vault.getAbstractFileByPath(this.plugin.data.settings.decorImage||'');
+    return file instanceof TFile&&IMAGE.test(file.extension)?file:null;
+  }
+  refresh(deleted=null){
+    const file=this.file(),host=this.app.workspace.containerEl;
+    if(!file||file===deleted||!host){this.el?.remove();this.el=null;return;}
+    if(!this.el){
+      this.el=host.ownerDocument.createElement('img');
+      this.el.className='aw-decor';this.el.alt='';this.el.setAttribute('aria-hidden','true');
+    }
+    if(this.el.parentNode!==host)host.appendChild(this.el);
+    const src=this.app.vault.getResourcePath(file);
+    if(this.el.getAttribute('src')!==src)this.el.setAttribute('src',src);
+  }
+  displaySettings(container,Setting){
+    new Setting(container).setName('角落装饰图').setDesc('通透玻璃风格下，在窗口右下角显示一张笔记库内的图片，例如 assets/mascot.png；留空则不显示。不响应点击，不打印。')
+      .addText(t=>t.setPlaceholder('assets/mascot.png').setValue(this.plugin.data.settings.decorImage||'').onChange(v=>{
+        this.plugin.data.settings.decorImage=v.trim().replace(/^\/+/,'');this.refresh();this.plugin.changed();
+      }));
+  }
+}
+module.exports={Decor};
 
 }};
 const __awCache=Object.create(null);

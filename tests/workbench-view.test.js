@@ -172,3 +172,10 @@ test('inside an Obsidian pane the dashboard reaches the card edge and shares one
   assert.ok(css.includes('.workspace-leaf-content[data-type="algorithm-workbench"], .aw-view, .aw-figure-modal {'),'pane receives the tokens it paints with');
   assert.match(css,/\.aw-backdrop \{[^}]*inset-inline:calc\(-1 \* max\(0px, \(100cqw - 1180px\) \/ 2\)\)/);
 });
+
+test('style chip switches the interface style through the plugin',async()=>{
+  const f=fixture();f.view.render();const chip=f.content.querySelector('[data-aw-focus="style"]');
+  assert.match(chip.textContent,/悬浮卡片/);
+  await chip.click();assert.equal(f.plugin.data.settings.style,'glass');
+  f.view.render();assert.match(f.content.querySelector('[data-aw-focus="style"]').textContent,/通透玻璃/);
+});

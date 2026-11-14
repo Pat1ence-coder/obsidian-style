@@ -1,0 +1,62 @@
+/* Reading tools of the glass style (plugin UI inside notes): the scroll ruler and the corner
+   decoration. Theme tokens come from the document snippet, with fallbacks for running alone. */
+.aw-ruler,.aw-decor {display: none;}
+body.aw-style-glass .aw-has-ruler {position: relative;}
+/* The ruler replaces the vertical scrollbar of the note it sits on. */
+body.aw-style-glass .aw-has-ruler :is(.cm-scroller,.markdown-preview-view)::-webkit-scrollbar:vertical {width: 0;}
+body.aw-style-glass .aw-ruler {
+  display: block;
+  position: absolute;
+  z-index: 4;
+  top: 16px;
+  bottom: 20px;
+  right: 10px;
+  width: 18px;
+  cursor: pointer;
+  touch-action: none;
+  /* Long ticks every 64px over short ticks every 8px, aligned to the right edge. */
+  background:
+    repeating-linear-gradient(180deg, rgba(var(--ds-ink-rgb,0,0,0),.2) 0 1px, transparent 1px 64px) right top / 12px 100% no-repeat,
+    repeating-linear-gradient(180deg, rgba(var(--ds-ink-rgb,0,0,0),.1) 0 1px, transparent 1px 8px) right top / 6px 100% no-repeat;
+  opacity: .8;
+  transition: opacity 160ms ease;
+}
+body.aw-style-glass .aw-ruler:hover,body.aw-style-glass .aw-ruler.is-dragging {opacity: 1;}
+body.aw-style-glass .aw-ruler.is-idle {display: none;}
+.aw-ruler-knob {
+  position: absolute;
+  right: -3px;
+  width: 14px;
+  height: 14px;
+  margin-top: -7px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgb(var(--aw-warm,204,110,48)) 0 3px, rgba(255,255,255,.96) 3.5px);
+  box-shadow: 0 0 0 1px rgba(var(--ds-ink-rgb,0,0,0),.14), 0 2px 6px rgba(var(--ds-ink-rgb,0,0,0),.25);
+  pointer-events: none;
+}
+.aw-ruler-label {
+  position: absolute;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  font: 500 10px var(--ds-font-mono, var(--font-monospace));
+  color: var(--ds-faint, var(--text-faint));
+  white-space: nowrap;
+}
+body.aw-style-glass .aw-decor {
+  display: block;
+  position: fixed;
+  z-index: 20;
+  right: 28px;
+  bottom: 34px;
+  width: min(128px, 12vw);
+  height: auto;
+  pointer-events: none;
+  filter: drop-shadow(0 12px 18px rgba(0,0,0,.18));
+}
+@media print {
+  .aw-ruler,.aw-decor {display: none !important;}
+}
+@media (prefers-reduced-motion:reduce) {
+  .aw-ruler {transition: none;}
+}

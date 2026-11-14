@@ -9,7 +9,7 @@
 - `dist/algorithm-workbench/main.js`：插件代码。
 - `dist/algorithm-workbench/styles.css`：工作台和弹窗样式，包含内嵌的像素横幅（src/assets/coast-header-pixel.png）。
 - `dist/algorithm-workbench/manifest.json`：插件元信息。
-- `dist/snippets/style.css`：正文、编辑器、插图和打印样式，包含内嵌的模糊壁纸（src/assets/wallpaper.png）。
+- `dist/snippets/style.css`：正文、编辑器、插图和打印样式，包含内嵌的模糊壁纸（src/assets/wallpaper.png）和通透玻璃风格的天空壁纸（src/assets/sky.png）。
 
 项目版本统一为 `0.0.1`，保存在根目录的 `package.json` 和 `manifest.json`。README 不固定版本号。最低 Obsidian 兼容版本不属于项目发布版本。
 

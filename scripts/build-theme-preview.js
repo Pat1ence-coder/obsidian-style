@@ -9,6 +9,8 @@ const out=path.join(root,'artifacts/preview');
 checkedPath(root,path.join(out,'theme-static.html'));
 checkedPath(root,path.join(root,'dist/snippets/style.css'));
 const snippet=fs.readFileSync(path.join(root,'dist/snippets/style.css'),'utf8');
+// Plugin styles too: the scroll ruler, annotations and figure tools live there.
+const pluginCSS=fs.readFileSync(checkedPath(root,path.join(root,'dist/algorithm-workbench/styles.css')),'utf8');
 const assets=path.join(root,'examples/notes/assets');
 const svg=name=>{const file=checkedPath(root,path.join(assets,name));return 'data:image/svg+xml;base64,'+fs.readFileSync(file).toString('base64');};
 // A wide, unsized "screenshot" exercises the screen size guard for single figures.
@@ -37,7 +39,7 @@ body{font-family:var(--font-interface);font-size:13px;color:var(--text-normal);b
 .workspace-tab-container{flex:1;display:flex;min-height:0}
 .workspace-leaf-content{flex:1;display:flex;flex-direction:column;min-width:0}
 .view-header{height:40px;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:13px}
-.view-content{flex:1;overflow:auto}
+.view-content{flex:1;min-height:0;display:flex;overflow:hidden}.markdown-reading-view{flex:1;display:flex;min-height:0;min-width:0}.markdown-reading-view>.markdown-preview-view{flex:1;overflow:auto}
 .nav-header{padding:12px 12px 8px;display:flex;gap:10px}.nav-action-button{width:22px;height:22px;background:var(--icon-color);opacity:.25}
 .nav-files-container{padding:4px 8px}
 .nav-folder-title,.nav-file-title{padding:4px 10px;margin:1px 0;color:var(--nav-item-color);font-size:13.5px}
@@ -61,7 +63,9 @@ const note=`<div class="inline-title">Attention 机制与梯度推导</div>
 <p><a class="tag">#研究</a> <a class="tag">#transformer</a></p>
 <p>缩放点积注意力把查询与键的相似度归一化后，对值做加权平均。下面整理前向公式与 <code>softmax</code> 的雅可比矩阵，并记录一次<a>消融实验</a>的结论。</p>
 <h2>1. 前向计算</h2>
-<p>给定 <strong>Q、K、V</strong>，输出为 softmax(QKᵀ/√d)·V。缩放因子防止点积随维度增大而进入 softmax 的饱和区。</p>
+<p>给定 <strong>Q、K、V</strong>，输出为 softmax(QKᵀ/√d)·V。缩放因子防止点积随维度增大而进入 <mark>softmax 的饱和区</mark><span class="aw-annot"><span class="aw-annot-arrow">&lt;---</span>标注下</span>。</p>
+<div class="callout" data-callout="diagram"><div class="callout-title"><div class="callout-icon"></div><div class="callout-title-inner">Knowledge / four states</div></div><div class="callout-content"><ul><li><strong>原始输入</strong>文章 · 想法 · 记录<code>raw</code></li><li><strong>参考资料</strong>来源 · 证据 · 资料<code>source</code></li><li><strong>综合认识</strong>对照 · 判断 · 提炼<code>knowledge</code></li><li><strong>场景输出</strong>文章 · 方案 · 答案<code>output</code></li></ul><p>按需要来回使用，也可以停留在任何一种状态</p></div></div>
+<div class="callout" data-callout="diagram" data-callout-metadata="rows"><div class="callout-title"><div class="callout-icon"></div><div class="callout-title-inner">Vault / three planes</div></div><div class="callout-content"><ul><li><strong>CORE /</strong>跨主题规范与系统规则<code>protected</code></li><li><strong>TOPICS /</strong>资料、研究、知识与输出<code>context</code></li><li><strong>SIDECAR /</strong>工具、索引与运行状态<code>runtime</code></li></ul></div></div>
 <div class="callout" data-callout="note"><div class="callout-title">ⓘ 记录</div><div class="callout-content"><p>维度 d=64 时，未缩放版本训练前 2k 步的梯度范数下降约 40%。</p></div></div>
 <h2>2. 实验对比</h2>
 <div class="callout" data-callout="table"><div class="callout-title"><div class="callout-icon"></div><div class="callout-title-inner"><span class="aw-caption-label">表 1</span> 不同配置的检索效果与开销</div></div><div class="callout-content"><table><thead><tr><th>方法</th><th align="right">MRR@10</th><th align="right">延迟 ms</th><th align="right">参数量</th></tr></thead>
@@ -81,11 +85,11 @@ const note=`<div class="inline-title">Attention 机制与梯度推导</div>
 <div class="callout" data-callout="tip"><div class="callout-title">✦ 提示</div><div class="callout-content"><p>温度系数与缩放因子可以合并为一个可学习参数。</p></div></div>
 <div class="callout" data-callout="warning"><div class="callout-title">⚠ 注意</div><div class="callout-content"><p>batch 内的负样本过少时，MRR 波动会明显增大。</p></div></div>
 <div class="callout" data-callout="abstract"><div class="callout-title">≡ 摘要</div><div class="callout-content"><p>缩放 + 温度带来约 2.6 个点的 MRR 提升，延迟几乎不变。</p></div></div>`;
-const html=`<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:"><title>主题外框 · 静态示例</title><style>${HOST}\n${snippet}</style></head>
+const html=`<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:"><title>主题外框 · 静态示例</title><style>${HOST}\n${snippet}\n${pluginCSS}</style></head>
 <body class="theme-light"><div class="app-container workspace"><div class="workspace-ribbon mod-left"><i></i><i></i><i></i><i></i></div>
 <div class="traffic"><i></i><i></i><i></i></div><div class="workspace-split mod-horizontal mod-sidedock mod-left-split"><div class="workspace-tabs"><div class="workspace-tab-header-container"><i></i><i></i><i></i></div><div class="workspace-tab-container"><div class="workspace-leaf-content" data-type="file-explorer"><div class="nav-header"><span class="nav-action-button"></span><span class="nav-action-button"></span><span class="nav-action-button"></span></div><div class="nav-files-container">${files}</div></div></div></div><div class="workspace-leaf-resize-handle"></div></div>
 <div class="workspace-split mod-vertical mod-root"><div class="workspace-tabs"><div class="workspace-tab-header-container"><div class="workspace-tab-header-container-inner"><div class="workspace-tab-header"><div class="workspace-tab-header-inner"><div class="workspace-tab-header-inner-title">知识脉冲</div></div></div><div class="workspace-tab-header is-active"><div class="workspace-tab-header-inner"><div class="workspace-tab-header-inner-title">Attention 机制与梯度推导</div></div></div></div></div></div>
-<div class="workspace-tab-container"><div class="workspace-leaf-content" data-type="markdown"><div class="view-header"><div class="view-header-title">研究 / Attention 机制与梯度推导</div></div><div class="view-content"><div class="markdown-preview-view markdown-rendered"><div class="markdown-preview-sizer">${note}</div></div></div></div></div></div>
+<div class="workspace-tab-container"><div class="workspace-leaf-content" data-type="markdown"><div class="view-header"><div class="view-header-title">研究 / Attention 机制与梯度推导</div></div><div class="view-content aw-has-ruler"><div class="markdown-reading-view"><div class="markdown-preview-view markdown-rendered"><div class="markdown-preview-sizer">${note}</div></div></div><div class="aw-ruler" aria-hidden="true"><div class="aw-ruler-knob" style="top:18%"><span class="aw-ruler-label">0.18</span></div></div></div></div></div></div>
 </div><div class="menu"><div class="menu-item">在新标签页打开</div><div class="menu-item selected">在右侧打开</div><div class="menu-separator"></div><div class="menu-item">复制链接</div><div class="menu-item">重命名…</div></div><div class="status-bar">1,286 字 · 编辑 74 分钟</div></body></html>`;
 if(/<script\b/i.test(html))throw Error('Static preview unexpectedly contains a script');
 fs.mkdirSync(out,{recursive:true});

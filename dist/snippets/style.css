@@ -196,7 +196,7 @@ body.theme-dark.aw-palette-celadon {
   --ds-ambient-base: linear-gradient(180deg, #151a18, #101412);
 }
 
-body {--ds-wallpaper:url("data:image/png;base64,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");}
+body {--ds-wallpaper:url("data:image/png;base64,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");--ds-wallpaper-sky:url("data:image/png;base64,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");}
 /* Source: src/styles/shell.css */
 /* App surfaces. Document metrics are owned by typography/content, not body. */
 body:is(.theme-light,.theme-dark) {
@@ -695,6 +695,170 @@ body.aw-caption-large {--ds-caption-size: calc(var(--ds-body-size) * .875);}
 .callout[data-callout="table"] > .callout-content table {margin-block:0;}
 @media print {
   .callout[data-callout="table"] > .callout-title {break-after:avoid;page-break-after:avoid;}
+}
+
+/* Source: src/styles/blocks.css */
+/* Content blocks shared by both styles: margin annotations and the grid-paper diagram. */
+
+/* Annotation: ==highlighted text=={note} shows "<--- note" in a handwriting face after the
+   highlight (rendered by the plugin; without it the braces stay as plain text). */
+body {--ds-font-annot: "Hannotate SC", "HanziPen SC", "Xingkai SC", "LXGW WenKai", "Kaiti SC", "STKaiti", "KaiTi", cursive;}
+.aw-annot {margin-inline-start: .4em;font-family: var(--ds-font-annot);font-size: .92em;font-weight: 400;letter-spacing: 0;color: rgb(var(--ds-tone-1));}
+.aw-annot-arrow {margin-inline-end: .3em;letter-spacing: -.06em;opacity: .75;}
+.markdown-source-view.mod-cm6 .aw-annot-source {font-family: var(--ds-font-annot);color: rgb(var(--ds-tone-1));}
+
+/* Diagram: > [!diagram] SECTION / TITLE, then a list. Each item becomes a pastel card
+   (bold = card title, inline code = small tag); a closing paragraph is the footnote.
+   [!diagram|rows] stacks the cards as full-width rows. */
+:is(.markdown-rendered,.markdown-source-view) .callout[data-callout="diagram"] {
+  --callout-color: var(--ds-tone-neutral);
+  padding: 18px 22px 20px;
+  border: 1px solid rgba(var(--ds-ink-rgb),.08);
+  border-radius: 16px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.5);
+  background-color: rgba(255,255,255,.32);
+  background-image: linear-gradient(rgba(var(--ds-tone-accent),.075) 1px, transparent 1px), linear-gradient(90deg, rgba(var(--ds-tone-accent),.075) 1px, transparent 1px);
+  background-size: 18px 18px;
+  background-position: -1px -1px;
+}
+body.theme-dark :is(.markdown-rendered,.markdown-source-view) .callout[data-callout="diagram"] {background-color: rgba(255,255,255,.025);box-shadow: none;}
+.callout[data-callout="diagram"] > .callout-title {color: var(--ds-faint);font-family: var(--ds-font-mono);font-size: 11px;letter-spacing: .14em;text-transform: uppercase;}
+.callout[data-callout="diagram"] > .callout-title > .callout-icon {display: none;}
+.callout[data-callout="diagram"] .callout-title-inner {font-weight: 500;}
+.callout[data-callout="diagram"] > .callout-content {padding-top: 14px;}
+.callout[data-callout="diagram"] > .callout-content > ul {display: flex;flex-wrap: wrap;justify-content: center;gap: 14px 18px;margin: 4px 0;padding: 0;list-style: none;}
+.callout[data-callout="diagram"] > .callout-content > ul > li {
+  --aw-c: var(--ds-tone-3);
+  flex: 1 1 130px;
+  max-width: 200px;
+  margin: 0;
+  padding: 14px 16px 12px;
+  border: 1px solid rgba(var(--aw-c),.24);
+  border-radius: 10px;
+  background: color-mix(in srgb, rgb(var(--aw-c)) 9%, var(--ds-paper));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.7), 0 8px 16px -12px rgba(var(--aw-c),.7);
+  color: var(--ds-muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+body.theme-dark .callout[data-callout="diagram"] > .callout-content > ul > li {box-shadow: inset 0 1px 0 rgba(255,255,255,.05), 0 8px 16px -12px rgba(var(--aw-c),.5);}
+.callout[data-callout="diagram"] > .callout-content > ul > li:nth-child(4n+2) {--aw-c: var(--ds-tone-1);}
+.callout[data-callout="diagram"] > .callout-content > ul > li:nth-child(4n+3) {--aw-c: var(--ds-tone-4);}
+.callout[data-callout="diagram"] > .callout-content > ul > li:nth-child(4n+4) {--aw-c: var(--ds-tone-2);}
+.callout[data-callout="diagram"] > .callout-content > ul > li::before {content: "";display: block;width: 7px;height: 7px;margin-bottom: 10px;border-radius: 50%;background: rgb(var(--aw-c));}
+.callout[data-callout="diagram"] > .callout-content > ul > li > :is(.list-bullet,.list-collapse-indicator) {display: none;}
+.callout[data-callout="diagram"] > .callout-content > ul > li strong {display: block;margin-bottom: 4px;color: var(--ds-heading);font-size: 15px;font-weight: 650;}
+.callout[data-callout="diagram"] > .callout-content > ul > li code {display: block;margin-top: 8px;padding: 0;border-radius: 0;background: none;box-shadow: none;color: var(--ds-faint);font-size: 10px;letter-spacing: .12em;text-transform: uppercase;}
+.callout[data-callout="diagram"][data-callout-metadata="rows"] > .callout-content > ul {flex-direction: column;align-items: stretch;gap: 8px;}
+.callout[data-callout="diagram"][data-callout-metadata="rows"] > .callout-content > ul > li {display: flex;align-items: center;gap: 18px;flex: none;max-width: none;padding: 12px 18px;}
+.callout[data-callout="diagram"][data-callout-metadata="rows"] > .callout-content > ul > li::before {margin: 0;flex-shrink: 0;}
+.callout[data-callout="diagram"][data-callout-metadata="rows"] > .callout-content > ul > li strong {display: inline;min-width: 7em;margin: 0;font-family: var(--ds-font-mono);font-size: 13px;letter-spacing: .08em;}
+.callout[data-callout="diagram"][data-callout-metadata="rows"] > .callout-content > ul > li code {display: inline;margin: 0 0 0 auto;}
+.callout[data-callout="diagram"] > .callout-content > p {margin: 14px 0 0;text-align: center;font-size: 11px;color: var(--ds-faint);}
+@media print {
+  .callout[data-callout="diagram"] {break-inside: avoid;page-break-inside: avoid;}
+  .markdown-rendered .callout[data-callout="diagram"] {background-color: transparent;border-color: #bbb;}
+  .callout[data-callout="diagram"] > .callout-content > ul > li {box-shadow: none;border-color: #bbb;}
+  .aw-annot {color: #555;}
+}
+
+/* Source: src/styles/glass.css */
+/* Glass style ("通透玻璃", body.aw-style-glass): the note is a sheet of frosted glass over a
+   pale sky, set in a monospace face with warm orange accents. Screen only, so print and PDF
+   keep the shared academic contract in print.css. Light and dark blocks set the same names. */
+@media screen {
+  body.aw-style-glass {
+    --aw-warm: 204,110,48;
+    --aw-glass-note: rgba(255,255,255,.8);
+    --aw-glass-note-edge: rgba(255,255,255,.9);
+    --aw-glass-tab: #ffffff;
+    --aw-glass-table: rgba(255,255,255,.5);
+    --aw-glass-table-head: rgba(var(--ds-tone-neutral),.06);
+    --aw-image-card: #ffffff;
+    --ds-wallpaper-veil: rgba(246,248,251,.74);
+    --ds-font-body: "Maple Mono NF CN", "Maple Mono", "Sarasa Mono SC", "LXGW WenKai Mono", "JetBrains Mono", "SF Mono", Menlo, "PingFang SC", "Microsoft YaHei", monospace;
+    --ds-font-heading: var(--ds-font-body);
+    --font-interface: var(--ds-font-body);
+    --ds-body-leading: 1.85;
+    --link-color: rgb(var(--aw-warm));
+    --link-color-hover: color-mix(in srgb, rgb(var(--aw-warm)) 80%, #000);
+    --link-external-color: rgb(var(--aw-warm));
+    --link-external-color-hover: color-mix(in srgb, rgb(var(--aw-warm)) 80%, #000);
+    --text-highlight-bg: rgba(var(--aw-warm),.2);
+    --text-highlight-bg-active: rgba(var(--aw-warm),.34);
+  }
+  body.theme-dark.aw-style-glass {
+    --aw-warm: 238,154,98;
+    --aw-glass-note: rgba(24,26,31,.64);
+    --aw-glass-note-edge: rgba(255,255,255,.09);
+    --aw-glass-tab: rgba(52,54,60,.82);
+    --aw-glass-table: rgba(255,255,255,.035);
+    --aw-glass-table-head: rgba(255,255,255,.07);
+    --aw-image-card: rgba(255,255,255,.94);
+    --ds-wallpaper-veil: rgba(10,14,22,.64);
+    --link-color-hover: color-mix(in srgb, rgb(var(--aw-warm)) 80%, #fff);
+    --link-external-color-hover: color-mix(in srgb, rgb(var(--aw-warm)) 80%, #fff);
+  }
+
+  /* Window floor: the sky, barely veiled. Listed with the theme classes so it also beats the
+     translucent-window rule in shell.css. */
+  body.aw-style-glass:is(.theme-light,.theme-dark) .workspace {
+    background: linear-gradient(var(--ds-wallpaper-veil), var(--ds-wallpaper-veil)), var(--ds-wallpaper-sky, none) center / cover no-repeat, var(--ds-bg);
+  }
+  /* The note card becomes frosted glass; everything inside it that painted the page colour
+     now shows the glass instead. */
+  body.aw-style-glass .workspace-split.mod-root {--background-primary: transparent;}
+  body.aw-style-glass .workspace-split.mod-root .workspace-leaf-content {
+    border-color: var(--aw-glass-note-edge);
+    background: var(--ds-glass-solid);
+    box-shadow: inset 0 1px 0 var(--aw-glass-note-edge), 0 24px 56px -22px rgba(var(--ds-ink-rgb),.32);
+  }
+  body.aw-style-glass .workspace .mod-root .workspace-tab-header.is-active {background: var(--aw-glass-tab);}
+
+  /* Text: monospace, slightly open, with warm code and highlights. */
+  body.aw-style-glass :is(.markdown-preview-view,.markdown-source-view.mod-cm6) {letter-spacing: .01em;}
+  body.aw-style-glass .markdown-rendered :not(pre) > code,
+  body.aw-style-glass .markdown-source-view.mod-cm6 .cm-inline-code:not(.cm-formatting) {
+    color: rgb(var(--aw-warm));
+    background: rgba(var(--aw-warm),.1);
+    box-shadow: none;
+    border-radius: 4px;
+  }
+  body.aw-style-glass .markdown-rendered mark {padding: .05em .2em;border-radius: 3px;}
+  body.aw-style-glass .markdown-rendered pre {border-color: rgba(var(--ds-ink-rgb),.09);background: var(--aw-glass-table);box-shadow: inset 0 1px 0 var(--aw-glass-note-edge);}
+
+  /* Tables: one rounded glass slab with hairline rows (the three-line academia table stays). */
+  body.aw-style-glass :is(.markdown-rendered,.markdown-source-view):not(.academia) table {
+    border-collapse: separate;
+    border-spacing: 0;
+    border: 1px solid rgba(var(--ds-ink-rgb),.09);
+    border-radius: 14px;
+    overflow: hidden;
+    background: var(--aw-glass-table);
+    box-shadow: inset 0 1px 0 var(--aw-glass-note-edge);
+  }
+  body.aw-style-glass :is(.markdown-rendered,.markdown-source-view):not(.academia) table th {background: var(--aw-glass-table-head);color: var(--ds-heading);font-weight: 600;}
+  body.aw-style-glass :is(.markdown-rendered,.markdown-source-view):not(.academia) table :is(th,td) {border-bottom: 1px solid rgba(var(--ds-ink-rgb),.07);padding: 12px 16px;}
+
+  /* Images sit on white cards, so diagrams with transparent backgrounds stay legible. */
+  body.aw-style-glass :is(.markdown-rendered,.markdown-source-view) :is(.image-embed img,p > img) {
+    box-sizing: border-box;
+    padding: 12px;
+    border-radius: 14px;
+    background: var(--aw-image-card);
+    box-shadow: 0 1px 2px rgba(var(--ds-ink-rgb),.05), 0 14px 32px -16px rgba(var(--ds-ink-rgb),.3);
+  }
+}
+@supports ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))) {
+  @media screen {
+    body.aw-style-glass .workspace-split.mod-root .workspace-leaf-content {
+      background: var(--ds-glass-sheen), var(--aw-glass-note);
+      -webkit-backdrop-filter: blur(40px) saturate(165%);backdrop-filter: blur(40px) saturate(165%);
+    }
+  }
+}
+@media screen and (prefers-reduced-transparency:reduce), screen and (forced-colors:active) {
+  body.aw-style-glass .workspace-split.mod-root .workspace-leaf-content {-webkit-backdrop-filter: none;backdrop-filter: none;background: var(--ds-glass-solid);}
 }
 
 /* Source: src/styles/print.css */

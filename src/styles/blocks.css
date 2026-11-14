@@ -1,0 +1,63 @@
+/* Content blocks shared by both styles: margin annotations and the grid-paper diagram. */
+
+/* Annotation: ==highlighted text=={note} shows "<--- note" in a handwriting face after the
+   highlight (rendered by the plugin; without it the braces stay as plain text). */
+body {--ds-font-annot: "Hannotate SC", "HanziPen SC", "Xingkai SC", "LXGW WenKai", "Kaiti SC", "STKaiti", "KaiTi", cursive;}
+.aw-annot {margin-inline-start: .4em;font-family: var(--ds-font-annot);font-size: .92em;font-weight: 400;letter-spacing: 0;color: rgb(var(--ds-tone-1));}
+.aw-annot-arrow {margin-inline-end: .3em;letter-spacing: -.06em;opacity: .75;}
+.markdown-source-view.mod-cm6 .aw-annot-source {font-family: var(--ds-font-annot);color: rgb(var(--ds-tone-1));}
+
+/* Diagram: > [!diagram] SECTION / TITLE, then a list. Each item becomes a pastel card
+   (bold = card title, inline code = small tag); a closing paragraph is the footnote.
+   [!diagram|rows] stacks the cards as full-width rows. */
+:is(.markdown-rendered,.markdown-source-view) .callout[data-callout="diagram"] {
+  --callout-color: var(--ds-tone-neutral);
+  padding: 18px 22px 20px;
+  border: 1px solid rgba(var(--ds-ink-rgb),.08);
+  border-radius: 16px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.5);
+  background-color: rgba(255,255,255,.32);
+  background-image: linear-gradient(rgba(var(--ds-tone-accent),.075) 1px, transparent 1px), linear-gradient(90deg, rgba(var(--ds-tone-accent),.075) 1px, transparent 1px);
+  background-size: 18px 18px;
+  background-position: -1px -1px;
+}
+body.theme-dark :is(.markdown-rendered,.markdown-source-view) .callout[data-callout="diagram"] {background-color: rgba(255,255,255,.025);box-shadow: none;}
+.callout[data-callout="diagram"] > .callout-title {color: var(--ds-faint);font-family: var(--ds-font-mono);font-size: 11px;letter-spacing: .14em;text-transform: uppercase;}
+.callout[data-callout="diagram"] > .callout-title > .callout-icon {display: none;}
+.callout[data-callout="diagram"] .callout-title-inner {font-weight: 500;}
+.callout[data-callout="diagram"] > .callout-content {padding-top: 14px;}
+.callout[data-callout="diagram"] > .callout-content > ul {display: flex;flex-wrap: wrap;justify-content: center;gap: 14px 18px;margin: 4px 0;padding: 0;list-style: none;}
+.callout[data-callout="diagram"] > .callout-content > ul > li {
+  --aw-c: var(--ds-tone-3);
+  flex: 1 1 130px;
+  max-width: 200px;
+  margin: 0;
+  padding: 14px 16px 12px;
+  border: 1px solid rgba(var(--aw-c),.24);
+  border-radius: 10px;
+  background: color-mix(in srgb, rgb(var(--aw-c)) 9%, var(--ds-paper));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.7), 0 8px 16px -12px rgba(var(--aw-c),.7);
+  color: var(--ds-muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+body.theme-dark .callout[data-callout="diagram"] > .callout-content > ul > li {box-shadow: inset 0 1px 0 rgba(255,255,255,.05), 0 8px 16px -12px rgba(var(--aw-c),.5);}
+.callout[data-callout="diagram"] > .callout-content > ul > li:nth-child(4n+2) {--aw-c: var(--ds-tone-1);}
+.callout[data-callout="diagram"] > .callout-content > ul > li:nth-child(4n+3) {--aw-c: var(--ds-tone-4);}
+.callout[data-callout="diagram"] > .callout-content > ul > li:nth-child(4n+4) {--aw-c: var(--ds-tone-2);}
+.callout[data-callout="diagram"] > .callout-content > ul > li::before {content: "";display: block;width: 7px;height: 7px;margin-bottom: 10px;border-radius: 50%;background: rgb(var(--aw-c));}
+.callout[data-callout="diagram"] > .callout-content > ul > li > :is(.list-bullet,.list-collapse-indicator) {display: none;}
+.callout[data-callout="diagram"] > .callout-content > ul > li strong {display: block;margin-bottom: 4px;color: var(--ds-heading);font-size: 15px;font-weight: 650;}
+.callout[data-callout="diagram"] > .callout-content > ul > li code {display: block;margin-top: 8px;padding: 0;border-radius: 0;background: none;box-shadow: none;color: var(--ds-faint);font-size: 10px;letter-spacing: .12em;text-transform: uppercase;}
+.callout[data-callout="diagram"][data-callout-metadata="rows"] > .callout-content > ul {flex-direction: column;align-items: stretch;gap: 8px;}
+.callout[data-callout="diagram"][data-callout-metadata="rows"] > .callout-content > ul > li {display: flex;align-items: center;gap: 18px;flex: none;max-width: none;padding: 12px 18px;}
+.callout[data-callout="diagram"][data-callout-metadata="rows"] > .callout-content > ul > li::before {margin: 0;flex-shrink: 0;}
+.callout[data-callout="diagram"][data-callout-metadata="rows"] > .callout-content > ul > li strong {display: inline;min-width: 7em;margin: 0;font-family: var(--ds-font-mono);font-size: 13px;letter-spacing: .08em;}
+.callout[data-callout="diagram"][data-callout-metadata="rows"] > .callout-content > ul > li code {display: inline;margin: 0 0 0 auto;}
+.callout[data-callout="diagram"] > .callout-content > p {margin: 14px 0 0;text-align: center;font-size: 11px;color: var(--ds-faint);}
+@media print {
+  .callout[data-callout="diagram"] {break-inside: avoid;page-break-inside: avoid;}
+  .markdown-rendered .callout[data-callout="diagram"] {background-color: transparent;border-color: #bbb;}
+  .callout[data-callout="diagram"] > .callout-content > ul > li {box-shadow: none;border-color: #bbb;}
+  .aw-annot {color: #555;}
+}

@@ -1,0 +1,65 @@
+/* Glass style dashboard (body.aw-style-glass): a light, mostly white workbench with only a
+   hint of sky; the hero banner gives way to a segmented control; cards are white and the
+   overview figures become tiles that glow in their metric's hue. With many components on
+   screen, colour stays in the small accents. Light and dark set the same local properties. */
+body.aw-style-glass .aw-view {
+  --aw-g-card: rgba(255,255,255,.88);
+  --aw-g-panel: rgba(255,255,255,.97);
+  --aw-g-chip: rgba(255,255,255,.94);
+  --aw-g-track: rgba(var(--ds-tone-neutral),.08);
+  --aw-g-edge: rgba(var(--ds-ink-rgb),.065);
+  --aw-g-rim: rgba(255,255,255,.95);
+  --aw-g-shadow: 0 1px 2px rgba(var(--ds-ink-rgb),.04), 0 10px 28px -14px rgba(var(--ds-ink-rgb),.14);
+}
+body.theme-dark.aw-style-glass .aw-view {
+  --aw-g-card: rgba(28,30,36,.6);
+  --aw-g-panel: rgba(22,24,29,.74);
+  --aw-g-chip: rgba(48,50,56,.74);
+  --aw-g-track: rgba(255,255,255,.05);
+  --aw-g-edge: rgba(255,255,255,.08);
+  --aw-g-rim: rgba(255,255,255,.06);
+  --aw-g-shadow: 0 1px 2px rgba(0,0,0,.3), 0 18px 40px -20px rgba(0,0,0,.6);
+}
+body.aw-style-glass .workspace .workspace-split .workspace-leaf-content[data-type="algorithm-workbench"] {
+  background: linear-gradient(rgba(247,249,252,.8), rgba(247,249,252,.8)), var(--aw-sky, none) center / cover no-repeat, #f4f7fb;
+}
+body.theme-dark.aw-style-glass .workspace .workspace-split .workspace-leaf-content[data-type="algorithm-workbench"] {
+  background: linear-gradient(rgba(10,14,22,.66), rgba(10,14,22,.66)), var(--aw-sky, none) center / cover no-repeat, #141821;
+}
+body.aw-style-glass .aw-view :is(.aw-backdrop,.aw-ambient) {display: none;}
+body.aw-style-glass .aw-view .aw-hero {padding-top: 26px;padding-bottom: 6px;}
+body.aw-style-glass .aw-view .aw-hero::after {display: none;}
+body.aw-style-glass .aw-view .aw-title {text-shadow: none;}
+
+/* View tabs: one segmented control with a white active pill. */
+body.aw-style-glass .aw-view .aw-tabs {gap: 2px;padding: 4px;border: 0;border-radius: 13px;background: var(--aw-g-track);box-shadow: inset 0 1px 2px rgba(var(--ds-ink-rgb),.05);}
+body.aw-style-glass .aw-view .aw-tab {min-height: 32px;padding: 5px 18px;border: 0;background: transparent;box-shadow: none;color: var(--ds-muted);-webkit-backdrop-filter: none;backdrop-filter: none;}
+body.aw-style-glass .aw-view .aw-tab[aria-pressed="true"] {background: var(--ds-paper);color: var(--ds-heading);font-weight: 600;box-shadow: 0 1px 2px rgba(var(--ds-ink-rgb),.08), 0 6px 14px -6px rgba(var(--ds-ink-rgb),.2);}
+body.aw-style-glass .aw-view :is(.aw-chip,.aw-brand-mark) {border-color: var(--aw-g-edge);border-radius: 10px;background: var(--aw-g-chip);box-shadow: var(--aw-g-shadow);}
+
+/* Cards: white glass shells, a denser inner panel. */
+body.aw-style-glass .aw-view .aw-card {border-color: var(--aw-g-edge);border-radius: 22px;background: var(--aw-g-card);box-shadow: inset 0 1px 0 var(--aw-g-rim), var(--aw-g-shadow);}
+body.aw-style-glass .aw-view .aw-panel {border-color: var(--aw-g-edge);background: var(--aw-g-panel);}
+
+/* Overview: each figure is its own tile with a soft glow of its metric colour. */
+body.aw-style-glass .aw-view .aw-card-overview .aw-panel {padding: 4px 10px 10px;border: 0;background: transparent;box-shadow: none;}
+body.aw-style-glass .aw-view .aw-card-overview .aw-stats {gap: 14px;}
+body.aw-style-glass .aw-view .aw-card-overview .aw-stat {
+  position: relative;
+  padding: 16px 18px 18px;
+  border: 1px solid var(--aw-g-edge);
+  border-radius: 16px;
+  background: radial-gradient(180px 110px at 88% -16%, rgba(var(--aw-hue),.32), transparent 72%), var(--aw-g-panel);
+  box-shadow: inset 0 1px 0 var(--aw-g-rim), 0 12px 26px -16px rgba(var(--aw-hue),.45);
+}
+body.aw-style-glass .aw-view .aw-card-overview .aw-stat-value strong {font-size: 30px;}
+
+@supports ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))) {
+  body.aw-style-glass .aw-view .aw-card {-webkit-backdrop-filter: blur(30px) saturate(160%);backdrop-filter: blur(30px) saturate(160%);}
+}
+@media (prefers-reduced-transparency:reduce), (forced-colors:active) {
+  body.aw-style-glass .aw-view :is(.aw-card,.aw-tabs,.aw-chip) {-webkit-backdrop-filter: none;backdrop-filter: none;background: var(--ds-glass-solid);}
+}
+@media print {
+  body.aw-style-glass .aw-view :is(.aw-card,.aw-panel,.aw-stat,.aw-tabs) {-webkit-backdrop-filter: none;backdrop-filter: none;box-shadow: none;background: #fff;}
+}
