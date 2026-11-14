@@ -1436,9 +1436,11 @@ class FigureTools extends Component {
     // Single images snap to fractions of the text column; grid images are capped by their cell.
     const column=group?null:(figure.querySelector(':scope > .callout-content')?.getBoundingClientRect().width||null);
     let width=start.width,fraction=null;
-    figure.classList.add('aw-figure-resizing');
+    // While dragging, the embed box follows the image so the dot stays on the image's corner
+    // (images that fill their cell or column otherwise leave the box at full width).
+    figure.classList.add('aw-figure-resizing');embed.style.width='fit-content';
     this.beginGesture(figure.ownerDocument,()=>{
-      img.style.width='';delete embed.dataset.awWidth;figure.classList.remove('aw-figure-resizing');
+      img.style.width='';embed.style.width='';delete embed.dataset.awWidth;figure.classList.remove('aw-figure-resizing');
     });
     const guide=column?this.outline(figure,'aw-figure-guide',''):null;
     if(guide)guide.hidden=true;
@@ -1458,7 +1460,7 @@ class FigureTools extends Component {
     this.gesture.onEnd=()=>{
       figure.classList.remove('aw-figure-resizing');
       const shown=img.getBoundingClientRect().width||width;
-      if(Math.abs(shown-start.width)<3){img.style.width='';delete embed.dataset.awWidth;return;}
+      if(Math.abs(shown-start.width)<3){img.style.width='';embed.style.width='';delete embed.dataset.awWidth;return;}
       const final=Math.min(4096,Math.max(MIN_WIDTH,fraction?Math.round(shown):Math.round(shown/10)*10));
       void this.edit(figure,(lines,block)=>Edit.setWidth(lines,block,index,final));
     };

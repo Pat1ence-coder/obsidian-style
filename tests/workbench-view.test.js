@@ -115,6 +115,7 @@ test('document snippet ships glass chrome with fallbacks and a screen-only figur
   assert.doesNotMatch(css,/url\(["']?https?:/);
   assert.match(css,/@media screen \{\s*\.callout\[data-callout="figure"\] \{--aw-figure-max-width: 720px/);
   assert.match(css,/img:not\(\[width\]\) \{max-width:min\(100%, var\(--aw-figure-max-width\)\);\}/);
+  assert.match(css,/\[data-callout-metadata\^="grid-"\] \.image-embed:has\(> img:not\(\[width\]\)\) \{width:auto;\}/,'in a grid the embed hugs its image, so the resize dot sits on the image corner');
 });
 test('the toolbar has no palette chip; one palette ships light and dark twins with identical properties',()=>{
   const f=fixture();f.view.render();assert.equal(f.content.querySelector('[data-aw-focus="palette"]'),null);

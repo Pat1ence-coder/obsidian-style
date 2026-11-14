@@ -681,6 +681,9 @@ body.theme-dark :is(.markdown-rendered,.markdown-source-view) .callout {box-shad
   }
   .callout[data-callout="figure"][data-callout-metadata^="grid-"] .image-embed,
   .callout[data-callout="figure"][data-callout-metadata^="grid-"] img:not([width]) {width:auto;}
+  /* The embed box hugs its image (same weight as the fill rule above, later), so the resize dot
+     sits on the image's own corner even when the image is smaller than its cell. */
+  .callout[data-callout="figure"][data-callout-metadata^="grid-"] .image-embed:has(> img:not([width])) {width:auto;}
 }
 
 /* Mosaic: one large image beside a stack of the others ("一大多小"). mosaic-left puts the
