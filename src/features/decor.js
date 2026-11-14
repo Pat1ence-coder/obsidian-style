@@ -3,7 +3,7 @@ const {Component,TFile}=require('obsidian');
 const IMAGE=/^(png|jpe?g|gif|webp|avif|svg)$/i;
 
 // An optional decoration image from the vault, floating in the window's lower-right corner
-// (glass style only; it never takes clicks and is not printed).
+// (it never takes clicks and is not printed).
 class Decor extends Component{
   constructor(plugin){super();this.plugin=plugin;this.app=plugin.app;this.el=null;}
   onload(){
@@ -31,7 +31,7 @@ class Decor extends Component{
     if(this.el.getAttribute('src')!==src)this.el.setAttribute('src',src);
   }
   displaySettings(container,Setting){
-    new Setting(container).setName('角落装饰图').setDesc('通透玻璃风格下，在窗口右下角显示一张笔记库内的图片，例如 assets/mascot.png；留空则不显示。不响应点击，不打印。')
+    new Setting(container).setName('角落装饰图').setDesc('在窗口右下角显示一张笔记库内的图片，例如 assets/mascot.png；留空则不显示。不响应点击，不打印。')
       .addText(t=>t.setPlaceholder('assets/mascot.png').setValue(this.plugin.data.settings.decorImage||'').onChange(v=>{
         this.plugin.data.settings.decorImage=v.trim().replace(/^\/+/,'');this.refresh();this.plugin.changed();
       }));

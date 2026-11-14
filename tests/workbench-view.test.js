@@ -2,13 +2,12 @@
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const {fixture,serialize}=require('./helpers/workbench-host');
 const cards=f=>f.content.querySelectorAll('.aw-card').map(n=>n.className.split(' ')[1]);
-test('board stacks overview, pulse, day detail and recent notes as uniform cards',()=>{
+test('board modules share one card anatomy; recent rows and the active tab',()=>{
   const f=fixture();f.view.render();
-  assert.deepEqual(cards(f),['aw-card-overview','aw-card-pulse','aw-card-day','aw-card-recent']);
   for(const card of f.content.querySelectorAll('.aw-card')){
     assert.ok(card.querySelector('.aw-card-icon')&&card.querySelector('.aw-card-title')&&card.querySelector('.aw-card-sub')&&card.querySelector('.aw-panel'));
   }
-  assert.equal(f.content.querySelector('.aw-card-overview').querySelectorAll('.aw-stat').length,6);
+  assert.equal(f.content.querySelectorAll('.aw-kpi').length,3);
   assert.equal(f.content.querySelectorAll('.aw-file-row').length,5);
   assert.equal(f.content.querySelector('.aw-file-latest').querySelector('.aw-file-name').textContent,f.files[0].basename);
   assert.equal(f.content.querySelectorAll('.aw-tab').filter(t=>t.attributes['aria-pressed']==='true').length,1);
@@ -67,6 +66,7 @@ test('CSV export writes every recorded day into a new vault file without overwri
   const lines=f.created[0][1].slice(1).trim().split('\n');
   assert.equal(lines[0],'日期,贡献分,新增字数,编辑分钟,专注分钟,新建笔记,完成任务');
   assert.equal(lines[1],`${f.Core.dayKey()},12.9,1286,0,0,0,0`);
+  assert.match(f.created[0][0],/^写作工作台-\d{8}\.csv$/);assert.match(f.created[1][0],/^写作工作台-\d{8}-2\.csv$/);
 });
 test('empty vault, exclusion settings and malicious-looking filenames render as text',()=>{
   const f=fixture();f.files.splice(0);f.view.render();assert.equal(f.content.querySelectorAll('.aw-file-row').length,0);assert.ok(f.content.querySelector('.aw-new-note'));
@@ -78,7 +78,7 @@ test('closing releases view references and preserves statistics',async()=>{
   const f=fixture();f.view.render();const before=JSON.stringify(f.plugin.data);await f.view.onClose();
   assert.equal(f.content.children.length,0);assert.equal(f.view.heatCells,null);assert.equal(f.view.statNumbers,null);assert.equal(JSON.stringify(f.plugin.data),before);
 });
-test('palette lives in tone roles, and the pixel banner ships without remote CSS resources',()=>{
+test('palette lives in tone roles, and the dashboard ships without banner images or remote CSS resources',()=>{
   const root=path.resolve(__dirname,'..'),tokens=fs.readFileSync(path.join(root,'src/styles/tokens.css'),'utf8');
   for(const role of ['accent','1','2','3','4','5','neutral'])assert.match(tokens,new RegExp(`--ds-tone-${role}: \\d+,\\d+,\\d+;`));
   assert.match(tokens,/--ds-accent: rgb\(var\(--ds-tone-accent\)\)/);
@@ -88,69 +88,62 @@ test('palette lives in tone roles, and the pixel banner ships without remote CSS
     assert.doesNotMatch(source,/#(?!fff\b|000\b)[0-9a-f]{6}\b/i,name);
   }
   const css=fs.readFileSync(path.join(root,'dist/algorithm-workbench/styles.css'),'utf8');
-  assert.match(css,/data:image\/png;base64,/);assert.doesNotMatch(css,/url\(["']?https?:/i);
+  assert.doesNotMatch(css,/data:image\/png;base64,/,'no banner image');assert.doesNotMatch(css,/url\(["']?https?:/i);
   assert.ok(css.includes('.aw-card'));assert.ok(css.includes('@container aw'));
-  assert.match(css,/\.aw-backdrop \{[^}]*image-rendering:pixelated/);
-});
-test('header image is a direct background value with a separate fade overlay',()=>{
-  const root=path.resolve(__dirname,'..'),css=fs.readFileSync(path.join(root,'dist/algorithm-workbench/styles.css'),'utf8');
-  const direct=/\.aw-view \.aw-backdrop, \.aw-view \.aw-ambient\s*\{background-image:url\("data:image\/png;base64,([A-Za-z0-9+/=]+)"\);\}/.exec(css);
-  assert.ok(direct,'The data URL must be the entire direct background-image value');
-  assert.doesNotMatch(css,/--aw-coast-image/);
-  const source=fs.readFileSync(path.join(root,'src/styles/workbench.css'),'utf8');
-  assert.match(source,/\.aw-backdrop::after\s*\{[^}]*linear-gradient/);
+  assert.doesNotMatch(css,/aw-backdrop|aw-style-/);
 });
 test('each metric owns a companion hue shared by its tab, dot and heatmap card',async()=>{
   const f=fixture();f.view.render();
   const pulse=f.content.querySelector('.aw-card-pulse');assert.equal(pulse.style.values['--aw-hue'],'var(--ds-tone-accent)');
-  const dots=f.content.querySelector('.aw-card-overview').querySelectorAll('.aw-dot').map(d=>d.style.values['--aw-hue']);
-  assert.deepEqual(dots,['var(--ds-tone-accent)','var(--ds-tone-4)','var(--ds-tone-2)','var(--ds-tone-3)']);
+  const tabs=f.content.querySelectorAll('.aw-segment-item').map(d=>d.style.values['--aw-hue']);
+  assert.deepEqual(tabs,['var(--ds-tone-accent)','var(--ds-tone-4)','var(--ds-tone-2)','var(--ds-tone-3)','var(--ds-tone-1)','var(--ds-tone-5)']);
   await f.content.querySelector('[data-aw-focus="metric-tasks"]').click();
   assert.equal(f.content.querySelector('.aw-card-pulse').style.values['--aw-hue'],'var(--ds-tone-5)');
-  assert.ok(f.content.querySelector('.aw-ambient'),'ambient light layer sits behind the glass cards');
+  assert.equal(f.content.querySelector('.aw-ambient'),null,'no blurred banner glow behind the cards');
 });
 test('document snippet ships glass chrome with fallbacks and a screen-only figure size guard',()=>{
   const root=path.resolve(__dirname,'..'),css=fs.readFileSync(path.join(root,'dist/snippets/style.css'),'utf8');
-  assert.match(css,/mod-sidedock \.workspace-tabs > \.workspace-tab-container \{[^}]*border-radius: 16px[^}]*background: var\(--ds-glass-solid\)/,'floating panels have an opaque fallback');
+  assert.match(css,/mod-sidedock \.workspace-tabs > \.workspace-tab-container \{[^}]*border-radius: 16px[^}]*background: var\(--ds-frost\)[^}]*var\(--ds-elev-3\)/,'sidebar panels are opaque frost on the top elevation');
+  assert.match(css,/\.workspace-split\.mod-root \.workspace-leaf-content \{[^}]*background: var\(--ds-frost\)/,'the note card is opaque frost');
+  assert.match(css,/--ds-frost: var\(--ds-grain\), var\(--ds-glass-sheen\), var\(--ds-paper\);/,'frost ends on an opaque paper layer');
+  assert.match(css,/--ds-grain: url\("data:image\/svg\+xml;utf8,<svg [^\n]*<\/svg>"\);\n/,'the grain is one intact declaration');
   assert.match(css,/\.mod-root \.workspace-tab-header \{align-self: center;/,'note tabs clear the window top');
-  assert.match(css,/backdrop-filter:\s*var\(--ds-glass-panel-blur\)/);
-  assert.match(css,/body \{--ds-wallpaper:url\("data:image\/png;base64,/,'blurred wallpaper is embedded, not fetched');
-  assert.match(css,/\.workspace \{[^}]*var\(--ds-wallpaper-veil\)[^}]*var\(--ds-wallpaper, none\)/);
+  assert.match(css,/\.workspace \{background: var\(--ds-bg\);\}/,'the window floor is plain, no wallpaper or gradient');
+  assert.doesNotMatch(css,/--ds-wallpaper|radial-gradient\(\d+px/,'no wallpaper and no ambient blooms');
+  const chrome=css.slice(css.indexOf('Source: src/styles/shell.css'),css.indexOf('Source: src/styles/print.css'));
+  assert.equal((chrome.match(/backdrop-filter: /g)||[]).length,2,'only the modal scrim blurs; panels are opaque');
   assert.doesNotMatch(css,/url\(["']?https?:/);
-  assert.match(css,/prefers-reduced-transparency:reduce/);
   assert.match(css,/@media screen \{\s*\.callout\[data-callout="figure"\] \{--aw-figure-max-width: 720px/);
   assert.match(css,/img:not\(\[width\]\) \{max-width:min\(100%, var\(--aw-figure-max-width\)\);\}/);
 });
-test('palette chip switches through the plugin and shows the current palette',async()=>{
-  const f=fixture();f.view.render();const chip=f.content.querySelector('[data-aw-focus="palette"]');
-  assert.match(chip.textContent,/海盐石墨/);
-  await chip.click();assert.equal(f.plugin.data.settings.palette,'sand');assert.equal(f.plugin.changes,1);
-  f.view.render();assert.match(f.content.querySelector('[data-aw-focus="palette"]').textContent,/暖砂陶土/);
-});
-test('every palette ships light and dark twins with identical properties, scoped for plugin and snippet',()=>{
+test('the toolbar has no palette chip; one palette ships light and dark twins with identical properties',()=>{
+  const f=fixture();f.view.render();assert.equal(f.content.querySelector('[data-aw-focus="palette"]'),null);
   const root=path.resolve(__dirname,'..'),tokens=fs.readFileSync(path.join(root,'src/styles/tokens.css'),'utf8');
-  const block=selector=>{const m=new RegExp(selector.replace(/\./g,'\\.')+'\\s*\\{([^}]*)\\}').exec(tokens);assert.ok(m,selector);return new Set(m[1].match(/--[\w-]+(?=\s*:)/g));};
+  assert.doesNotMatch(tokens,/aw-palette-/);
+  const block=selector=>{const m=new RegExp(selector.replace(/\./g,'\\.')+'\\s*\\{([^}]*)\\}').exec(tokens);assert.ok(m,selector);return new Set(m[1].match(/--ds-(?:tone-\w+|bg|paper|text|heading|muted|faint|border|heat-0)(?=\s*:)/g));};
+  assert.deepEqual([...block('body.theme-dark')].sort(),[...block('body')].sort());
   const plugin=fs.readFileSync(path.join(root,'dist/algorithm-workbench/styles.css'),'utf8');
-  const snippet=fs.readFileSync(path.join(root,'dist/snippets/style.css'),'utf8');
-  for(const id of ['sand','celadon']){
-    assert.deepEqual([...block(`body.aw-palette-${id}`)].sort(),[...block(`body.theme-dark.aw-palette-${id}`)].sort());
-    assert.ok(plugin.includes(`body.theme-dark.aw-palette-${id} .aw-view, body.theme-dark.aw-palette-${id} .aw-figure-modal {`));
-    assert.ok(snippet.includes(`body.aw-palette-${id} {`));
-  }
+  assert.ok(plugin.includes('body.theme-dark .workspace-leaf-content[data-type="algorithm-workbench"], body.theme-dark .aw-view, body.theme-dark .aw-figure-modal {'));
 });
-test('print resets outrank every palette selector and keep headings and tones dark',()=>{
+test('print resets outrank the token selectors and keep headings and tones dark',()=>{
   const root=path.resolve(__dirname,'..'),print=fs.readFileSync(path.join(root,'src/styles/print.css'),'utf8');
   const reset=/@media print \{[^{]*?(body,[^{]*)\{([^}]*)\}/.exec(print);assert.ok(reset);
-  assert.match(reset[1],/body\.theme-dark\[class\*="aw-palette-"\]/);
+  assert.match(reset[1],/body\.theme-dark/);
   for(const token of ['--ds-text:#111','--ds-heading:#111','--ds-tone-accent:34,34,34','--ds-tone-5:68,68,68'])assert.ok(reset[2].includes(token),token);
   const snippet=fs.readFileSync(path.join(root,'dist/snippets/style.css'),'utf8');
-  assert.ok(snippet.indexOf('body.theme-dark.aw-palette-celadon {')<snippet.indexOf('body.theme-dark[class*="aw-palette-"]'),'print rules load after palettes');
+  assert.ok(snippet.indexOf('body.theme-dark {')<snippet.indexOf('body, body.theme-light, body.theme-dark {'),'print rules load after the tokens');
 });
-test('reduced transparency also replaces the dark glass card background',()=>{
-  const root=path.resolve(__dirname,'..'),css=fs.readFileSync(path.join(root,'src/styles/materials.css'),'utf8');
-  const block=css.slice(css.indexOf('@media (prefers-reduced-transparency:reduce)'));
-  assert.match(block,/\.theme-dark \.aw-view :is\(\.aw-card[^{]*\{[^}]*background:var\(--ds-glass-solid\)/);
-  assert.ok(css.indexOf('.theme-dark .aw-view .aw-card {')<css.indexOf('@media (prefers-reduced-transparency:reduce)'));
+test('dashboard layers are opaque: frosted card, raised panel, raised chips, recessed tracks',()=>{
+  const root=path.resolve(__dirname,'..'),css=fs.readFileSync(path.join(root,'dist/algorithm-workbench/styles.css'),'utf8');
+  assert.match(css,/\.aw-view \.aw-card \{[^}]*background:var\(--ds-frost\);[^}]*var\(--ds-elev-2\)/);
+  assert.match(css,/\.aw-view \.aw-panel \{[^}]*background:var\(--ds-paper\);[^}]*var\(--ds-elev-1\)/);
+  assert.match(css,/\.aw-view \.aw-segment \{[^}]*background:var\(--ds-inset-bg\);box-shadow:var\(--ds-inset\)/);
+  const materials=fs.readFileSync(path.join(root,'src/styles/materials.css'),'utf8');
+  assert.doesNotMatch(materials,/backdrop-filter/,'no blur behind opaque cards');
+  for(const mode of ['body {','body.theme-dark {']){
+    const tokens=fs.readFileSync(path.join(root,'src/styles/tokens.css'),'utf8'),start=tokens.indexOf(mode),block=tokens.slice(start,tokens.indexOf('\n}',start));
+    for(const name of ['--ds-elev-1','--ds-elev-2','--ds-elev-3','--ds-inset-bg','--ds-inset','--ds-canvas'])assert.match(block,new RegExp(name+'\\s*:'),mode+name);
+  }
 });
 
 test('academic captions: table caption above, bold label, adjustable size, print sizes in points',()=>{
@@ -158,7 +151,7 @@ test('academic captions: table caption above, bold label, adjustable size, print
   assert.match(css,/\.aw-caption-label \{[^}]*font-weight:650/);
   assert.match(css,/body\.aw-caption-small \{[^}]*--ds-caption-size/);assert.match(css,/body\.aw-caption-large \{[^}]*--ds-caption-size/);
   const table=/\.callout\[data-callout="table"\] > \.callout-title \{([^}]*)\}/.exec(css);assert.ok(table);assert.match(table[1],/padding:0 0 8px/,'title stays first in DOM order, spaced above the table');
-  assert.ok(css.indexOf('body.theme-dark.aw-caption-small')>css.indexOf('body.theme-dark[class*="aw-palette-"]'),'print caption sizes follow the print reset');
+  assert.ok(css.indexOf('body.theme-dark.aw-caption-small')>css.indexOf('body, body.theme-light, body.theme-dark {'),'print caption sizes follow the print reset');
   assert.match(css,/aw-caption-small \{--ds-caption-size:8pt;\}/);assert.match(css,/aw-caption-large \{--ds-caption-size:10pt;\}/);
   const plugin=fs.readFileSync(path.join(root,'dist/algorithm-workbench/styles.css'),'utf8');
   assert.match(plugin,/body\.aw-figure-tools-off :is\(\.aw-figure-bar/);
@@ -170,17 +163,11 @@ test('inside an Obsidian pane the dashboard reaches the card edge and shares one
   assert.ok(css.includes(`${leaf} > .view-content.aw-view {padding:0;background:transparent;}`),'beats Obsidian default view padding');
   assert.ok(css.includes(`${leaf} > .view-header {background:transparent;`));
   assert.ok(css.includes('.workspace-leaf-content[data-type="algorithm-workbench"], .aw-view, .aw-figure-modal {'),'pane receives the tokens it paints with');
-  assert.match(css,/\.aw-backdrop \{[^}]*inset-inline:calc\(-1 \* max\(0px, \(100cqw - 1180px\) \/ 2\)\)/);
 });
 
-test('style chip switches the interface style through the plugin',async()=>{
-  const f=fixture();f.view.render();const chip=f.content.querySelector('[data-aw-focus="style"]');
-  assert.match(chip.textContent,/悬浮卡片/);
-  await chip.click();assert.equal(f.plugin.data.settings.style,'glass');
-  f.view.render();assert.match(f.content.querySelector('[data-aw-focus="style"]').textContent,/通透玻璃/);
-});
-test('glass style lays the board out as a bento grid with KPI, today, trend and monthly modules',()=>{
-  const f=fixture();f.plugin.data.settings.style='glass';f.view.render();
+test('the board is a bento grid with KPI, today, trend and monthly modules; no style chip',()=>{
+  const f=fixture();f.view.render();
+  assert.equal(f.content.querySelector('[data-aw-focus="style"]'),null);
   assert.ok(f.content.querySelector('.aw-bento'));assert.equal(f.content.querySelector('.aw-stack'),null);
   assert.deepEqual(cards(f),['aw-card-today','aw-card-trend','aw-card-pulse','aw-card-day','aw-card-months','aw-card-recent']);
   const kpis=f.content.querySelectorAll('.aw-kpi');
@@ -197,14 +184,23 @@ test('glass style lays the board out as a bento grid with KPI, today, trend and 
   assert.ok(bars.at(-1).className.includes('is-current'));
   assert.equal(f.content.querySelector('.aw-card-months').querySelector('.aw-badge').textContent,'本月 1 天活跃');
 });
-test('bento modules redraw in place when today changes, and the card style keeps the stack',()=>{
-  const f=fixture();f.plugin.data.settings.style='glass';f.view.render();
+test('bento modules redraw in place when today changes; other views stack full-width cards',()=>{
+  const f=fixture();f.view.render();
   const today=f.content.querySelector('.aw-card-today'),kpi=f.content.querySelectorAll('.aw-kpi')[1].querySelector('strong');
   f.plugin.data.days[Object.keys(f.plugin.data.days).sort().at(-1)].characters=2000;
   f.view.refresh();
   assert.equal(f.content.querySelector('.aw-card-today'),today,'no full render');
   assert.equal(today.querySelector('.aw-badge').textContent,'20 分');assert.equal(kpi.textContent,'2,000');
   assert.match(f.content.querySelector('.aw-trend-plot').querySelector('svg').getAttribute('aria-label'),/今天 20 分/);
-  f.plugin.data.settings.style='card';f.view.render();
+  f.view.tab='recent';f.view.render();
   assert.ok(f.content.querySelector('.aw-stack'));assert.equal(f.content.querySelectorAll('.aw-kpi').length,0);
+});
+test('the view is called 写作工作台 with a notebook-and-pen icon, falling back to pencil on older Obsidian',()=>{
+  const f=fixture();f.view.render();
+  assert.equal(f.view.getDisplayText(),'写作工作台');assert.equal(f.view.getIcon(),'notebook-pen');
+  assert.equal(f.content.querySelector('.aw-title').textContent,'写作工作台');
+  assert.equal(f.content.querySelector('.aw-card-pulse').querySelector('.aw-card-title').textContent,'年度活跃热力图');
+  const old=fixture({getIcon:name=>name==='pencil'?{}:null});
+  assert.equal(old.view.getIcon(),'pencil');
+  assert.equal(fixture({getIcon:()=>({})}).view.getIcon(),'notebook-pen');
 });

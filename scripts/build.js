@@ -29,34 +29,14 @@ const generated='/* GENERATED from src/styles. Edit the source modules, then run
 // The view's pane (leaf) gets the tokens too: it paints the dashboard background behind the header.
 const LEAF='.workspace-leaf-content[data-type="algorithm-workbench"]';
 const pluginTokens=fs.readFileSync(path.join(styleSource,'tokens.css'),'utf8')
-  // body → the plugin's own roots (pane, view, modal); body.theme-dark / body.aw-palette-* keep their class
-  // qualifiers so dark mode and palette switching apply inside the plugin too.
+  // body → the plugin's own roots (pane, view, modal); body.theme-dark keeps its class qualifier
+  // so dark mode applies inside the plugin too.
   .replace(/\bbody((?:\.[\w-]+)*)\s*\{/g,(_match,classes)=>classes?`body${classes} ${LEAF}, body${classes} .aw-view, body${classes} .aw-figure-modal {`:`${LEAF}, .aw-view, .aw-figure-modal {`);
-// Pixel-art banner derived by scripts/pixelate-header.py; scaled up crisply in CSS.
-const hero=fs.readFileSync(path.join(source,'assets/coast-header-pixel.png'));
-if(!hero.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])))throw Error('Header asset is not a PNG');
-if(hero.length>4*1024*1024)throw Error('Header asset exceeds the 4 MiB packaging limit');
-// A data URI keeps installation to three runtime files and needs no remote requests.
-// Keep the large data URI out of custom properties / var() substitution (2 MiB cap).
-// One declaration serves both the banner and its blurred ambient copy.
-const heroCSS='.aw-view .aw-backdrop, .aw-view .aw-ambient {background-image:url("data:image/png;base64,'+hero.toString('base64')+'");}\n';
-// Soft wallpaper behind the glass chrome (scripts/make-wallpaper.py). It is a few KB, so it
-// can live in a custom property that shell.css layers under the ambient light.
-const wallpaper=fs.readFileSync(path.join(source,'assets/wallpaper.png'));
-if(!wallpaper.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])))throw Error('Wallpaper asset is not a PNG');
-if(wallpaper.length>16*1024)throw Error('Wallpaper asset should stay a small blurred field (< 16 KiB)');
-// The glass style's sky (same script): the document floor and the dashboard pane both use it.
-const sky=fs.readFileSync(path.join(source,'assets/sky.png'));
-if(!sky.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])))throw Error('Sky asset is not a PNG');
-if(sky.length>16*1024)throw Error('Sky asset should stay a small blurred field (< 16 KiB)');
-const skyURI='url("data:image/png;base64,'+sky.toString('base64')+'")';
-const wallpaperCSS='body {--ds-wallpaper:url("data:image/png;base64,'+wallpaper.toString('base64')+'");--ds-wallpaper-sky:'+skyURI+';}\n';
-const pluginSkyCSS=`${LEAF} {--aw-sky:${skyURI};}\n`;
 const pluginOut=path.join(root,'dist/algorithm-workbench'),snippetOut=path.join(root,'dist/snippets');
 fs.mkdirSync(pluginOut,{recursive:true});fs.mkdirSync(snippetOut,{recursive:true});
-fs.writeFileSync(path.join(pluginOut,'styles.css'),generated+pluginTokens+'\n'+heroCSS+pluginSkyCSS+cssParts(['materials','workbench','workbench-glass','figure-tools','reading-tools']));
+fs.writeFileSync(path.join(pluginOut,'styles.css'),generated+pluginTokens+'\n'+cssParts(['materials','workbench','workbench-glass','figure-tools','reading-tools']));
 // Build only inside this repository; installation is a separate explicit action.
-fs.writeFileSync(path.join(snippetOut,'style.css'),generated+cssParts(['tokens'])+'\n'+wallpaperCSS+cssParts(['shell','typography','components','editor','figures','blocks','glass','print']));
+fs.writeFileSync(path.join(snippetOut,'style.css'),generated+cssParts(['tokens'])+'\n'+cssParts(['shell','controls','typography','components','editor','figures','blocks','glass','print']));
 fs.writeFileSync(path.join(pluginOut,'main.js'),bundled);
 fs.copyFileSync(path.join(root,'manifest.json'),path.join(pluginOut,'manifest.json'));
 console.log(`Built ${modules.size} source modules and shared CSS into dist/`);

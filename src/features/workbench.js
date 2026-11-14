@@ -1,8 +1,11 @@
 'use strict';
-const {ItemView,Menu,Notice,TFile,setIcon}=require('obsidian');
+const {ItemView,Menu,Notice,TFile,setIcon,getIcon}=require('obsidian');
 const Core=require('../core');
 const Dash=require('./dashboard-data');
 const VIEW='algorithm-workbench';
+const NAME='写作工作台';
+// notebook-pen is a newer Lucide icon; older Obsidian builds fall back to pencil.
+const viewIcon=()=>typeof getIcon==='function'&&!getIcon('notebook-pen')?'pencil':'notebook-pen';
 const WEEKS=53;
 const number=n=>new Intl.NumberFormat('zh-CN',{maximumFractionDigits:1}).format(n);
 const hours=minutes=>number(Math.round(minutes/6)/10);
@@ -87,8 +90,8 @@ function months(data,now=new Date()){
 class WorkbenchView extends ItemView{
   constructor(leaf,plugin){super(leaf);this.plugin=plugin;this.selectedDate=Core.dayKey();this.tab='board';this.creatingNote=false;}
   getViewType(){return VIEW;}
-  getDisplayText(){return '知识脉冲';}
-  getIcon(){return 'activity';}
+  getDisplayText(){return NAME;}
+  getIcon(){return viewIcon();}
   async onOpen(){this.render();}
   async onClose(){
     this.contentEl.replaceChildren();this.dayEl=null;this.recentEl=null;
@@ -123,24 +126,18 @@ class WorkbenchView extends ItemView{
     this.statNumbers=null;this.longestEl=null;this.heatCells=null;this.dayEl=null;this.recentEl=null;this.liveParts=[];
     const data=this.plugin.data,settings=data.settings;
     const root=el(this.contentEl,'div','aw-page');
-    // The banner, blurred and enlarged, lights the glass cards from behind.
-    el(root,'div','aw-ambient').setAttribute('aria-hidden','true');
     this.renderHero(root);
     if(!settings.tracking)el(root,'p','aw-notice','活动统计已暂停，可在插件设置中恢复。');
     if(this.plugin.saveError)el(root,'p','aw-notice','统计暂未保存成功，请检查磁盘空间或权限；插件会重试。').setAttribute('role','status');
-    // The glass style lays the board out as a bento grid with its own chart modules.
-    const bento=this.tab==='board'&&settings.style==='glass';
-    const stack=el(root,'div',bento?'aw-bento':'aw-stack');
+    // The board is a bento grid of modules; the other views stack full-width cards.
+    const board=this.tab==='board';
+    const stack=el(root,'div',board?'aw-bento':'aw-stack');
     let heatWrap=null;
-    if(bento){
+    if(board){
       this.renderKpis(stack);this.renderToday(stack);this.renderTrend(stack);
       heatWrap=this.renderPulse(stack);
       this.dayEl=el(stack,'div','aw-day-slot');this.renderDay();
       this.renderMonths(stack);this.renderRecentCard(stack,Math.min(settings.recentLimit,5));
-    }else if(this.tab==='board'){
-      this.renderOverview(stack);heatWrap=this.renderPulse(stack);
-      this.dayEl=el(stack,'div','aw-day-slot');this.renderDay();
-      this.renderRecentCard(stack,Math.min(settings.recentLimit,5));
     }else if(this.tab==='recent')this.renderRecentCard(stack,settings.recentLimit);
     else this.renderMonthly(stack);
     const footer=el(root,'footer','aw-footer');
@@ -155,9 +152,9 @@ class WorkbenchView extends ItemView{
   }
   renderHero(root){
     const settings=this.plugin.data.settings;
-    const hero=el(root,'header','aw-hero');el(hero,'div','aw-backdrop').setAttribute('aria-hidden','true');
+    const hero=el(root,'header','aw-hero');
     const bar=el(hero,'div','aw-hero-bar'),brand=el(bar,'div','aw-brand');
-    icon(brand,'activity','aw-brand-mark');el(brand,'h1','aw-title','知识脉冲看板');
+    icon(brand,viewIcon(),'aw-brand-mark');el(brand,'h1','aw-title',NAME);
     const tabs=el(bar,'nav','aw-tabs');tabs.setAttribute('aria-label','视图');
     for(const [key,label] of TABS){
       const tab=button(tabs,label,'aw-tab',()=>{if(this.tab!==key){this.tab=key;this.render();}});
@@ -167,12 +164,6 @@ class WorkbenchView extends ItemView{
     const range=button(tools,'','aw-chip',event=>this.chooseRange(event));range.dataset.awFocus='range';
     el(range,'span','aw-chip-key','时间:');el(range,'span','',`最近 ${settings.range} 天`);icon(range,'chevron-down','aw-chip-icon');
     el(tools,'span','aw-chip aw-chip-static',settings.tracking?'范围: 本机记录':'范围: 统计已暂停');
-    const palette=button(tools,'','aw-chip aw-palette',event=>this.choosePalette(event));palette.dataset.awFocus='palette';
-    el(palette,'span','aw-chip-key','配色:');el(palette,'span','',(Core.PALETTES.find(p=>p.id===settings.palette)||Core.PALETTES[0]).label);
-    icon(palette,'chevron-down','aw-chip-icon');
-    const style=button(tools,'','aw-chip aw-style',event=>this.chooseStyle(event));style.dataset.awFocus='style';
-    el(style,'span','aw-chip-key','风格:');el(style,'span','',(Core.STYLES.find(x=>x.id===settings.style)||Core.STYLES[0]).label);
-    icon(style,'chevron-down','aw-chip-icon');
     const create=button(tools,'','aw-chip aw-new-note',()=>this.newNote());icon(create,'plus','aw-chip-icon');el(create,'span','','新建笔记');
     const folder=this.plugin.folderNotes?.getFolder();
     create.title=folder?`在 ${folder.path==='/'?'笔记库根目录':folder.path} 中新建`:'按 Obsidian 当前的新建笔记设置创建';
@@ -186,28 +177,6 @@ class WorkbenchView extends ItemView{
     const menu=new Menu();
     for(const value of Core.RANGES)menu.addItem(item=>item.setTitle(`最近 ${value} 天`).setChecked(settings.range===value).onClick(()=>choose(value)));
     menu.showAtMouseEvent(event);
-  }
-  choosePalette(event){
-    const current=this.plugin.data.settings.palette,choose=id=>{if(id!==current)this.plugin.setPalette(id);};
-    if(typeof Menu!=='function'){choose(Core.PALETTES[(Core.PALETTES.findIndex(p=>p.id===current)+1)%Core.PALETTES.length].id);return;}
-    const menu=new Menu();
-    for(const p of Core.PALETTES)menu.addItem(item=>item.setTitle(p.label).setChecked(p.id===current).onClick(()=>choose(p.id)));
-    menu.showAtMouseEvent(event);
-  }
-  chooseStyle(event){
-    const current=this.plugin.data.settings.style,choose=id=>{if(id!==current)this.plugin.setStyle(id);};
-    if(typeof Menu!=='function'){choose(Core.STYLES[(Core.STYLES.findIndex(x=>x.id===current)+1)%Core.STYLES.length].id);return;}
-    const menu=new Menu();
-    for(const x of Core.STYLES)menu.addItem(item=>item.setTitle(x.label).setChecked(x.id===current).onClick(()=>choose(x.id)));
-    menu.showAtMouseEvent(event);
-  }
-  renderOverview(stack){
-    const data=this.plugin.data,values=overview(data);
-    const c=card(stack,{name:'overview',iconName:'activity',title:'知识脉冲概览',sub:`最近 ${data.settings.range} 天 · 本机记录`,badge:`最长连续 ${values.longest} 天`,hue:'tone-accent'});
-    this.longestEl=c.pill;
-    const row=el(c.body,'div','aw-stats');this.statNumbers=new Map();
-    for(const [key,label,unit,cls] of [['score','累计贡献分','分'],['characters','新增字数','字'],['active','活跃天数','天'],['streak','当前连续','天','aw-stat-accent'],['minutes','编辑时长','小时'],['focus','深度专注','小时']])
-      this.statNumbers.set(key,stat(row,label,values[key],unit,cls,HUES[key]));
   }
   // A part that redraws itself on refresh() whenever its data key changes.
   live(key,draw){const part={key,stamp:key(),draw};this.liveParts.push(part);draw();return part;}
@@ -322,7 +291,7 @@ class WorkbenchView extends ItemView{
   }
   renderPulse(stack){
     const data=this.plugin.data,settings=data.settings,metric=metricOf(settings.metric);
-    const c=card(stack,{name:'pulse',iconName:'calendar-days',title:'年度知识活跃脉冲',sub:`${metric.label} · 强度按个人近期分位数`,badge:'',hue:HUES[metric.key]});
+    const c=card(stack,{name:'pulse',iconName:'calendar-days',title:'年度活跃热力图',sub:`${metric.label} · 强度按个人近期分位数`,badge:'',hue:HUES[metric.key]});
     this.activeEl=c.pill;
     const tabs=el(c.body,'div','aw-segment');tabs.setAttribute('role','group');tabs.setAttribute('aria-label','热力图指标');
     for(const m of Core.METRICS){
@@ -445,8 +414,8 @@ class WorkbenchView extends ItemView{
   }
   async exportCSV(){
     const vault=this.app.vault,stamp=Core.dayKey().replace(/-/g,'');
-    let path=`知识脉冲-${stamp}.csv`;
-    for(let i=2;vault.getAbstractFileByPath(path);i++)path=`知识脉冲-${stamp}-${i}.csv`;
+    let path=`${NAME}-${stamp}.csv`;
+    for(let i=2;vault.getAbstractFileByPath(path);i++)path=`${NAME}-${stamp}-${i}.csv`;
     try{await vault.create(path,csv(this.plugin.data));new Notice(`已导出到笔记库根目录：${path}`);}
     catch{new Notice('导出失败，请检查笔记库写入权限。');}
   }
@@ -466,4 +435,4 @@ class WorkbenchView extends ItemView{
     try{await this.app.workspace.getLeaf('tab').openFile(file);}catch{new Notice('无法打开这篇笔记。');}
   }
 }
-module.exports={WorkbenchView,VIEW,overview,modifiedLabel,csv,months};
+module.exports={WorkbenchView,VIEW,NAME,viewIcon,overview,modifiedLabel,csv,months};

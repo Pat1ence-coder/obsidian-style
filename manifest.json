@@ -3,7 +3,7 @@
   "name": "算法工作台",
   "version": "0.0.1",
   "minAppVersion": "1.5.7",
-  "description": "知识脉冲看板：新增字数、编辑时长、深度专注、新建笔记与完成任务的本地统计和年度热力图。",
+  "description": "写作工作台：新增字数、编辑时长、深度专注、新建笔记与完成任务的本地统计和年度热力图。",
   "author": "Obsidian Style contributors",
   "isDesktopOnly": true
 }

@@ -5,7 +5,7 @@ const fs=require('node:fs'),path=require('node:path');
 const root=fs.realpathSync(path.resolve(__dirname,'..'));
 const {checkedPath}=require('./safe-paths');
 const tab=process.argv[2];
-if(process.argv.length>3||(tab!==undefined&&!['board','recent','monthly','glass'].includes(tab)))throw Error('Invalid preview view; use board, recent, monthly or glass');
+if(process.argv.length>3||(tab!==undefined&&!['board','recent','monthly'].includes(tab)))throw Error('Invalid preview view; use board, recent or monthly');
 const out=path.join(root,'artifacts/preview');
 const name=tab?`workbench-${tab}.html`:'workbench-static.html';
 for(const file of [path.join(out,name),path.join(out,'preview-meta.json'),path.join(root,'dist/algorithm-workbench/styles.css')])checkedPath(root,file);
@@ -13,9 +13,8 @@ const {fixture,serialize}=require(path.join(root,'tests/helpers/workbench-host')
 const f=fixture(),today=f.Core.dayKey();
 // Synthetic history: about six active weeks, with gaps and varied intensity.
 f.plugin.data.activityStarted=f.plugin.data.started;
-// The glass board also charts six months, so it gets a longer, sparser history.
-const glass=tab==='glass';
-for(let i=1;i<=(glass?170:44);i++){
+// About six weeks of dense activity, then a sparser history so the board can chart six months.
+for(let i=1;i<=170;i++){
   if(i>44&&i%3)continue;
   if(i%9===4||i%13===7)continue;
   const day=f.Core.dayKey(f.Core.shiftDay(new Date(),-i));
@@ -24,13 +23,12 @@ for(let i=1;i<=(glass?170:44);i++){
 }
 Object.assign(f.plugin.data.days[today],{minutes:74,focus:31,notes:2,tasks:3});
 f.plugin.data.settings.recentLimit=6;
-if(glass)f.plugin.data.settings.style='glass';
-else if(tab)f.view.tab=tab;
+if(tab)f.view.tab=tab;
 f.view.render();
 // ItemView.contentEl is Obsidian's .view-content; keep that class so its default padding is exercised.
 f.content.classList.add('view-content');
 const css=fs.readFileSync(path.join(root,'dist/algorithm-workbench/styles.css'),'utf8');
-const html=`<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'"><title>知识脉冲看板 · 静态示例</title><style>*{box-sizing:border-box}body{margin:0;background:#eceef2}.preview-notice{padding:8px 20px;text-align:center;background:#fff;color:#686d7e;font:12px system-ui}.workspace-leaf-content{min-height:100vh;display:flex;flex-direction:column}.view-header{display:flex;align-items:center;height:40px;padding:0 16px;background:#fff;color:#686d7e;font:13px system-ui}.view-content{flex:1;padding:12px 12px 32px}${css}</style></head><body class="theme-light${glass?' aw-palette-sea aw-style-glass':''}"><div class="preview-notice">静态版式示例 · 演示数据 · 按钮不执行操作</div><div class="workspace"><div class="workspace-split mod-root"><div class="workspace-leaf-content" data-type="algorithm-workbench"><div class="view-header">知识脉冲</div>${serialize(f.content)}</div></div></div></body></html>`;
+const html=`<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'"><title>写作工作台 · 静态示例</title><style>*{box-sizing:border-box}body{margin:0;background:#eceef2}.preview-notice{padding:8px 20px;text-align:center;background:#fff;color:#686d7e;font:12px system-ui}.workspace-leaf-content{min-height:100vh;display:flex;flex-direction:column}.view-header{display:flex;align-items:center;height:40px;padding:0 16px;background:#fff;color:#686d7e;font:13px system-ui}.view-content{flex:1;padding:12px 12px 32px}${css}</style></head><body class="theme-light"><div class="preview-notice">静态版式示例 · 演示数据 · 按钮不执行操作</div><div class="workspace"><div class="workspace-split mod-root"><div class="workspace-leaf-content" data-type="algorithm-workbench"><div class="view-header">写作工作台</div>${serialize(f.content)}</div></div></div></body></html>`;
 if(/<script\b/i.test(html))throw Error('Static preview unexpectedly contains a script');
 fs.mkdirSync(out,{recursive:true});
 fs.writeFileSync(path.join(out,name),html);

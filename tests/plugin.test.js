@@ -16,7 +16,7 @@ function fixture() {
     async loadData(){return this.initialData??null;}
     async saveData(data){this.saved.push(data);}
     registerView(type,create){this.makeView=create;}
-    addRibbonIcon(){} addCommand(command){(this.commands??={})[command.id]=command;} addSettingTab(){}
+    addRibbonIcon(icon,title){(this.ribbons??=[]).push([icon,title]);} addCommand(command){(this.commands??={})[command.id]=command;} addSettingTab(){}
     registerEditorExtension(ext){(this.extensions??=[]).push(ext);if(typeof ext==='function')this.extension??=ext;} registerEvent(){} registerInterval(){}
     registerMarkdownPostProcessor(fn){(this.postProcessors??=[]).push(fn);}
   }
@@ -167,27 +167,25 @@ test('new notes count only after the vault finishes loading, outside excluded fo
   plugin.onunload();await plugin.saveQueue;
 });
 
-test('palette is a body class: applied on load, switched in place, cycled by command, removed on unload',async()=>{
-  const {plugin,classes,notices}=fixture();plugin.initialData={...Core.emptyData(),settings:{...Core.DEFAULT_SETTINGS,palette:'celadon'}};
+test('appearance is a body class: applied on load, stale palette and style classes from older versions removed, all removed on unload',async()=>{
+  const {plugin,classes}=fixture();classes.add('aw-palette-sand');classes.add('aw-style-card');
+  plugin.initialData={...Core.emptyData(),settings:{...Core.DEFAULT_SETTINGS,palette:'celadon'}};
   await plugin.onload();
-  assert.deepEqual([...classes].sort(),['aw-caption-normal','aw-palette-celadon','aw-style-card','theme-light']);
-  plugin.setPalette('sand');assert.ok(classes.has('aw-palette-sand'));assert.ok(!classes.has('aw-palette-celadon'));
-  plugin.setPalette('neon');assert.equal(plugin.data.settings.palette,'sand');
-  plugin.commands['cycle-palette'].callback();assert.equal(plugin.data.settings.palette,'celadon');assert.match(notices.at(-1),/青瓷/);
-  plugin.commands['cycle-palette'].callback();assert.equal(plugin.data.settings.palette,'sea');assert.ok(classes.has('aw-palette-sea'));
-  await plugin.flush();assert.equal(plugin.saved.at(-1).settings.palette,'sea');
+  assert.deepEqual([...classes].sort(),['aw-caption-normal','theme-light']);
+  assert.equal(plugin.data.settings.palette,undefined,'the palette setting is gone');assert.equal(plugin.commands['cycle-palette'],undefined);
+  assert.equal(plugin.commands['cycle-style'],undefined,'one interface style, no switch');assert.equal(plugin.setStyle,undefined);
   plugin.onunload();assert.deepEqual([...classes],['theme-light']);await plugin.saveQueue;
 });
 
-test('popout windows already open, or restored with the layout, follow the palette',async()=>{
+test('popout windows already open, or restored with the layout, follow the appearance',async()=>{
   const {plugin,workspace,fakeDoc,leaves}=fixture();
   const existing=fakeDoc(),restored=fakeDoc();leaves.push({view:{containerEl:{ownerDocument:existing}}});
   await plugin.onload();plugin.data.settings.openOnStartup=false;
-  assert.ok(existing.classes.has('aw-palette-sea'),'re-enabling the plugin reaches an open popout');
+  assert.ok(existing.classes.has('aw-caption-normal'),'re-enabling the plugin reaches an open popout');
   leaves.push({view:{containerEl:{ownerDocument:restored}}});workspace.ready();
-  assert.ok(restored.classes.has('aw-palette-sea'),'popouts restored with the layout are covered');
-  plugin.setPalette('sand');
-  for(const doc of [existing,restored])assert.deepEqual([...doc.classes].sort(),['aw-caption-normal','aw-palette-sand','aw-style-card','theme-light']);
+  assert.ok(restored.classes.has('aw-caption-normal'),'popouts restored with the layout are covered');
+  plugin.setCaptionSize('large');
+  for(const doc of [existing,restored])assert.deepEqual([...doc.classes].sort(),['aw-caption-large','theme-light']);
   plugin.onunload();for(const doc of [existing,restored])assert.deepEqual([...doc.classes],['theme-light']);
   await plugin.saveQueue;
 });
@@ -203,13 +201,10 @@ test('caption size and figure tools are body classes that follow settings and le
   plugin.onunload();assert.deepEqual([...classes],['theme-light']);await plugin.saveQueue;
 });
 
-test('interface style is a body class, cycled by command and kept when other appearance changes',async()=>{
-  const {plugin,classes,notices}=fixture();await plugin.onload();
-  assert.ok(classes.has('aw-style-card'));
-  plugin.commands['cycle-style'].callback();assert.equal(plugin.data.settings.style,'glass');assert.match(notices.at(-1),/通透玻璃/);
-  assert.ok(classes.has('aw-style-glass'));assert.ok(!classes.has('aw-style-card'));
-  plugin.setPalette('sand');assert.ok(classes.has('aw-style-glass'));
-  plugin.setStyle('neon');assert.equal(plugin.data.settings.style,'glass');
-  await plugin.flush();assert.equal(plugin.saved.at(-1).settings.style,'glass');
-  plugin.onunload();assert.deepEqual([...classes],['theme-light']);await plugin.saveQueue;
+
+test('ribbon and command use the 写作工作台 name and icon',async()=>{
+  const {plugin}=fixture();await plugin.onload();
+  assert.deepEqual(plugin.ribbons,[['notebook-pen','打开写作工作台']]);
+  assert.equal(plugin.commands['open-workbench'].name,'打开写作工作台');
+  plugin.onunload();await plugin.saveQueue;
 });

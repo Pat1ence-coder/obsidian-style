@@ -26,170 +26,123 @@ body {
   --ds-paragraph-gap: .8em;
   --ds-page-width: 1000px;
   --ds-page-inset: 24px;
-  --ds-space-1: 4px; --ds-space-2: 8px; --ds-space-3: 12px;
-  --ds-space-4: 16px; --ds-space-6: 24px; --ds-space-8: 32px;
-  --ds-radius-control: 8px; --ds-radius-content: 12px; --ds-radius-card: 18px;
-  /* Palette "sea salt & graphite": Apple-like neutral greys, one deep ocean accent.
-     Tones are RGB triplets used as rgb(var(--ds-tone-x)) / rgba(var(--ds-tone-x), a);
-     everything coloured below derives from them, so a palette swap stays in this block. */
-  --ds-tone-accent: 47,109,154;
-  --ds-tone-1: 44,128,130;
-  --ds-tone-2: 104,134,82;
-  --ds-tone-3: 122,100,152;
-  --ds-tone-4: 182,134,70;
-  --ds-tone-5: 186,102,82;
-  --ds-tone-neutral: 110,112,122;
-  --ds-ink-rgb: 22,24,30;
-  --ds-bg: #f0f0f2;
+  --ds-space-1: 4px;
+  --ds-space-2: 8px;
+  --ds-space-3: 12px;
+  --ds-space-4: 16px;
+  --ds-space-6: 24px;
+  --ds-space-8: 32px;
+  --ds-radius-control: 8px;
+  --ds-radius-content: 12px;
+  --ds-radius-card: 18px;
+  /* One clean palette: white panels on a cool, near-white floor; a bright blue accent with
+     orange and green companions. Tones are RGB triplets used as rgb(var(--ds-tone-x)) /
+     rgba(var(--ds-tone-x), a). The six metric hues were checked for colour-vision separation;
+     orange and green sit at the floor, so they always appear next to a text label. */
+  --ds-tone-accent: 52,128,246;
+  --ds-tone-1: 20,163,192;
+  --ds-tone-2: 31,148,97;
+  --ds-tone-3: 139,108,240;
+  --ds-tone-4: 236,136,52;
+  --ds-tone-5: 229,96,94;
+  --ds-tone-neutral: 112,122,140;
+  --ds-ink-rgb: 16,24,40;
+  --ds-bg: #f6f7f9;
   --ds-paper: #ffffff;
-  --ds-shell: #f6f6f8;
-  --ds-surface: #f3f3f5;
-  --ds-surface-hover: #ebebef;
-  --ds-text: #26272c;
-  --ds-heading: #1b1c20;
-  --ds-muted: #6b6c74;
-  --ds-faint: #8c8d95;
+  /* Inside a pane (the dashboard): a hair off white, so white cards still separate. */
+  --ds-canvas: #fbfbfc;
+  --ds-shell: #f9fafb;
+  --ds-surface: #f4f5f7;
+  --ds-surface-hover: #eceef2;
+  --ds-text: #1f2633;
+  --ds-heading: #111827;
+  --ds-muted: #667085;
+  --ds-faint: #8d96a8;
   --ds-on-accent: #ffffff;
-  --ds-warm: rgb(var(--ds-tone-5));
-  --ds-border: #e5e5ea;
-  --ds-rule: #d1d1d8;
-  --ds-code-bg: #f5f5f7;
-  --ds-heat-0: #efeff2;
-  /* Ambient light behind glass: soft blooms of the banner's sky, sea, sand and haze. */
-  --ds-ambient:
-    radial-gradient(1100px 680px at 6% -8%, rgba(186,212,236,.7), transparent 62%),
-    radial-gradient(900px 620px at 100% 4%, rgba(200,226,232,.6), transparent 60%),
-    radial-gradient(760px 620px at 96% 52%, rgba(232,226,240,.45), transparent 64%),
-    radial-gradient(760px 620px at 2% 46%, rgba(206,226,238,.5), transparent 64%),
-    radial-gradient(860px 700px at 88% 104%, rgba(244,228,206,.62), transparent 62%),
-    radial-gradient(820px 640px at -4% 100%, rgba(212,232,222,.55), transparent 60%);
-  --ds-ambient-base: linear-gradient(180deg, #f2f2f4, #ececf0);
+  --ds-warm: rgb(var(--ds-tone-4));
+  --ds-border: #e8eaee;
+  --ds-rule: #d0d5dd;
+  --ds-code-bg: #f7f8fa;
+  --ds-heat-0: #eef0f4;
+  /* The window floor is plain near-white; no ambient blooms or wallpaper. Kept as no-op layers
+     so older rules that list them stay valid. */
+  --ds-ambient: linear-gradient(transparent, transparent);
+  --ds-ambient-base: linear-gradient(var(--ds-bg), var(--ds-bg));
   /* Derived roles. */
   --ds-accent: rgb(var(--ds-tone-accent));
   --ds-accent-hover: color-mix(in srgb, rgb(var(--ds-tone-accent)) 82%, #000);
   --ds-accent-soft: rgba(var(--ds-tone-accent), .1);
   --ds-selection: rgba(var(--ds-tone-accent), .16);
-  --ds-shadow: 0 1px 2px rgba(var(--ds-ink-rgb),.04), 0 12px 32px -8px rgba(var(--ds-ink-rgb),.12);
-  --ds-shadow-soft: 0 1px 2px rgba(var(--ds-ink-rgb),.06), 0 2px 8px rgba(var(--ds-ink-rgb),.04);
-  /* Apple-style glass: translucent fill, bright rim, hairline and a deep soft shadow. */
-  --ds-glass: rgba(255,255,255,.42);
-  --ds-glass-strong: rgba(255,255,255,.74);
-  --ds-glass-paper: rgba(255,255,255,.84);
-  --ds-glass-solid: #f5f5f7;
-  --ds-glass-rim: rgba(255,255,255,.78);
+  --ds-shadow: var(--ds-elev-2);
+  --ds-shadow-soft: var(--ds-elev-1);
+  /* Surfaces are opaque. "Frost" is how they read as frosted glass without showing through:
+     a faint grain, a slight top-to-bottom sheen, a bright top rim, a hairline edge and soft
+     layered shadows. Three elevations: controls (1), cards (2), panels and floating layers (3).
+     Recessed things (tracks, search fields) use the inset pair. The --ds-glass-* names remain
+     as aliases of these opaque values. */
+  --ds-elev-1: 0 1px 2px rgba(var(--ds-ink-rgb),.06), 0 2px 4px -2px rgba(var(--ds-ink-rgb),.06);
+  --ds-elev-2: 0 1px 2px rgba(var(--ds-ink-rgb),.05), 0 6px 14px -6px rgba(var(--ds-ink-rgb),.08), 0 18px 36px -18px rgba(var(--ds-ink-rgb),.14);
+  --ds-elev-3: 0 2px 4px rgba(var(--ds-ink-rgb),.04), 0 12px 24px -10px rgba(var(--ds-ink-rgb),.1), 0 32px 64px -28px rgba(var(--ds-ink-rgb),.2);
+  --ds-inset-bg: #f1f2f5;
+  --ds-inset: inset 0 1px 2px rgba(var(--ds-ink-rgb),.07), inset 0 0 0 1px rgba(var(--ds-ink-rgb),.045);
+  --ds-frost: var(--ds-grain), var(--ds-glass-sheen), var(--ds-paper);
+  --ds-glass: var(--ds-paper);
+  --ds-glass-strong: var(--ds-paper);
+  --ds-glass-paper: var(--ds-paper);
+  --ds-glass-solid: var(--ds-paper);
+  --ds-glass-rim: #ffffff;
   --ds-glass-line: rgba(var(--ds-ink-rgb),.075);
-  --ds-glass-highlight: inset 0 1px 0 rgba(255,255,255,.9), inset 0 0 0 1px rgba(255,255,255,.28);
-  --ds-glass-shadow: 0 1px 1px rgba(var(--ds-ink-rgb),.03), 0 14px 36px -10px rgba(var(--ds-ink-rgb),.16);
-  --ds-glass-blur: blur(28px) saturate(175%);
-  /* Floating chrome panels: stronger blur, a diagonal sheen and faint frosted grain. */
-  --ds-glass-panel-blur: blur(44px) saturate(190%);
-  --ds-glass-sheen: linear-gradient(150deg, rgba(255,255,255,.55), rgba(255,255,255,.16) 55%, rgba(255,255,255,.3));
-  --ds-glass-edge: rgba(255,255,255,.62);
-  --ds-grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .5 0 0 0 0 .5 0 0 0 0 .5 0 0 0 .055 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
-  --ds-wallpaper-veil: rgba(240,240,243,.42);
+  --ds-glass-highlight: inset 0 1px 0 #ffffff, inset 0 0 0 1px rgba(255,255,255,.65);
+  --ds-glass-shadow: var(--ds-elev-3);
+  /* Frost sheen: the faintest darkening towards the bottom of a surface. */
+  --ds-glass-sheen: linear-gradient(180deg, rgba(255,255,255,0), rgba(var(--ds-ink-rgb),.018));
+  --ds-glass-edge: rgba(var(--ds-ink-rgb),.07);
+  --ds-grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .5 0 0 0 0 .5 0 0 0 0 .5 0 0 0 .035 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
 }
 body.theme-dark {
-  --ds-tone-accent: 116,170,214;
-  --ds-tone-1: 104,188,186;
-  --ds-tone-2: 156,186,128;
-  --ds-tone-3: 178,156,214;
-  --ds-tone-4: 222,178,110;
-  --ds-tone-5: 228,146,124;
-  --ds-tone-neutral: 160,162,172;
+  --ds-tone-accent: 76,142,247;
+  --ds-tone-1: 30,159,186;
+  --ds-tone-2: 33,135,90;
+  --ds-tone-3: 139,118,232;
+  --ds-tone-4: 212,122,48;
+  --ds-tone-5: 224,95,93;
+  --ds-tone-neutral: 150,158,175;
   --ds-ink-rgb: 0,0,0;
-  --ds-bg:#161618; --ds-paper:#1e1e21; --ds-shell:#1b1b1e; --ds-surface:#26262a;
-  --ds-surface-hover:#2f2f34;
-  --ds-text:#e6e6ea; --ds-heading:#f4f4f6; --ds-muted:#a5a6ae; --ds-faint:#83848d;
-  --ds-on-accent:#101114;
-  --ds-border:#313136; --ds-rule:#47474e;
-  --ds-code-bg:#232326;
-  --ds-heat-0:#2a2a2f;
+  --ds-bg: #0f1013;
+  --ds-canvas: #131519;
+  --ds-paper: #1a1c21;
+  --ds-shell: #14161a;
+  --ds-surface: #202228;
+  --ds-surface-hover: #272a31;
+  --ds-text:#e4e7ec;
+  --ds-heading:#f5f7fa;
+  --ds-muted:#a0a8b8;
+  --ds-faint:#7d8596;
+  --ds-on-accent:#ffffff;
+  --ds-border: #2a2d34;
+  --ds-rule:#3d4450;
+  --ds-code-bg: #1e2026;
+  --ds-heat-0: #24272e;
   --ds-accent-hover: color-mix(in srgb, rgb(var(--ds-tone-accent)) 80%, #fff);
   --ds-accent-soft: rgba(var(--ds-tone-accent), .16);
   --ds-selection: rgba(var(--ds-tone-accent), .26);
-  --ds-shadow:0 1px 2px rgba(0,0,0,.2),0 12px 32px -8px rgba(0,0,0,.45);
-  --ds-shadow-soft:0 1px 2px rgba(0,0,0,.25);
-  --ds-ambient:
-    radial-gradient(1100px 680px at 6% -8%, rgba(40,84,124,.36), transparent 62%),
-    radial-gradient(900px 620px at 100% 4%, rgba(30,92,100,.3), transparent 60%),
-    radial-gradient(760px 620px at 96% 52%, rgba(80,70,110,.2), transparent 64%),
-    radial-gradient(860px 700px at 88% 104%, rgba(110,80,50,.22), transparent 62%),
-    radial-gradient(820px 640px at -4% 100%, rgba(40,90,74,.24), transparent 60%);
-  --ds-ambient-base: linear-gradient(180deg, #17171a, #121214);
-  --ds-glass: rgba(30,30,34,.5);
-  --ds-glass-strong: rgba(34,34,38,.72);
-  --ds-glass-paper: rgba(30,30,33,.92);
-  --ds-glass-solid: #1e1e21;
-  --ds-glass-rim: rgba(255,255,255,.09);
-  --ds-glass-line: rgba(0,0,0,.35);
-  --ds-glass-highlight: inset 0 1px 0 rgba(255,255,255,.07), inset 0 0 0 1px rgba(255,255,255,.03);
-  --ds-glass-shadow: 0 1px 1px rgba(0,0,0,.25), 0 16px 40px -10px rgba(0,0,0,.55);
-  --ds-glass-sheen: linear-gradient(150deg, rgba(255,255,255,.09), rgba(255,255,255,.02) 55%, rgba(255,255,255,.05));
-  --ds-glass-edge: rgba(255,255,255,.1);
-  --ds-wallpaper-veil: rgba(14,15,18,.66);
-}
-/* Alternative palettes, switched by the plugin through a body class. Each light block
-   and its dark twin set exactly the same properties, so selector specificity can never
-   leak a light value into dark mode. Without the plugin, "sea salt & graphite" applies. */
-body.aw-palette-sand {
-  --ds-wallpaper-veil: rgba(244,236,226,.56);
-  --ds-tone-accent: 182,94,62; --ds-tone-1: 66,112,148; --ds-tone-2: 116,128,74;
-  --ds-tone-3: 138,94,118; --ds-tone-4: 192,142,58; --ds-tone-5: 170,78,88;
-  --ds-tone-neutral: 122,112,104; --ds-ink-rgb: 40,28,20;
-  --ds-bg: #f2efea; --ds-paper: #fffdf9; --ds-shell: #f7f4ef; --ds-surface: #f4f0ea; --ds-surface-hover: #ece7df;
-  --ds-text: #332c27; --ds-heading: #241e1a; --ds-muted: #7a6f66; --ds-faint: #9a8f86;
-  --ds-border: #e8e1d8; --ds-rule: #d6cdc2; --ds-code-bg: #f6f2ec; --ds-heat-0: #f0ebe4; --ds-glass-solid: #f6f2ec;
-  --ds-ambient:
-    radial-gradient(1100px 680px at 6% -8%, rgba(244,214,190,.7), transparent 62%),
-    radial-gradient(900px 620px at 100% 4%, rgba(214,226,236,.6), transparent 60%),
-    radial-gradient(760px 620px at 96% 52%, rgba(240,222,214,.5), transparent 64%),
-    radial-gradient(860px 700px at 88% 104%, rgba(238,226,196,.6), transparent 62%),
-    radial-gradient(820px 640px at -4% 100%, rgba(222,230,210,.5), transparent 60%);
-  --ds-ambient-base: linear-gradient(180deg, #f4f1ec, #eeeae4);
-}
-body.theme-dark.aw-palette-sand {
-  --ds-wallpaper-veil: rgba(20,16,13,.68);
-  --ds-tone-accent: 226,140,104; --ds-tone-1: 122,166,206; --ds-tone-2: 170,182,118;
-  --ds-tone-3: 194,148,176; --ds-tone-4: 228,182,102; --ds-tone-5: 224,130,138;
-  --ds-tone-neutral: 172,162,152; --ds-ink-rgb: 0,0,0;
-  --ds-bg: #1a1715; --ds-paper: #221e1b; --ds-shell: #1e1a18; --ds-surface: #2a2522; --ds-surface-hover: #332d29;
-  --ds-text: #ece4dc; --ds-heading: #f7f0e8; --ds-muted: #b0a398; --ds-faint: #8c8077;
-  --ds-border: #37302b; --ds-rule: #4d443d; --ds-code-bg: #26211e; --ds-heat-0: #2e2824; --ds-glass-solid: #221e1b;
-  --ds-ambient:
-    radial-gradient(1100px 680px at 6% -8%, rgba(130,70,40,.32), transparent 62%),
-    radial-gradient(900px 620px at 100% 4%, rgba(50,80,110,.26), transparent 60%),
-    radial-gradient(860px 700px at 88% 104%, rgba(120,90,40,.24), transparent 62%),
-    radial-gradient(820px 640px at -4% 100%, rgba(70,80,50,.22), transparent 60%);
-  --ds-ambient-base: linear-gradient(180deg, #1b1816, #141210);
-}
-body.aw-palette-celadon {
-  --ds-wallpaper-veil: rgba(232,242,237,.5);
-  --ds-tone-accent: 48,118,108; --ds-tone-1: 66,104,146; --ds-tone-2: 112,136,74;
-  --ds-tone-3: 124,100,148; --ds-tone-4: 186,138,64; --ds-tone-5: 192,100,88;
-  --ds-tone-neutral: 106,116,112; --ds-ink-rgb: 18,30,26;
-  --ds-bg: #edf1ef; --ds-paper: #ffffff; --ds-shell: #f4f7f5; --ds-surface: #f1f4f2; --ds-surface-hover: #e7ece9;
-  --ds-text: #253130; --ds-heading: #18221f; --ds-muted: #66726e; --ds-faint: #86918d;
-  --ds-border: #e0e6e3; --ds-rule: #cad3cf; --ds-code-bg: #f3f6f4; --ds-heat-0: #ecf0ee; --ds-glass-solid: #f3f6f4;
-  --ds-ambient:
-    radial-gradient(1100px 680px at 6% -8%, rgba(196,226,218,.7), transparent 62%),
-    radial-gradient(900px 620px at 100% 4%, rgba(198,218,236,.6), transparent 60%),
-    radial-gradient(760px 620px at 96% 52%, rgba(226,232,214,.5), transparent 64%),
-    radial-gradient(860px 700px at 88% 104%, rgba(240,230,206,.55), transparent 62%),
-    radial-gradient(820px 640px at -4% 100%, rgba(206,232,222,.55), transparent 60%);
-  --ds-ambient-base: linear-gradient(180deg, #eff3f1, #e9eeeb);
-}
-body.theme-dark.aw-palette-celadon {
-  --ds-wallpaper-veil: rgba(12,18,16,.68);
-  --ds-tone-accent: 104,188,172; --ds-tone-1: 124,164,210; --ds-tone-2: 160,190,118;
-  --ds-tone-3: 176,152,206; --ds-tone-4: 224,182,108; --ds-tone-5: 232,146,132;
-  --ds-tone-neutral: 156,168,164; --ds-ink-rgb: 0,0,0;
-  --ds-bg: #141917; --ds-paper: #1b2220; --ds-shell: #18201d; --ds-surface: #232b28; --ds-surface-hover: #2b3531;
-  --ds-text: #e2ebe7; --ds-heading: #f1f7f4; --ds-muted: #9fb0aa; --ds-faint: #7e8e88;
-  --ds-border: #2c3633; --ds-rule: #41504b; --ds-code-bg: #1f2724; --ds-heat-0: #25302c; --ds-glass-solid: #1b2220;
-  --ds-ambient:
-    radial-gradient(1100px 680px at 6% -8%, rgba(30,100,86,.34), transparent 62%),
-    radial-gradient(900px 620px at 100% 4%, rgba(40,80,120,.26), transparent 60%),
-    radial-gradient(860px 700px at 88% 104%, rgba(110,90,50,.2), transparent 62%),
-    radial-gradient(820px 640px at -4% 100%, rgba(50,96,70,.24), transparent 60%);
-  --ds-ambient-base: linear-gradient(180deg, #151a18, #101412);
+  --ds-shadow: var(--ds-elev-2);
+  --ds-shadow-soft: var(--ds-elev-1);
+  --ds-ambient: linear-gradient(transparent, transparent);
+  --ds-ambient-base: linear-gradient(var(--ds-bg), var(--ds-bg));
+  --ds-elev-1: 0 1px 2px rgba(0,0,0,.4);
+  --ds-elev-2: 0 1px 2px rgba(0,0,0,.35), 0 12px 28px -12px rgba(0,0,0,.6);
+  --ds-elev-3: 0 2px 4px rgba(0,0,0,.35), 0 24px 56px -20px rgba(0,0,0,.7);
+  --ds-inset-bg: #131418;
+  --ds-inset: inset 0 1px 2px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.04);
+  --ds-glass: var(--ds-paper);
+  --ds-glass-strong: var(--ds-paper);
+  --ds-glass-paper: var(--ds-paper);
+  --ds-glass-solid: var(--ds-paper);
+  --ds-glass-rim: rgba(255,255,255,.06);
+  --ds-glass-line: rgba(255,255,255,.07);
+  --ds-glass-highlight: inset 0 1px 0 rgba(255,255,255,.06), inset 0 0 0 1px rgba(255,255,255,.02);
+  --ds-glass-shadow: var(--ds-elev-3);
+  --ds-glass-sheen: linear-gradient(180deg, rgba(255,255,255,.025), rgba(255,255,255,0));
+  --ds-glass-edge: rgba(255,255,255,.08);
 }

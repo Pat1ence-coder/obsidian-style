@@ -42,18 +42,19 @@ test('scroll ruler maps scroll position to a fraction and back, and idles on sho
   assert.equal(progressOf(5000,2000,800),1);assert.equal(progressOf(0,802,800),null);
   assert.equal(topFor(.5,2000,800),600);assert.equal(topFor(-1,2000,800),0);assert.equal(topFor(2,2000,800),1200);assert.equal(topFor(.5,500,800),0);
 });
-test('glass style is screen-only and every glass token has a dark twin',()=>{
+test('the document look is screen-only and every token it sets has a dark twin',()=>{
   const glass=fs.readFileSync(path.join(root,'src/styles/glass.css'),'utf8');
   const outside=glass.replace(/@media screen[^{]*\{[\s\S]*?\n\}/g,'').replace(/@supports[^{]*\{\s*@media screen \{[\s\S]*?\n  \}\n\}/g,'').replace(/\/\*[\s\S]*?\*\//g,'');
-  assert.doesNotMatch(outside,/aw-style-glass[^{]*\{/,'no glass rule outside @media screen');
-  const block=sel=>{const m=new RegExp(sel.replace(/\./g,'\\.')+' \\{([^}]*)\\}').exec(glass);assert.ok(m,sel);return m[1].match(/--aw-[\w-]+(?=:)/g).sort();};
-  assert.deepEqual(block('body.theme-dark.aw-style-glass'),block('body.aw-style-glass'));
+  assert.doesNotMatch(outside,/body:is\(\.theme-light,\.theme-dark\)[^{]*\{/,'no rule outside @media screen');
+  assert.doesNotMatch(glass,/aw-style-/,'no style class: this is the only look');
+  const block=sel=>{const m=new RegExp(sel.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+' \\{([^}]*)\\}').exec(glass);assert.ok(m,sel);return m[1].match(/--aw-[\w-]+(?=:)/g).sort();};
+  assert.deepEqual(block('body.theme-dark:not(.theme-light)'),block('body:is(.theme-light,.theme-dark)'));
   const snippet=fs.readFileSync(path.join(root,'dist/snippets/style.css'),'utf8');
-  assert.match(snippet,/--ds-wallpaper-sky:url\("data:image\/png;base64,/);
+  assert.doesNotMatch(snippet,/--ds-wallpaper-sky|backdrop-filter: blur\(40px\)/,'the glass style is opaque: no sky, no see-through note');
   assert.ok(snippet.indexOf('Source: src/styles/glass.css')<snippet.indexOf('Source: src/styles/print.css'),'print rules load last');
   assert.match(snippet,/\.callout\[data-callout="diagram"\]\[data-callout-metadata="rows"\]/);
   const plugin=fs.readFileSync(path.join(root,'dist/algorithm-workbench/styles.css'),'utf8');
-  assert.match(plugin,/\.workspace-leaf-content\[data-type="algorithm-workbench"\] \{--aw-sky:url\("data:image\/png;base64,/);
+  assert.doesNotMatch(plugin,/--aw-sky/);
   assert.match(plugin,/@media print \{\s*\.aw-ruler,\.aw-decor \{display: none !important;\}/);
-  assert.match(plugin,/^\.aw-ruler,\.aw-decor \{display: none;\}/m,'ruler and decoration only show in the glass style');
+  assert.match(plugin,/body:is\(\.theme-light,\.theme-dark\) \.aw-ruler \{\s*display: block;/,'the ruler shows without any style class');
 });

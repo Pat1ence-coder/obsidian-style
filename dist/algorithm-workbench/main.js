@@ -4,7 +4,7 @@ const __awModules={"main.js":(module,exports,__awRequire)=>{
 const {Plugin, PluginSettingTab, Setting, Notice, TFile, editorInfoField} = require('obsidian');
 const {EditorView} = require('@codemirror/view');
 const Core = __awRequire("core.js");
-const {WorkbenchView,VIEW}=__awRequire("features/workbench.js");
+const {WorkbenchView,VIEW,NAME,viewIcon}=__awRequire("features/workbench.js");
 const {FolderNotes}=__awRequire("features/folder-notes.js");
 const {Figures}=__awRequire("features/figures.js");
 const {ScreenshotNames}=__awRequire("features/screenshot-names.js");
@@ -12,6 +12,7 @@ const {FigureTools}=__awRequire("features/figure-tools.js");
 const {Annotations}=__awRequire("features/annotations.js");
 const {ScrollRuler}=__awRequire("features/scroll-ruler.js");
 const {Decor}=__awRequire("features/decor.js");
+// aw-palette-* and aw-style-* are listed so classes left by earlier versions are cleaned up.
 const APPEARANCE=/^aw-(?:palette|style|caption)-|^aw-figure-tools-off$/;
 
 class WorkbenchSettings extends PluginSettingTab {
@@ -24,14 +25,6 @@ class WorkbenchSettings extends PluginSettingTab {
     this.plugin.screenshotNames.displaySettings(this.containerEl);
     this.plugin.figureTools.displaySettings(this.containerEl);
     this.containerEl.createEl('h3',{text:'外观'});
-    new Setting(this.containerEl).setName('界面风格').setDesc('悬浮卡片：白色笔记卡片浮在模糊海岸壁纸上。通透玻璃：天空壁纸上的半透明磨砂笔记区、等宽字体与暖橙色点缀。打印与 PDF 不受影响。').addDropdown(d=>{
-      for(const x of Core.STYLES)d.addOption(x.id,x.label);
-      d.setValue(s.style).onChange(v=>this.plugin.setStyle(v));
-    });
-    new Setting(this.containerEl).setName('配色方案').setDesc('同时作用于知识脉冲看板和文档样式；浅色与深色模式各有对应版本。').addDropdown(d=>{
-      for(const p of Core.PALETTES)d.addOption(p.id,p.label);
-      d.setValue(s.palette).onChange(v=>this.plugin.setPalette(v));
-    });
     new Setting(this.containerEl).setName('图注与表注字号').setDesc('标准为比正文小一号（打印 9pt，对应小五号）；小为 8pt，大为 10pt。编号「图 1」「表 1」自动加粗。').addDropdown(d=>{
       for(const c of Core.CAPTION_SIZES)d.addOption(c.id,c.label);
       d.setValue(s.captionSize).onChange(v=>this.plugin.setCaptionSize(v));
@@ -65,16 +58,8 @@ class WorkbenchPlugin extends Plugin {
     this.scrollRuler=this.addChild(new ScrollRuler(this));
     this.decor=this.addChild(new Decor(this));
     this.registerView(VIEW,leaf=>new WorkbenchView(leaf,this));
-    this.addRibbonIcon('activity','打开知识脉冲看板',()=>this.openWorkbench());
-    this.addCommand({id:'open-workbench',name:'打开知识脉冲看板',callback:()=>this.openWorkbench()});
-    this.addCommand({id:'cycle-palette',name:'切换配色方案',callback:()=>{
-      const list=Core.PALETTES,next=list[(list.findIndex(p=>p.id===this.data.settings.palette)+1)%list.length];
-      this.setPalette(next.id);new Notice(`配色方案：${next.label}`);
-    }});
-    this.addCommand({id:'cycle-style',name:'切换界面风格',callback:()=>{
-      const list=Core.STYLES,next=list[(list.findIndex(x=>x.id===this.data.settings.style)+1)%list.length];
-      this.setStyle(next.id);new Notice(`界面风格：${next.label}`);
-    }});
+    this.addRibbonIcon(viewIcon(),`打开${NAME}`,()=>this.openWorkbench());
+    this.addCommand({id:'open-workbench',name:`打开${NAME}`,callback:()=>this.openWorkbench()});
     // Palette and caption size are body classes read by both stylesheets; popout windows get
     // them too. Windows already open (plugin re-enabled, restored layout) are found via leaves.
     this.appearanceDocs=new Set();this.applyAppearanceEverywhere();
@@ -179,7 +164,7 @@ class WorkbenchPlugin extends Plugin {
   // Appearance settings are body classes read by both stylesheets.
   appearanceClasses(){
     const s=this.data.settings;
-    return ['aw-palette-'+s.palette,'aw-style-'+s.style,'aw-caption-'+s.captionSize].concat(s.figureTools?[]:['aw-figure-tools-off']);
+    return ['aw-caption-'+s.captionSize].concat(s.figureTools?[]:['aw-figure-tools-off']);
   }
   applyAppearance(doc){
     if(!doc?.body)return;
@@ -193,19 +178,6 @@ class WorkbenchPlugin extends Plugin {
     docs.add(this.app.workspace.containerEl?.ownerDocument);
     this.app.workspace.iterateAllLeaves?.(leaf=>docs.add(leaf.view?.containerEl?.ownerDocument));
     for(const doc of docs)this.applyAppearance(doc);
-  }
-  setPalette(id){
-    if(!Core.PALETTES.some(p=>p.id===id)||this.data.settings.palette===id)return;
-    this.data.settings.palette=id;
-    this.applyAppearanceEverywhere();
-    this.changed();
-  }
-  setStyle(id){
-    if(!Core.STYLES.some(x=>x.id===id)||this.data.settings.style===id)return;
-    this.data.settings.style=id;
-    this.applyAppearanceEverywhere();
-    this.scrollRuler?.sync();
-    this.changed();
   }
   setCaptionSize(id){
     if(!Core.CAPTION_SIZES.some(c=>c.id===id)||this.data.settings.captionSize===id)return;
@@ -223,12 +195,8 @@ module.exports=WorkbenchPlugin;
 },
 "core.js":(module,exports,__awRequire)=>{
 'use strict';
-const DEFAULT_SETTINGS = { nameScreenshots: true, folderNotes: true, openOnStartup: true, tracking: true, recentLimit: 8, range: 90, metric: 'score', palette: 'sea', style: 'card', captionSize: 'normal', figureTools: true, scrollRuler: true, decorImage: '', excludedFolders: ['Templates', 'templates'] };
+const DEFAULT_SETTINGS = { nameScreenshots: true, folderNotes: true, openOnStartup: true, tracking: true, recentLimit: 8, range: 90, metric: 'score', captionSize: 'normal', figureTools: true, scrollRuler: true, decorImage: '', excludedFolders: ['Templates', 'templates'] };
 const RANGES = [30, 90, 180, 365];
-// Colour palettes; each id maps to a body class aw-palette-<id> defined in tokens.css.
-const PALETTES = [{id:'sea', label:'海盐石墨'}, {id:'sand', label:'暖砂陶土'}, {id:'celadon', label:'青瓷'}];
-// Interface styles; body class aw-style-<id>. "glass" is screen-only (glass.css), print is shared.
-const STYLES = [{id:'card', label:'悬浮卡片'}, {id:'glass', label:'通透玻璃'}];
 // Figure and table caption sizes; body class aw-caption-<id>, defined in figures.css.
 const CAPTION_SIZES = [{id:'small', label:'小'}, {id:'normal', label:'标准'}, {id:'large', label:'大'}];
 // Score weights are documented in the dashboard; values are derived, never stored.
@@ -293,9 +261,7 @@ function loadState(raw, now = new Date()) {
   for (const name of ['openOnStartup', 'tracking', 'folderNotes', 'nameScreenshots', 'figureTools', 'scrollRuler']) if (typeof s[name] === 'boolean') d.settings[name] = s[name];
   if (RANGES.includes(s.range)) d.settings.range = s.range;
   if (METRICS.some(m => m.key === s.metric)) d.settings.metric = s.metric;
-  if (PALETTES.some(x => x.id === s.palette)) d.settings.palette = s.palette;
   if (CAPTION_SIZES.some(x => x.id === s.captionSize)) d.settings.captionSize = s.captionSize;
-  if (STYLES.some(x => x.id === s.style)) d.settings.style = s.style;
   if (typeof s.decorImage === 'string') d.settings.decorImage = s.decorImage.trim().replace(/^\/+/, '').slice(0, 500);
   if (Number.isInteger(s.recentLimit)) d.settings.recentLimit = Math.min(30, Math.max(3,s.recentLimit));
   if (Array.isArray(s.excludedFolders)) d.settings.excludedFolders = s.excludedFolders.filter(x=>typeof x==='string').map(x=>x.trim().replace(/^\/+|\/+$/g,'')).filter(Boolean);
@@ -450,16 +416,19 @@ function calendarDays(now, weeks) {
   const start = shiftDay(monday,-7*(weeks-1));
   return Array.from({length:weeks*7},(_,i)=>dayKey(shiftDay(start,i)));
 }
-module.exports = {transactionCounts,pruneRecords,DEFAULT_SETTINGS,RANGES,METRICS,PALETTES,STYLES,CAPTION_SIZES,dayKey,shiftDay,countCharacters,emptyData,loadState,isExcluded,recordChange,
+module.exports = {transactionCounts,pruneRecords,DEFAULT_SETTINGS,RANGES,METRICS,CAPTION_SIZES,dayKey,shiftDay,countCharacters,emptyData,loadState,isExcluded,recordChange,
   recordActivity,taskDelta,recordTasks,recordNote,dayScore,metricValue,lastDays,summary,currentStreak,activeValues,intensity,percentile,renamePath,recentFiles,calendarDays};
 
 },
 "features/workbench.js":(module,exports,__awRequire)=>{
 'use strict';
-const {ItemView,Menu,Notice,TFile,setIcon}=require('obsidian');
+const {ItemView,Menu,Notice,TFile,setIcon,getIcon}=require('obsidian');
 const Core=__awRequire("core.js");
 const Dash=__awRequire("features/dashboard-data.js");
 const VIEW='algorithm-workbench';
+const NAME='写作工作台';
+// notebook-pen is a newer Lucide icon; older Obsidian builds fall back to pencil.
+const viewIcon=()=>typeof getIcon==='function'&&!getIcon('notebook-pen')?'pencil':'notebook-pen';
 const WEEKS=53;
 const number=n=>new Intl.NumberFormat('zh-CN',{maximumFractionDigits:1}).format(n);
 const hours=minutes=>number(Math.round(minutes/6)/10);
@@ -544,8 +513,8 @@ function months(data,now=new Date()){
 class WorkbenchView extends ItemView{
   constructor(leaf,plugin){super(leaf);this.plugin=plugin;this.selectedDate=Core.dayKey();this.tab='board';this.creatingNote=false;}
   getViewType(){return VIEW;}
-  getDisplayText(){return '知识脉冲';}
-  getIcon(){return 'activity';}
+  getDisplayText(){return NAME;}
+  getIcon(){return viewIcon();}
   async onOpen(){this.render();}
   async onClose(){
     this.contentEl.replaceChildren();this.dayEl=null;this.recentEl=null;
@@ -580,24 +549,18 @@ class WorkbenchView extends ItemView{
     this.statNumbers=null;this.longestEl=null;this.heatCells=null;this.dayEl=null;this.recentEl=null;this.liveParts=[];
     const data=this.plugin.data,settings=data.settings;
     const root=el(this.contentEl,'div','aw-page');
-    // The banner, blurred and enlarged, lights the glass cards from behind.
-    el(root,'div','aw-ambient').setAttribute('aria-hidden','true');
     this.renderHero(root);
     if(!settings.tracking)el(root,'p','aw-notice','活动统计已暂停，可在插件设置中恢复。');
     if(this.plugin.saveError)el(root,'p','aw-notice','统计暂未保存成功，请检查磁盘空间或权限；插件会重试。').setAttribute('role','status');
-    // The glass style lays the board out as a bento grid with its own chart modules.
-    const bento=this.tab==='board'&&settings.style==='glass';
-    const stack=el(root,'div',bento?'aw-bento':'aw-stack');
+    // The board is a bento grid of modules; the other views stack full-width cards.
+    const board=this.tab==='board';
+    const stack=el(root,'div',board?'aw-bento':'aw-stack');
     let heatWrap=null;
-    if(bento){
+    if(board){
       this.renderKpis(stack);this.renderToday(stack);this.renderTrend(stack);
       heatWrap=this.renderPulse(stack);
       this.dayEl=el(stack,'div','aw-day-slot');this.renderDay();
       this.renderMonths(stack);this.renderRecentCard(stack,Math.min(settings.recentLimit,5));
-    }else if(this.tab==='board'){
-      this.renderOverview(stack);heatWrap=this.renderPulse(stack);
-      this.dayEl=el(stack,'div','aw-day-slot');this.renderDay();
-      this.renderRecentCard(stack,Math.min(settings.recentLimit,5));
     }else if(this.tab==='recent')this.renderRecentCard(stack,settings.recentLimit);
     else this.renderMonthly(stack);
     const footer=el(root,'footer','aw-footer');
@@ -612,9 +575,9 @@ class WorkbenchView extends ItemView{
   }
   renderHero(root){
     const settings=this.plugin.data.settings;
-    const hero=el(root,'header','aw-hero');el(hero,'div','aw-backdrop').setAttribute('aria-hidden','true');
+    const hero=el(root,'header','aw-hero');
     const bar=el(hero,'div','aw-hero-bar'),brand=el(bar,'div','aw-brand');
-    icon(brand,'activity','aw-brand-mark');el(brand,'h1','aw-title','知识脉冲看板');
+    icon(brand,viewIcon(),'aw-brand-mark');el(brand,'h1','aw-title',NAME);
     const tabs=el(bar,'nav','aw-tabs');tabs.setAttribute('aria-label','视图');
     for(const [key,label] of TABS){
       const tab=button(tabs,label,'aw-tab',()=>{if(this.tab!==key){this.tab=key;this.render();}});
@@ -624,12 +587,6 @@ class WorkbenchView extends ItemView{
     const range=button(tools,'','aw-chip',event=>this.chooseRange(event));range.dataset.awFocus='range';
     el(range,'span','aw-chip-key','时间:');el(range,'span','',`最近 ${settings.range} 天`);icon(range,'chevron-down','aw-chip-icon');
     el(tools,'span','aw-chip aw-chip-static',settings.tracking?'范围: 本机记录':'范围: 统计已暂停');
-    const palette=button(tools,'','aw-chip aw-palette',event=>this.choosePalette(event));palette.dataset.awFocus='palette';
-    el(palette,'span','aw-chip-key','配色:');el(palette,'span','',(Core.PALETTES.find(p=>p.id===settings.palette)||Core.PALETTES[0]).label);
-    icon(palette,'chevron-down','aw-chip-icon');
-    const style=button(tools,'','aw-chip aw-style',event=>this.chooseStyle(event));style.dataset.awFocus='style';
-    el(style,'span','aw-chip-key','风格:');el(style,'span','',(Core.STYLES.find(x=>x.id===settings.style)||Core.STYLES[0]).label);
-    icon(style,'chevron-down','aw-chip-icon');
     const create=button(tools,'','aw-chip aw-new-note',()=>this.newNote());icon(create,'plus','aw-chip-icon');el(create,'span','','新建笔记');
     const folder=this.plugin.folderNotes?.getFolder();
     create.title=folder?`在 ${folder.path==='/'?'笔记库根目录':folder.path} 中新建`:'按 Obsidian 当前的新建笔记设置创建';
@@ -643,28 +600,6 @@ class WorkbenchView extends ItemView{
     const menu=new Menu();
     for(const value of Core.RANGES)menu.addItem(item=>item.setTitle(`最近 ${value} 天`).setChecked(settings.range===value).onClick(()=>choose(value)));
     menu.showAtMouseEvent(event);
-  }
-  choosePalette(event){
-    const current=this.plugin.data.settings.palette,choose=id=>{if(id!==current)this.plugin.setPalette(id);};
-    if(typeof Menu!=='function'){choose(Core.PALETTES[(Core.PALETTES.findIndex(p=>p.id===current)+1)%Core.PALETTES.length].id);return;}
-    const menu=new Menu();
-    for(const p of Core.PALETTES)menu.addItem(item=>item.setTitle(p.label).setChecked(p.id===current).onClick(()=>choose(p.id)));
-    menu.showAtMouseEvent(event);
-  }
-  chooseStyle(event){
-    const current=this.plugin.data.settings.style,choose=id=>{if(id!==current)this.plugin.setStyle(id);};
-    if(typeof Menu!=='function'){choose(Core.STYLES[(Core.STYLES.findIndex(x=>x.id===current)+1)%Core.STYLES.length].id);return;}
-    const menu=new Menu();
-    for(const x of Core.STYLES)menu.addItem(item=>item.setTitle(x.label).setChecked(x.id===current).onClick(()=>choose(x.id)));
-    menu.showAtMouseEvent(event);
-  }
-  renderOverview(stack){
-    const data=this.plugin.data,values=overview(data);
-    const c=card(stack,{name:'overview',iconName:'activity',title:'知识脉冲概览',sub:`最近 ${data.settings.range} 天 · 本机记录`,badge:`最长连续 ${values.longest} 天`,hue:'tone-accent'});
-    this.longestEl=c.pill;
-    const row=el(c.body,'div','aw-stats');this.statNumbers=new Map();
-    for(const [key,label,unit,cls] of [['score','累计贡献分','分'],['characters','新增字数','字'],['active','活跃天数','天'],['streak','当前连续','天','aw-stat-accent'],['minutes','编辑时长','小时'],['focus','深度专注','小时']])
-      this.statNumbers.set(key,stat(row,label,values[key],unit,cls,HUES[key]));
   }
   // A part that redraws itself on refresh() whenever its data key changes.
   live(key,draw){const part={key,stamp:key(),draw};this.liveParts.push(part);draw();return part;}
@@ -779,7 +714,7 @@ class WorkbenchView extends ItemView{
   }
   renderPulse(stack){
     const data=this.plugin.data,settings=data.settings,metric=metricOf(settings.metric);
-    const c=card(stack,{name:'pulse',iconName:'calendar-days',title:'年度知识活跃脉冲',sub:`${metric.label} · 强度按个人近期分位数`,badge:'',hue:HUES[metric.key]});
+    const c=card(stack,{name:'pulse',iconName:'calendar-days',title:'年度活跃热力图',sub:`${metric.label} · 强度按个人近期分位数`,badge:'',hue:HUES[metric.key]});
     this.activeEl=c.pill;
     const tabs=el(c.body,'div','aw-segment');tabs.setAttribute('role','group');tabs.setAttribute('aria-label','热力图指标');
     for(const m of Core.METRICS){
@@ -902,8 +837,8 @@ class WorkbenchView extends ItemView{
   }
   async exportCSV(){
     const vault=this.app.vault,stamp=Core.dayKey().replace(/-/g,'');
-    let path=`知识脉冲-${stamp}.csv`;
-    for(let i=2;vault.getAbstractFileByPath(path);i++)path=`知识脉冲-${stamp}-${i}.csv`;
+    let path=`${NAME}-${stamp}.csv`;
+    for(let i=2;vault.getAbstractFileByPath(path);i++)path=`${NAME}-${stamp}-${i}.csv`;
     try{await vault.create(path,csv(this.plugin.data));new Notice(`已导出到笔记库根目录：${path}`);}
     catch{new Notice('导出失败，请检查笔记库写入权限。');}
   }
@@ -923,12 +858,12 @@ class WorkbenchView extends ItemView{
     try{await this.app.workspace.getLeaf('tab').openFile(file);}catch{new Notice('无法打开这篇笔记。');}
   }
 }
-module.exports={WorkbenchView,VIEW,overview,modifiedLabel,csv,months};
+module.exports={WorkbenchView,VIEW,NAME,viewIcon,overview,modifiedLabel,csv,months};
 
 },
 "features/dashboard-data.js":(module,exports,__awRequire)=>{
 'use strict';
-// Numbers behind the glass dashboard's charts. Pure: data in, plain values out.
+// Numbers behind the dashboard's charts. Pure: data in, plain values out.
 const Core=__awRequire("core.js");
 const round1=n=>Math.round(n*10)/10;
 
@@ -1142,7 +1077,7 @@ class FigureModal extends Modal {
     this.contentEl.createEl('p',{text:'选择图片，设置宽度与图注。插入后仍是可直接编辑的 Markdown。'});
     new Setting(this.contentEl).setName('布局').addDropdown(d=>{
       this.layoutDropdown=d;
-      d.addOptions({single:'单张图片','grid-1':'多图 · 1 列','grid-2':'多图 · 2 列','grid-3':'多图 · 3 列','grid-4':'多图 · 4 列'}).setValue(this.layout).onChange(value=>{
+      d.addOptions({single:'单张图片','grid-1':'多图 · 1 列','grid-2':'多图 · 2 列','grid-3':'多图 · 3 列','grid-4':'多图 · 4 列','mosaic-left':'多图 · 大图在左（一大多小）','mosaic-right':'多图 · 大图在右（一大多小）'}).setValue(this.layout).onChange(value=>{
         if(this.busy){d.setValue(this.layout);return;}
         if(value==='single'&&this.sources.length>1){new Notice('请先移除多余图片，或选择多图布局。');d.setValue(this.layout);return;}
         this.layout=value;this.updateLayout();
@@ -1262,6 +1197,9 @@ module.exports={Figures,FigureModal};
 },
 "features/figure-format.js":(module,exports,__awRequire)=>{
 'use strict';
+// Multi-image layouts: grid-N (N columns) and mosaic-left/right (one large image beside a
+// stack of the others).
+const GROUP=/^(?:grid-[1-4]|mosaic-(?:left|right))$/;
 function imageReference(text) {
   const s=text.trim();
   if((s.match(/!\[/g)||[]).length!==1)return null;
@@ -1269,7 +1207,7 @@ function imageReference(text) {
 }
 function figureMarkdown(reference, caption, width='640', align='center') {
   const references=Array.isArray(reference)?reference:[reference];
-  const grid=/^grid-[1-4]$/.test(align);
+  const grid=GROUP.test(align);
   if(grid ? references.length<2 : references.length!==1)throw Error(grid?'多图布局至少需要两张图片。':'多张图片请选择多图布局。');
   const images=references.map(imageReference);
   if(images.some(image=>!image))throw Error('请为每个位置选择一张图片。');
@@ -1294,7 +1232,7 @@ function spacedFigure(before,after,figure) {
   return (before && !before.endsWith('\n\n') ? before.endsWith('\n')?'\n':'\n\n' : '')
     +figure+(after ? after.startsWith('\n\n')?'':after.startsWith('\n')?'\n':'\n\n' : '\n');
 }
-module.exports={imageReference,figureMarkdown,spacedFigure};
+module.exports={imageReference,figureMarkdown,spacedFigure,GROUP};
 
 },
 "features/screenshot-names.js":(module,exports,__awRequire)=>{
@@ -1355,7 +1293,30 @@ const Edit=__awRequire("features/figure-edit.js");
 const FIGURE='.callout[data-callout="figure"]';
 const CAPTIONED='.callout:is([data-callout="figure"],[data-callout="table"]) .callout-title-inner';
 const ALIGN=[['left','align-left','左对齐'],['center','align-center','居中'],['right','align-right','右对齐']];
+const MOSAIC=[['mosaic-left','layout-panel-left','大图在左'],['mosaic-right','layout-panel-left','大图在右']];
 const MIN_WIDTH=40;
+// Resizing snaps to these fractions of the column when the edge comes within SNAP px.
+const SNAP_FRACTIONS=[1/4,1/3,1/2,2/3,3/4,1],SNAP=10;
+// A drag only targets a slot while the pointer stays this close to the figure.
+const REACH=96;
+const rectIn=(rect,origin)=>({left:rect.left-origin.left,top:rect.top-origin.top,width:rect.width,height:rect.height});
+const centre=r=>({x:r.left+r.width/2,y:r.top+r.height/2});
+// Nearest slot to a point, or -1 when the point is farther than REACH from every slot edge.
+function nearestSlot(slots,x,y){
+  let best=-1,bestDistance=Infinity;
+  slots.forEach((r,i)=>{
+    const dx=Math.max(r.left-x,0,x-(r.left+r.width)),dy=Math.max(r.top-y,0,y-(r.top+r.height));
+    const c=centre(r),edge=Math.hypot(dx,dy),distance=edge*1000+Math.hypot(c.x-x,c.y-y);
+    if(edge<=REACH&&distance<bestDistance){best=i;bestDistance=distance;}
+  });
+  return best;
+}
+// Snap a width to the nearest column fraction within SNAP px; returns {width, fraction|null}.
+function snapWidth(width,column){
+  for(const f of SNAP_FRACTIONS){const w=column*f;if(Math.abs(width-w)<=SNAP)return {width:Math.round(w),fraction:f};}
+  return {width,fraction:null};
+}
+const percent=f=>f===1?'整列':`${Math.round(f*100)}%`;
 
 // Bold the "图 1" / "表 2" label of a caption; the rest stays a plain text node.
 function markLabel(title) {
@@ -1369,9 +1330,10 @@ function markLabel(title) {
   first.textContent=found.rest;title.insertBefore(label,first);
 }
 
-// Hover tools for figure callouts: alignment / column bar, a resize handle on single
-// images and drag grips for reordering grids. Every change is written back to the
-// note's Markdown, so print and PDF follow the same layout.
+// Hover tools for figure callouts: a layout bar, a resize handle on every image (snapping
+// to column fractions with an outline), and a move grip. Dragging a grid image outlines the
+// slot it would land in; dragging a single image outlines the left / centre / right
+// positions. Every change is written back to the note's Markdown, so print follows.
 class FigureTools extends Component {
   constructor(plugin){super();this.plugin=plugin;this.app=plugin.app;this.documents=new Map();this.decorated=new WeakSet();this.gesture=null;}
   onload(){
@@ -1411,28 +1373,31 @@ class FigureTools extends Component {
   }
   decorate(figure){
     this.decorated.add(figure);
-    const doc=figure.ownerDocument,meta=figure.dataset.calloutMetadata||'center',grid=meta.startsWith('grid-');
+    const doc=figure.ownerDocument,meta=figure.dataset.calloutMetadata||'center',group=Edit.isGroup(meta);
     const title=figure.querySelector(':scope > .callout-title .callout-title-inner');
     if(title)markLabel(title);
     figure.classList.add('aw-figure-editable');
     const bar=doc.createElement('div');bar.className='aw-figure-bar';bar.contentEditable='false';
-    const add=(value,label,iconName,text)=>{
-      const b=doc.createElement('button');b.type='button';b.className='aw-figure-option';
+    const add=(value,label,iconName,text,cls='')=>{
+      const b=doc.createElement('button');b.type='button';b.className='aw-figure-option'+cls;
       b.dataset.awMeta=value;b.title=label;b.setAttribute('aria-label',label);
       b.setAttribute('aria-pressed',String(value===meta));
       if(iconName)setIcon(b,iconName);else b.textContent=text;
       bar.appendChild(b);
     };
-    if(grid){
+    if(group){
       const caption=doc.createElement('span');caption.className='aw-figure-bar-label';caption.textContent='列';bar.appendChild(caption);
       for(let n=1;n<=4;n++)add(`grid-${n}`,`${n} 列`,null,String(n));
+      const rule=doc.createElement('span');rule.className='aw-figure-bar-rule';bar.appendChild(rule);
+      for(const [value,iconName,label] of MOSAIC)add(value,label,iconName,null,value==='mosaic-right'?' aw-flip':'');
     }else for(const [value,iconName,label] of ALIGN)add(value,label,iconName);
     figure.appendChild(bar);
     figure.querySelectorAll('.image-embed').forEach((embed,index)=>{
+      const grip=doc.createElement('span');grip.contentEditable='false';grip.dataset.awIndex=String(index);grip.className='aw-figure-grip';
+      grip.title=group?'拖动到另一个位置':'拖到左、中、右对齐位置';setIcon(grip,group?'grip-vertical':'move');
       const handle=doc.createElement('span');handle.contentEditable='false';handle.dataset.awIndex=String(index);
-      if(grid){handle.className='aw-figure-grip';handle.title='拖到另一张图上交换顺序';setIcon(handle,'grip-vertical');}
-      else{handle.className='aw-figure-resize';handle.title='拖动调整宽度';}
-      embed.appendChild(handle);
+      handle.className='aw-figure-resize';handle.title='拖动调整宽度';
+      embed.append(grip,handle);
     });
   }
   pointerDown(event){
@@ -1449,51 +1414,132 @@ class FigureTools extends Component {
     }
     const index=Number(target.dataset.awIndex),embed=target.closest('.image-embed');
     if(target.classList.contains('aw-figure-resize'))this.startResize(event,figure,embed,index);
-    else this.startReorder(event,figure,embed,index);
+    else if(Edit.isGroup(figure.dataset.calloutMetadata||''))this.startReorder(event,figure,embed,index);
+    else this.startAlign(event,figure,embed);
+  }
+  // An outline drawn over the figure (absolute, in figure coordinates) during a gesture.
+  outline(figure,cls,label){
+    const box=figure.ownerDocument.createElement('div');box.className='aw-figure-outline '+cls;box.contentEditable='false';
+    if(label){const tag=figure.ownerDocument.createElement('span');tag.className='aw-figure-outline-label';tag.textContent=label;box.appendChild(tag);}
+    figure.appendChild(box);this.gesture?.overlays.push(box);return box;
+  }
+  place(box,rect){
+    if(!rect){box.hidden=true;return;}
+    box.hidden=false;
+    for(const k of ['left','top','width','height'])box.style[k]=Math.round(rect[k])+'px';
   }
   startResize(event,figure,embed,index){
     const img=embed?.querySelector('img');
     if(!img)return;
-    const start=img.getBoundingClientRect().width,x=event.clientX;
-    let width=start;
+    const group=Edit.isGroup(figure.dataset.calloutMetadata||'');
+    const start=img.getBoundingClientRect(),x=event.clientX,ratio=start.height/Math.max(1,start.width);
+    // Single images snap to fractions of the text column; grid images are capped by their cell.
+    const column=group?null:(figure.querySelector(':scope > .callout-content')?.getBoundingClientRect().width||null);
+    let width=start.width,fraction=null;
     figure.classList.add('aw-figure-resizing');
-    this.beginGesture(figure.ownerDocument,move=>{
-      width=Math.max(MIN_WIDTH,Math.round(start+move.clientX-x));
-      img.style.width=width+'px';embed.dataset.awWidth=`${Math.round(width/10)*10}px`;
-    },()=>{
+    this.beginGesture(figure.ownerDocument,()=>{
+      img.style.width='';delete embed.dataset.awWidth;figure.classList.remove('aw-figure-resizing');
+    });
+    const guide=column?this.outline(figure,'aw-figure-guide',''):null;
+    if(guide)guide.hidden=true;
+    this.gesture.onMove=move=>{
+      const raw=Math.max(MIN_WIDTH,start.width+move.clientX-x),snapped=column?snapWidth(raw,column):{width:raw,fraction:null};
+      width=Math.min(snapped.width,column||Infinity);fraction=snapped.fraction;
+      img.style.width=Math.round(width)+'px';
+      const shown=Math.round(img.getBoundingClientRect().width||width);
+      embed.dataset.awWidth=fraction?`${shown}px · ${percent(fraction)}`:`${Math.round(shown/10)*10}px`;
+      if(guide){
+        if(fraction){
+          const at=rectIn(img.getBoundingClientRect(),figure.getBoundingClientRect());
+          this.place(guide,{left:at.left,top:at.top,width:shown,height:shown*ratio});
+        }else guide.hidden=true;
+      }
+    };
+    this.gesture.onEnd=()=>{
       figure.classList.remove('aw-figure-resizing');
-      const final=Math.min(4096,Math.max(MIN_WIDTH,Math.round(width/10)*10));
-      if(Math.abs(width-start)<3){img.style.width='';delete embed.dataset.awWidth;return;}
+      const shown=img.getBoundingClientRect().width||width;
+      if(Math.abs(shown-start.width)<3){img.style.width='';delete embed.dataset.awWidth;return;}
+      const final=Math.min(4096,Math.max(MIN_WIDTH,fraction?Math.round(shown):Math.round(shown/10)*10));
       void this.edit(figure,(lines,block)=>Edit.setWidth(lines,block,index,final));
-    });
+    };
   }
+  // Grid / mosaic: a small copy of the image follows the pointer; the nearest slot is outlined.
   startReorder(event,figure,embed,from){
-    const embeds=[...figure.querySelectorAll('.image-embed')];
+    const embeds=[...figure.querySelectorAll('.image-embed')],doc=figure.ownerDocument;
+    const origin=figure.getBoundingClientRect(),slots=embeds.map(e=>e.getBoundingClientRect());
     let to=from;
-    embed.classList.add('aw-figure-dragging');
-    this.beginGesture(figure.ownerDocument,move=>{
-      const over=figure.ownerDocument.elementFromPoint(move.clientX,move.clientY)?.closest?.('.image-embed');
-      const next=embeds.indexOf(over);
-      if(next<0||next===to)return;
-      embeds[to]?.classList.remove('aw-figure-drop');to=next;
-      if(to!==from)embeds[to].classList.add('aw-figure-drop');
-    },()=>{
-      embeds.forEach(e=>e.classList.remove('aw-figure-dragging','aw-figure-drop'));
-      if(to!==from)void this.edit(figure,(lines,block)=>Edit.moveImage(lines,block,from,to));
+    embed.classList.add('aw-figure-dragging');figure.classList.add('aw-figure-moving');
+    this.beginGesture(doc,()=>{embed.classList.remove('aw-figure-dragging');figure.classList.remove('aw-figure-moving');});
+    const slot=this.outline(figure,'aw-figure-slot','放到这里');slot.hidden=true;
+    const ghost=this.ghost(embed,event);
+    this.gesture.onMove=move=>{
+      this.moveGhost(ghost,move);
+      to=nearestSlot(slots,move.clientX,move.clientY);
+      this.place(slot,to<0||to===from?null:rectIn(slots[to],origin));
+    };
+    this.gesture.onEnd=()=>{
+      embed.classList.remove('aw-figure-dragging');figure.classList.remove('aw-figure-moving');
+      if(to>=0&&to!==from)void this.edit(figure,(lines,block)=>Edit.moveImage(lines,block,from,to));
+    };
+  }
+  // Single image: three outlines (left / centre / right) of the image's size; drop on one to align.
+  startAlign(event,figure,embed){
+    const img=embed?.querySelector('img'),content=figure.querySelector(':scope > .callout-content');
+    if(!img||!content)return;
+    const doc=figure.ownerDocument,origin=figure.getBoundingClientRect(),box=img.getBoundingClientRect(),area=content.getBoundingClientRect();
+    const current=figure.dataset.calloutMetadata||'center';
+    // A full-width image has nowhere to move: say so instead of offering identical targets.
+    if(area.width-box.width<24){
+      this.beginGesture(doc,null);
+      this.place(this.outline(figure,'aw-figure-slot','图片已占满整列，先拖动右下角缩小'),rectIn(box,origin));
+      return;
+    }
+    const positions=[['left',area.left],['center',area.left+(area.width-box.width)/2],['right',area.left+area.width-box.width]];
+    const slots=positions.map(([,left])=>({left,top:box.top,width:box.width,height:box.height}));
+    embed.classList.add('aw-figure-dragging');figure.classList.add('aw-figure-moving');
+    this.beginGesture(doc,()=>{embed.classList.remove('aw-figure-dragging');figure.classList.remove('aw-figure-moving');});
+    const outlines=positions.map(([meta],i)=>{
+      const o=this.outline(figure,'aw-figure-slot aw-figure-slot-quiet',{left:'左对齐',center:'居中',right:'右对齐'}[meta]);o.dataset.awSlot=meta;
+      this.place(o,rectIn(slots[i],origin));if(meta===current)o.hidden=true;return o;
     });
+    const ghost=this.ghost(embed,event);
+    let target=-1;
+    this.gesture.onMove=move=>{
+      this.moveGhost(ghost,move);
+      target=nearestSlot(slots,move.clientX,move.clientY);
+      outlines.forEach((o,i)=>o.classList.toggle('is-target',i===target));
+    };
+    this.gesture.onEnd=()=>{
+      embed.classList.remove('aw-figure-dragging');figure.classList.remove('aw-figure-moving');
+      const meta=positions[target]?.[0];
+      if(meta&&meta!==current)void this.edit(figure,(lines,block)=>Edit.setMeta(lines,block,meta));
+    };
   }
-  beginGesture(doc,onMove,onEnd){
-    this.endGesture();
-    const move=event=>onMove(event);
-    const up=()=>{this.endGesture();onEnd();};
-    doc.addEventListener('pointermove',move);doc.addEventListener('pointerup',up);
-    this.gesture={doc,move,up};
+  ghost(embed,event){
+    const img=embed.querySelector('img'),doc=embed.ownerDocument;
+    if(!img)return null;
+    const ghost=doc.createElement('img');ghost.className='aw-figure-ghost';ghost.src=img.currentSrc||img.src;ghost.alt='';
+    doc.body.appendChild(ghost);this.gesture?.overlays.push(ghost);this.moveGhost(ghost,event);return ghost;
   }
-  endGesture(){
-    if(!this.gesture)return;
-    const {doc,move,up}=this.gesture;
-    doc.removeEventListener('pointermove',move);doc.removeEventListener('pointerup',up);
+  moveGhost(ghost,event){if(ghost){ghost.style.left=event.clientX+'px';ghost.style.top=event.clientY+'px';}}
+  // One gesture at a time. Overlays are removed however it ends; cancel() undoes live
+  // previews when the gesture is interrupted (Escape, unload) instead of completed.
+  beginGesture(doc,cancel){
+    this.endGesture(true);
+    const gesture={doc,overlays:[],cancel,onMove:null,onEnd:null};
+    gesture.move=event=>gesture.onMove?.(event);
+    gesture.up=()=>{const done=gesture.onEnd;this.endGesture(false);done?.();};
+    gesture.key=event=>{if(event.key==='Escape'){event.preventDefault();this.endGesture(true);}};
+    doc.addEventListener('pointermove',gesture.move);doc.addEventListener('pointerup',gesture.up);doc.addEventListener('keydown',gesture.key,true);
+    this.gesture=gesture;
+  }
+  endGesture(cancelled=true){
+    const g=this.gesture;
+    if(!g)return;
     this.gesture=null;
+    g.doc.removeEventListener('pointermove',g.move);g.doc.removeEventListener('pointerup',g.up);g.doc.removeEventListener('keydown',g.key,true);
+    for(const node of g.overlays)node.remove();
+    if(cancelled)g.cancel?.();
   }
   // Live Preview edits go through the editor (undoable); reading view edits rewrite
   // the file after checking the recorded block is still where it was rendered.
@@ -1526,11 +1572,11 @@ class FigureTools extends Component {
     }catch(error){new Notice(error?.message||'修改插图失败。');}
   }
   displaySettings(container){
-    new Setting(container).setName('插图编辑工具').setDesc('悬停插图时显示对齐与列数工具条；单图可拖动右下角调整宽度，多图组可拖动图片交换顺序。修改直接写回 Markdown。')
+    new Setting(container).setName('插图编辑工具').setDesc('悬停插图时显示布局工具条；拖动右下角圆点调整宽度（单图靠近 1/4、1/3、1/2、2/3、3/4、整列时吸附）；拖动左上角手柄：多图组移动图片位置，单图移到左、中、右对齐。拖动时会显示目标位置的轮廓，按 Esc 取消。修改直接写回 Markdown。')
       .addToggle(t=>t.setValue(this.enabled()).onChange(v=>{this.plugin.data.settings.figureTools=v;this.plugin.applyAppearanceEverywhere();this.plugin.changed();}));
   }
 }
-module.exports={FigureTools,markLabel};
+module.exports={FigureTools,markLabel,nearestSlot,snapWidth};
 
 },
 "features/figure-edit.js":(module,exports,__awRequire)=>{
@@ -1573,11 +1619,12 @@ function setWidth(lines, block, imageIndex, width) {
   next[image.line]=text.slice(0,found.index)+replaceWidth(found.text,width)+text.slice(found.index+found.text.length);
   return next;
 }
-const META=/^(left|center|right|grid-[1-4])$/;
+const META=/^(left|center|right|grid-[1-4]|mosaic-(left|right))$/;
+const isGroup=meta=>/^(grid|mosaic)-/.test(meta);
 function setMeta(lines, block, meta) {
   if(!META.test(meta))throw Error('不支持的布局。');
-  const grid=meta.startsWith('grid-'),wasGrid=block.meta.startsWith('grid-');
-  if(grid!==wasGrid)throw Error(grid?'单图不能切换为多图布局。':'多图组只能调整列数。');
+  const grid=isGroup(meta),wasGrid=isGroup(block.meta);
+  if(grid!==wasGrid)throw Error(grid?'单图不能切换为多图布局。':'多图组只能切换多图布局。');
   const next=lines.slice();
   next[block.start]=`${block.prefix}[!figure|${meta}]${block.fold}${block.caption}`;
   return next;
@@ -1598,7 +1645,7 @@ function captionLabel(text) {
   const m=LABEL.exec(text);
   return m?{label:m[1],rest:text.slice(m[0].length)}:null;
 }
-module.exports={findBlock,setWidth,setMeta,moveImage,captionLabel,imagesIn};
+module.exports={findBlock,setWidth,setMeta,moveImage,captionLabel,imagesIn,isGroup};
 
 },
 "features/annotations.js":(module,exports,__awRequire)=>{
@@ -1705,7 +1752,7 @@ function progressOf(top,height,client){
 }
 function topFor(fraction,height,client){return Math.round(Math.min(1,Math.max(0,fraction))*Math.max(0,height-client));}
 
-// A thin tick ruler on the right of each note (glass style): a dot marks the reading position
+// A thin tick ruler on the right of each note: a dot marks the reading position
 // with its fraction beside it; click or drag the ruler to jump.
 class ScrollRuler extends Component{
   constructor(plugin){super();this.plugin=plugin;this.app=plugin.app;this.entries=new Map();}
@@ -1714,7 +1761,7 @@ class ScrollRuler extends Component{
     this.app.workspace.onLayoutReady(()=>this.sync());
   }
   onunload(){for(const view of [...this.entries.keys()])this.detach(view);}
-  enabled(){const s=this.plugin.data.settings;return s.scrollRuler!==false&&s.style==='glass';}
+  enabled(){return this.plugin.data.settings.scrollRuler!==false;}
   sync(){
     const views=this.enabled()?this.app.workspace.getLeavesOfType('markdown').map(leaf=>leaf.view).filter(v=>v instanceof MarkdownView):[];
     for(const view of [...this.entries.keys()])if(!views.includes(view)||!view.contentEl?.isConnected)this.detach(view);
@@ -1765,7 +1812,7 @@ class ScrollRuler extends Component{
     doc.addEventListener('pointermove',jump);doc.addEventListener('pointerup',up);
   }
   displaySettings(container,Setting){
-    new Setting(container).setName('滚动刻度尺').setDesc('通透玻璃风格下，在笔记右侧显示阅读位置刻度；可点击或拖动跳转。')
+    new Setting(container).setName('滚动刻度尺').setDesc('在笔记右侧显示阅读位置刻度；可点击或拖动跳转。')
       .addToggle(t=>t.setValue(this.plugin.data.settings.scrollRuler!==false).onChange(v=>{this.plugin.data.settings.scrollRuler=v;this.sync();this.plugin.changed();}));
   }
 }
@@ -1778,7 +1825,7 @@ const {Component,TFile}=require('obsidian');
 const IMAGE=/^(png|jpe?g|gif|webp|avif|svg)$/i;
 
 // An optional decoration image from the vault, floating in the window's lower-right corner
-// (glass style only; it never takes clicks and is not printed).
+// (it never takes clicks and is not printed).
 class Decor extends Component{
   constructor(plugin){super();this.plugin=plugin;this.app=plugin.app;this.el=null;}
   onload(){
@@ -1806,7 +1853,7 @@ class Decor extends Component{
     if(this.el.getAttribute('src')!==src)this.el.setAttribute('src',src);
   }
   displaySettings(container,Setting){
-    new Setting(container).setName('角落装饰图').setDesc('通透玻璃风格下，在窗口右下角显示一张笔记库内的图片，例如 assets/mascot.png；留空则不显示。不响应点击，不打印。')
+    new Setting(container).setName('角落装饰图').setDesc('在窗口右下角显示一张笔记库内的图片，例如 assets/mascot.png；留空则不显示。不响应点击，不打印。')
       .addText(t=>t.setPlaceholder('assets/mascot.png').setValue(this.plugin.data.settings.decorImage||'').onChange(v=>{
         this.plugin.data.settings.decorImage=v.trim().replace(/^\/+/,'');this.refresh();this.plugin.changed();
       }));

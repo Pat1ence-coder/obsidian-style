@@ -1,10 +1,9 @@
-/* Reading tools of the glass style (plugin UI inside notes): the scroll ruler and the corner
-   decoration. Theme tokens come from the document snippet, with fallbacks for running alone. */
+/* Reading tools (plugin UI inside notes): the scroll ruler and the corner decoration. Theme tokens come from the document snippet, with fallbacks for running alone. */
 .aw-ruler,.aw-decor {display: none;}
-body.aw-style-glass .aw-has-ruler {position: relative;}
+body:is(.theme-light,.theme-dark) .aw-has-ruler {position: relative;}
 /* The ruler replaces the vertical scrollbar of the note it sits on. */
-body.aw-style-glass .aw-has-ruler :is(.cm-scroller,.markdown-preview-view)::-webkit-scrollbar:vertical {width: 0;}
-body.aw-style-glass .aw-ruler {
+body:is(.theme-light,.theme-dark) .aw-has-ruler :is(.cm-scroller,.markdown-preview-view)::-webkit-scrollbar:vertical {width: 0;}
+body:is(.theme-light,.theme-dark) .aw-ruler {
   display: block;
   position: absolute;
   z-index: 4;
@@ -21,8 +20,8 @@ body.aw-style-glass .aw-ruler {
   opacity: .8;
   transition: opacity 160ms ease;
 }
-body.aw-style-glass .aw-ruler:hover,body.aw-style-glass .aw-ruler.is-dragging {opacity: 1;}
-body.aw-style-glass .aw-ruler.is-idle {display: none;}
+body:is(.theme-light,.theme-dark) .aw-ruler:hover,body:is(.theme-light,.theme-dark) .aw-ruler.is-dragging {opacity: 1;}
+body:is(.theme-light,.theme-dark) .aw-ruler.is-idle {display: none;}
 .aw-ruler-knob {
   position: absolute;
   right: -3px;
@@ -43,7 +42,7 @@ body.aw-style-glass .aw-ruler.is-idle {display: none;}
   color: var(--ds-faint, var(--text-faint));
   white-space: nowrap;
 }
-body.aw-style-glass .aw-decor {
+body:is(.theme-light,.theme-dark) .aw-decor {
   display: block;
   position: fixed;
   z-index: 20;

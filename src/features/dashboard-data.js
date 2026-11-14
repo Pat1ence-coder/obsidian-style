@@ -1,5 +1,5 @@
 'use strict';
-// Numbers behind the glass dashboard's charts. Pure: data in, plain values out.
+// Numbers behind the dashboard's charts. Pure: data in, plain values out.
 const Core=require('../core');
 const round1=n=>Math.round(n*10)/10;
 

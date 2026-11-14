@@ -2,10 +2,9 @@
 @page {size:A4; margin:20mm;}
 @page aw-landscape {size:A4 landscape; margin:20mm;}
 @media print {
-  /* The palette selectors (body.theme-dark.aw-palette-*) are matched here with equal
-     specificity; this file loads after tokens.css, so the print values always win. */
-  body, body.theme-light, body.theme-dark,
-  body.theme-light[class*="aw-palette-"], body.theme-dark[class*="aw-palette-"] {
+  /* Matches the token selectors with equal specificity; this file loads after tokens.css,
+     so the print values always win. */
+  body, body.theme-light, body.theme-dark {
     --ds-font-body:var(--ds-font-academic);
     --ds-font-heading:var(--ds-font-academic-heading);
     --font-text:var(--ds-font-academic);

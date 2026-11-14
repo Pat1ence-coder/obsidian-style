@@ -37,11 +37,12 @@ function setWidth(lines, block, imageIndex, width) {
   next[image.line]=text.slice(0,found.index)+replaceWidth(found.text,width)+text.slice(found.index+found.text.length);
   return next;
 }
-const META=/^(left|center|right|grid-[1-4])$/;
+const META=/^(left|center|right|grid-[1-4]|mosaic-(left|right))$/;
+const isGroup=meta=>/^(grid|mosaic)-/.test(meta);
 function setMeta(lines, block, meta) {
   if(!META.test(meta))throw Error('不支持的布局。');
-  const grid=meta.startsWith('grid-'),wasGrid=block.meta.startsWith('grid-');
-  if(grid!==wasGrid)throw Error(grid?'单图不能切换为多图布局。':'多图组只能调整列数。');
+  const grid=isGroup(meta),wasGrid=isGroup(block.meta);
+  if(grid!==wasGrid)throw Error(grid?'单图不能切换为多图布局。':'多图组只能切换多图布局。');
   const next=lines.slice();
   next[block.start]=`${block.prefix}[!figure|${meta}]${block.fold}${block.caption}`;
   return next;
@@ -62,4 +63,4 @@ function captionLabel(text) {
   const m=LABEL.exec(text);
   return m?{label:m[1],rest:text.slice(m[0].length)}:null;
 }
-module.exports={findBlock,setWidth,setMeta,moveImage,captionLabel,imagesIn};
+module.exports={findBlock,setWidth,setMeta,moveImage,captionLabel,imagesIn,isGroup};

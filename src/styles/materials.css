@@ -1,4 +1,4 @@
-/* Material roles: glass shell, frosted panel, chips and pills. Layout lives in workbench.css. */
+/* Material roles: frosted card shell, raised panel, chips and pills. Layout lives in workbench.css. */
 .aw-view {
   --aw-radius-shell:22px;
   --aw-radius-panel:15px;
@@ -8,36 +8,25 @@
   --aw-hue:var(--ds-tone-accent);
   --aw-motion:160ms cubic-bezier(.2,.7,.2,1);
 }
-/* Opaque fallback first; glass only where backdrop filtering exists. */
+/* Layers, as in a clean dashboard: the card is a frosted white shell (elevation 2); the panel
+   inside it is a raised white sheet with its own hairline (elevation 1); chips are small raised
+   controls. All opaque. */
 .aw-view .aw-card {
-  border:1px solid var(--ds-glass-line);
+  border:1px solid var(--ds-glass-edge);
   border-radius:var(--aw-radius-shell);
-  background:var(--ds-glass-solid);
-  box-shadow:var(--ds-glass-highlight),var(--ds-glass-shadow);
+  background:var(--ds-frost);
+  box-shadow:var(--ds-glass-highlight),var(--ds-elev-2);
 }
 .aw-view .aw-panel {
-  border:1px solid var(--ds-glass-line);
+  border:1px solid var(--ds-glass-edge);
   border-radius:var(--aw-radius-panel);
   background:var(--ds-paper);
-  box-shadow:inset 0 1px 0 var(--ds-glass-rim),0 1px 2px rgba(var(--ds-ink-rgb),.04);
+  box-shadow:var(--ds-glass-highlight),var(--ds-elev-1);
 }
 .aw-view :is(.aw-chip,.aw-tab,.aw-brand-mark) {
-  border:1px solid var(--ds-glass-line);
+  border:1px solid var(--ds-glass-edge);
   background:var(--ds-paper);
-  box-shadow:inset 0 1px 0 var(--ds-glass-rim),0 1px 2px rgba(var(--ds-ink-rgb),.08),0 4px 12px -4px rgba(var(--ds-ink-rgb),.14);
-}
-@supports ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))) {
-  .aw-view .aw-card {
-    background:linear-gradient(160deg,rgba(255,255,255,.34),rgba(255,255,255,0) 46%),var(--ds-glass);
-    -webkit-backdrop-filter:var(--ds-glass-blur);backdrop-filter:var(--ds-glass-blur);
-  }
-  .theme-dark .aw-view .aw-card {background:linear-gradient(160deg,rgba(255,255,255,.05),rgba(255,255,255,0) 46%),var(--ds-glass);}
-  /* Panels sit on blurred glass already; a denser tint keeps text crisp without a second blur. */
-  .aw-view .aw-panel {background:var(--ds-glass-paper);}
-  .aw-view :is(.aw-chip,.aw-tab,.aw-brand-mark) {
-    background:var(--ds-glass-strong);
-    -webkit-backdrop-filter:blur(18px) saturate(180%);backdrop-filter:blur(18px) saturate(180%);
-  }
+  box-shadow:var(--ds-glass-highlight),var(--ds-elev-1);
 }
 .aw-view .aw-badge {
   border-radius:7px;
@@ -50,7 +39,7 @@
 }
 @media (hover:hover) {
   .aw-view :is(.aw-chip,.aw-tab):not(.aw-chip-static):not([aria-pressed="true"]):hover {color:var(--ds-accent);transform:translateY(-1px);}
-  .aw-view .aw-segment-item:not([aria-pressed="true"]):hover {color:var(--ds-text);background:rgba(255,255,255,.45);}
+  .aw-view .aw-segment-item:not([aria-pressed="true"]):hover {color:var(--ds-text);background:rgba(var(--ds-ink-rgb),.04);}
   .aw-view :is(.aw-file-row,.aw-day-row):hover:not(:disabled) {background-color:rgba(var(--aw-hue),.06);}
 }
 .aw-view :is(.aw-chip,.aw-tab):active:not(.aw-chip-static) {transform:translateY(1px);}
@@ -58,13 +47,21 @@
 @media (prefers-reduced-motion:reduce) {
   .aw-view :is(.aw-chip,.aw-tab,.aw-segment-item,.aw-file-row,.aw-day-row,.aw-cell) {transition:none;transform:none !important;}
 }
-@media (prefers-reduced-transparency:reduce), (forced-colors:active) {
-  /* Listed with the dark-theme selector too: it must outrank `.theme-dark .aw-view .aw-card`. */
-  .aw-view :is(.aw-card,.aw-chip,.aw-tab,.aw-brand-mark),
-  .theme-dark .aw-view :is(.aw-card,.aw-chip,.aw-tab,.aw-brand-mark) {-webkit-backdrop-filter:none;backdrop-filter:none;background:var(--ds-glass-solid);}
-  .aw-view .aw-panel,.theme-dark .aw-view .aw-panel {background:var(--ds-paper);}
-  .aw-view .aw-ambient {display:none;}
+@media (forced-colors:active) {
+  .aw-view :is(.aw-card,.aw-panel,.aw-chip,.aw-tab,.aw-brand-mark) {background:Canvas;}
 }
 @media print {
-  .aw-view :is(.aw-card,.aw-panel,.aw-chip,.aw-tab) {-webkit-backdrop-filter:none;backdrop-filter:none;box-shadow:none;background:#fff;}
+  .aw-view :is(.aw-card,.aw-panel,.aw-chip,.aw-tab) {box-shadow:none;background:#fff;}
 }
+
+/* The one primary action in the toolbar ("新建笔记") is a solid blue button in both styles.
+   The gradient deepens towards the bottom so white text keeps its contrast. */
+body:is(.theme-light,.theme-dark) .aw-view .aw-chip.aw-new-note,
+body:is(.theme-light,.theme-dark) .aw-view .aw-primary {
+  border-color: transparent;
+  color: #fff;
+  background: linear-gradient(180deg, var(--ds-accent), color-mix(in srgb, var(--ds-accent) 84%, #000));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.25), 0 1px 2px rgba(var(--ds-tone-accent),.35), 0 8px 18px -8px rgba(var(--ds-tone-accent),.85);
+}
+body:is(.theme-light,.theme-dark) .aw-view :is(.aw-chip.aw-new-note,.aw-primary):hover {color: #fff;filter: brightness(1.07);}
+body:is(.theme-light,.theme-dark) .aw-view :is(.aw-chip.aw-new-note,.aw-primary) .aw-chip-icon svg {color: #fff;}

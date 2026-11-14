@@ -142,11 +142,9 @@ test('score, summary, streaks and personal quartiles',()=>{
   assert.equal(C.percentile(8,ranked),100);assert.equal(C.percentile(2,ranked),25);assert.equal(C.percentile(0,ranked),null);
 });
 
-test('palette setting defaults to sea and ignores unknown ids',()=>{
-  const d=setup();assert.equal(d.settings.palette,'sea');
-  assert.deepEqual(C.PALETTES.map(p=>p.id),['sea','sand','celadon']);
-  const load=palette=>C.loadState({...JSON.parse(JSON.stringify(d)),settings:{palette}},new Date(2026,9,12,12)).settings.palette;
-  assert.equal(load('sand'),'sand');assert.equal(load('celadon'),'celadon');assert.equal(load('neon'),'sea');
+test('a palette saved by an older version is dropped on load',()=>{
+  const d=setup();assert.equal(d.settings.palette,undefined);assert.equal(C.PALETTES,undefined);
+  assert.equal(C.loadState({...JSON.parse(JSON.stringify(d)),settings:{palette:'sand'}},new Date(2026,9,12,12)).settings.palette,undefined);
 });
 
 test('caption size and figure tools settings default sensibly and reject bad values',()=>{
@@ -157,11 +155,10 @@ test('caption size and figure tools settings default sensibly and reject bad val
   assert.equal(load({figureTools:false}).figureTools,false);assert.equal(load({figureTools:'no'}).figureTools,true);
 });
 
-test('style, scroll ruler and decoration image settings validate and default to the card style',()=>{
-  const d=setup();assert.equal(d.settings.style,'card');assert.equal(d.settings.scrollRuler,true);assert.equal(d.settings.decorImage,'');
-  assert.deepEqual(C.STYLES.map(x=>x.id),['card','glass']);
+test('scroll ruler and decoration settings validate; a style saved by an older version is dropped',()=>{
+  const d=setup();assert.equal(d.settings.style,undefined);assert.equal(C.STYLES,undefined);assert.equal(d.settings.scrollRuler,true);assert.equal(d.settings.decorImage,'');
   const load=settings=>C.loadState({...JSON.parse(JSON.stringify(d)),settings},new Date(2026,9,12,12)).settings;
-  assert.equal(load({style:'glass'}).style,'glass');assert.equal(load({style:'neon'}).style,'card');
+  assert.equal(load({style:'card'}).style,undefined);
   assert.equal(load({scrollRuler:false}).scrollRuler,false);assert.equal(load({scrollRuler:1}).scrollRuler,true);
   assert.equal(load({decorImage:'  /assets/dog.png '}).decorImage,'assets/dog.png');assert.equal(load({decorImage:42}).decorImage,'');
 });

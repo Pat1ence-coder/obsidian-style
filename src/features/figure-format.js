@@ -1,4 +1,7 @@
 'use strict';
+// Multi-image layouts: grid-N (N columns) and mosaic-left/right (one large image beside a
+// stack of the others).
+const GROUP=/^(?:grid-[1-4]|mosaic-(?:left|right))$/;
 function imageReference(text) {
   const s=text.trim();
   if((s.match(/!\[/g)||[]).length!==1)return null;
@@ -6,7 +9,7 @@ function imageReference(text) {
 }
 function figureMarkdown(reference, caption, width='640', align='center') {
   const references=Array.isArray(reference)?reference:[reference];
-  const grid=/^grid-[1-4]$/.test(align);
+  const grid=GROUP.test(align);
   if(grid ? references.length<2 : references.length!==1)throw Error(grid?'多图布局至少需要两张图片。':'多张图片请选择多图布局。');
   const images=references.map(imageReference);
   if(images.some(image=>!image))throw Error('请为每个位置选择一张图片。');
@@ -31,4 +34,4 @@ function spacedFigure(before,after,figure) {
   return (before && !before.endsWith('\n\n') ? before.endsWith('\n')?'\n':'\n\n' : '')
     +figure+(after ? after.startsWith('\n\n')?'':after.startsWith('\n')?'\n':'\n\n' : '\n');
 }
-module.exports={imageReference,figureMarkdown,spacedFigure};
+module.exports={imageReference,figureMarkdown,spacedFigure,GROUP};

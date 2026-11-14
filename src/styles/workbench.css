@@ -9,42 +9,25 @@
   font-size:14px;
   line-height:1.5;
   color:var(--ds-text);
-  background:var(--ds-ambient),var(--ds-ambient-base);
-  background-color:var(--ds-bg);
-  /* Local attachment spreads the blooms over the whole scroll height, not one screen. */
-  background-attachment:local;
+  background:var(--ds-canvas);
 }
-/* Inside Obsidian the pane card carries the light, so the view header and the dashboard are one
-   surface. Obsidian pads every view-content by default; the banner must reach the card edge. */
-.workspace .workspace-split .workspace-leaf-content[data-type="algorithm-workbench"] {background:var(--ds-ambient),var(--ds-ambient-base);background-color:var(--ds-bg);}
+/* Inside Obsidian the pane card is the dashboard's white canvas, so the view header and the
+   dashboard are one surface. Obsidian pads every view-content by default; the page sets its own. */
+.workspace .workspace-split .workspace-leaf-content[data-type="algorithm-workbench"] {background:var(--ds-canvas);}
 .workspace .workspace-split .workspace-leaf-content[data-type="algorithm-workbench"] > .view-header {background:transparent;border-bottom:0;}
 .workspace .workspace-split .workspace-leaf-content[data-type="algorithm-workbench"] > .view-content.aw-view {padding:0;background:transparent;}
 .aw-view button {font-family:inherit;-webkit-tap-highlight-color:transparent;}
 .aw-view .aw-icon,.aw-view .aw-chip-icon,.aw-view .aw-row-icon,.aw-view .aw-row-open {display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;}
 .aw-view .aw-icon svg {width:14px;height:14px;stroke-width:1.75;}
 .aw-view .aw-page {position:relative;isolation:isolate;max-width:1180px;min-height:100%;margin-inline:auto;padding:0 var(--aw-gutter) 28px;box-sizing:border-box;}
-/* The banner again, heavily blurred: coloured light for the glass to pick up. */
-.aw-view .aw-ambient {position:absolute;z-index:-1;top:140px;left:calc(-12% - max(0px, (100cqw - 1180px) / 2));right:calc(-12% - max(0px, (100cqw - 1180px) / 2));height:min(1100px,90%);pointer-events:none;background-size:cover;background-position:center 60%;filter:blur(72px) saturate(1.5);opacity:.5;
-  -webkit-mask-image:radial-gradient(70% 60% at 50% 30%,#000 30%,transparent 100%);mask-image:radial-gradient(70% 60% at 50% 30%,#000 30%,transparent 100%);}
-.theme-dark .aw-view .aw-ambient {opacity:.28;}
 
-/* Banner: a pixel-art landscape that dissolves into the page. */
-.aw-view .aw-hero {position:relative;isolation:isolate;margin-inline:calc(-1 * var(--aw-gutter));padding:clamp(120px,15cqw,168px) var(--aw-gutter) 22px;}
-.aw-view .aw-hero::after {content:"";position:absolute;left:var(--aw-gutter);right:var(--aw-gutter);bottom:0;height:1px;background:linear-gradient(90deg,rgba(var(--ds-tone-accent),.6),rgba(var(--ds-tone-1),.4) 55%,transparent);}
-/* The banner melts into the ambient light instead of ending on a flat colour. */
-.aw-view .aw-backdrop {position:absolute;inset:0;
-  /* Panes wider than the page: the banner still runs edge to edge. */
-  inset-inline:calc(-1 * max(0px, (100cqw - 1180px) / 2));z-index:-1;pointer-events:none;background-size:cover;background-position:center 38%;background-repeat:no-repeat;image-rendering:pixelated;
-  -webkit-mask-image:linear-gradient(180deg,#000 0%,#000 46%,rgba(0,0,0,.55) 74%,transparent 100%);mask-image:linear-gradient(180deg,#000 0%,#000 46%,rgba(0,0,0,.55) 74%,transparent 100%);}
-.aw-view .aw-backdrop::after {content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 0%,transparent 40%,rgba(255,255,255,.22) 72%,rgba(255,255,255,.4) 100%);}
-.theme-dark .aw-view .aw-backdrop {filter:brightness(.6) saturate(.85);}
-.theme-dark .aw-view .aw-backdrop::after {background:linear-gradient(180deg,transparent 30%,rgba(21,23,29,.5) 100%);}
+/* Title bar: brand, view tabs and the toolbar. */
+.aw-view .aw-hero {position:relative;padding:26px 0 6px;}
 .aw-view .aw-hero-bar {display:flex;align-items:center;flex-wrap:wrap;gap:12px 22px;}
 .aw-view .aw-brand {display:flex;align-items:center;gap:14px;min-width:0;}
 .aw-view .aw-brand-mark {display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:10px;color:var(--ds-text);flex-shrink:0;}
 .aw-view .aw-brand-mark svg {width:20px;height:20px;stroke-width:2.25;}
-.aw-view .aw-title {margin:0;font-size:24px;font-weight:700;line-height:1.2;letter-spacing:.01em;color:var(--ds-heading);white-space:nowrap;text-shadow:0 1px 12px rgba(255,255,255,.6);}
-.theme-dark .aw-view .aw-title {text-shadow:0 1px 12px rgba(0,0,0,.5);}
+.aw-view .aw-title {margin:0;font-size:24px;font-weight:700;line-height:1.2;letter-spacing:.01em;color:var(--ds-heading);white-space:nowrap;}
 .aw-view .aw-tabs {display:flex;flex-wrap:wrap;gap:8px;}
 .aw-view .aw-tab {height:auto;min-height:34px;padding:6px 15px;border-radius:var(--aw-radius-control);color:var(--ds-text);font-size:13.5px;font-weight:500;cursor:pointer;}
 .aw-view .aw-tab[aria-pressed="true"] {background:linear-gradient(180deg,color-mix(in srgb,var(--ds-accent) 84%,#fff),var(--ds-accent));border-color:color-mix(in srgb,var(--ds-accent) 80%,#000);color:var(--ds-on-accent);box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 6px 16px -6px rgba(var(--ds-tone-accent),.7);}
@@ -60,7 +43,8 @@
 .aw-view .aw-card {padding:0 8px 8px;min-width:0;}
 .aw-view .aw-card-head {display:flex;align-items:center;gap:16px;padding:18px 18px 16px;}
 .aw-view .aw-card-icon {display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;border-radius:12px;flex-shrink:0;color:rgb(var(--aw-hue));
-  background:linear-gradient(150deg,rgba(var(--aw-hue),.17),rgba(var(--aw-hue),.05));box-shadow:inset 0 0 0 1px rgba(var(--aw-hue),.13),inset 0 1px 0 rgba(255,255,255,.65);}
+  /* A small raised white tile, like an icon button: hairline, top rim, soft shadow. */
+  background:var(--ds-paper);box-shadow:var(--ds-glass-highlight),0 0 0 1px var(--ds-glass-edge),var(--ds-elev-1);}
 .aw-view .aw-card-icon svg {width:20px;height:20px;stroke-width:1.75;}
 .aw-view .aw-card-copy {flex:1;min-width:0;}
 .aw-view .aw-card-title {margin:0;font-size:17px;font-weight:650;line-height:1.35;color:var(--ds-heading);letter-spacing:.01em;}
@@ -82,10 +66,10 @@
 .aw-view .aw-stats-compact .aw-stat-value strong {font-size:22px;}
 
 /* Metric switch and heatmap. */
-.aw-view .aw-segment {display:inline-flex;flex-wrap:wrap;gap:2px;padding:4px;margin-bottom:22px;border-radius:11px;background:rgba(var(--ds-tone-neutral),.08);box-shadow:inset 0 1px 2px rgba(var(--ds-tone-neutral),.1);}
+.aw-view .aw-segment {display:inline-flex;flex-wrap:wrap;gap:2px;padding:4px;margin-bottom:22px;border-radius:11px;background:var(--ds-inset-bg);box-shadow:var(--ds-inset);}
 .aw-view .aw-segment-item {display:inline-flex;align-items:center;gap:8px;height:auto;min-height:32px;padding:5px 15px;border:0;border-radius:8px;background:transparent;box-shadow:none;color:var(--ds-muted);font-size:13.5px;font-weight:500;cursor:pointer;}
 .aw-view .aw-segment-item .aw-dot {width:6px;height:6px;box-shadow:none;opacity:.55;}
-.aw-view .aw-segment-item[aria-pressed="true"] {background:var(--ds-paper);color:rgb(var(--aw-hue));font-weight:600;box-shadow:inset 0 1px 0 var(--ds-glass-rim),0 1px 2px rgba(var(--ds-ink-rgb),.08),0 4px 10px -4px rgba(var(--aw-hue),.35);}
+.aw-view .aw-segment-item[aria-pressed="true"] {background:var(--ds-paper);color:rgb(var(--aw-hue));font-weight:600;box-shadow:var(--ds-glass-highlight),0 0 0 1px var(--ds-glass-edge),var(--ds-elev-1);}
 .aw-view .aw-segment-item[aria-pressed="true"] .aw-dot {opacity:1;}
 .aw-view .aw-heat-scroll {overflow-x:auto;padding:2px 3px 6px;}
 .aw-view .aw-heatmap {min-width:calc(var(--aw-weeks) * 13px);}

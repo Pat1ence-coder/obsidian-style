@@ -91,3 +91,23 @@ test('reading-view edits rewrite the file only when the figure is still on its r
   assert.match(notices.at(-1),/笔记内容已变化|插图块/);assert.match(data,/\[!figure\|center\]/);
   figure.dataset.awSource='missing.md';await tools.edit(figure,lines=>lines);assert.match(notices.at(-1),/无法定位/);
 });
+test('mosaic layouts belong to the multi-image family',()=>{
+  const grid=E.findBlock(note,5),single=E.findBlock(note,2);
+  assert.equal(E.setMeta(note,grid,'mosaic-left')[5],'> [!figure|mosaic-left] 图 2 · 对比');
+  assert.equal(E.setMeta(note,grid,'mosaic-right')[5],'> [!figure|mosaic-right] 图 2 · 对比');
+  assert.throws(()=>E.setMeta(note,single,'mosaic-left'));assert.throws(()=>E.setMeta(note,grid,'mosaic-top'));
+  const mosaic=E.setMeta(note,grid,'mosaic-left');
+  assert.equal(E.setMeta(mosaic,E.findBlock(mosaic,6),'grid-3')[5],'> [!figure|grid-3] 图 2 · 对比');
+  assert.ok(E.isGroup('mosaic-right')&&E.isGroup('grid-1')&&!E.isGroup('center'));
+});
+test('drag targets: the nearest slot within reach, and widths that snap to column fractions',()=>{
+  const {nearestSlot,snapWidth}=loadTools();
+  const slots=[{left:0,top:0,width:100,height:80},{left:120,top:0,width:100,height:80},{left:0,top:100,width:100,height:80}];
+  assert.equal(nearestSlot(slots,50,40),0,'inside a slot wins');
+  assert.equal(nearestSlot(slots,230,40),1,'just outside, nearest edge');
+  assert.equal(nearestSlot(slots,60,95),2,'between rows, closer to the lower one');
+  assert.equal(nearestSlot(slots,600,40),-1,'out of reach cancels');
+  assert.deepEqual({...snapWidth(356,720)},{width:360,fraction:.5});
+  assert.deepEqual({...snapWidth(715,720)},{width:720,fraction:1});
+  assert.deepEqual({...snapWidth(300,720)},{width:300,fraction:null});
+});

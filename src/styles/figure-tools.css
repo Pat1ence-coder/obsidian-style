@@ -19,33 +19,71 @@ button.aw-figure-option {
 button.aw-figure-option svg {width:15px;height:15px;}
 button.aw-figure-option:hover {background:var(--background-modifier-hover);color:var(--ds-text,var(--text-normal));}
 button.aw-figure-option[aria-pressed="true"] {background:var(--ds-accent-soft,var(--background-modifier-hover));color:var(--ds-accent,var(--interactive-accent));}
+.aw-figure-bar-rule {width:1px;height:16px;margin:0 3px;background:var(--ds-glass-line,var(--background-modifier-border));}
+button.aw-figure-option.aw-flip svg {transform:scaleX(-1);}
 .aw-figure-editable .image-embed {position:relative;}
-/* Single images: a round handle at the bottom-right corner, with the live width beside it. */
+/* Every image: a round handle inside its bottom-right corner (inside, so no container can
+   clip it), with the live width beside it. */
 .aw-figure-resize {
-  position:absolute;right:-6px;bottom:-6px;z-index:4;width:14px;height:14px;border-radius:50%;
-  border:2px solid var(--ds-accent,var(--interactive-accent));background:var(--ds-paper,var(--background-primary));
-  box-shadow:0 1px 4px rgba(0,0,0,.25);cursor:nwse-resize;opacity:0;transition:opacity 140ms ease;
+  position:absolute;right:8px;bottom:8px;z-index:4;width:16px;height:16px;box-sizing:border-box;border-radius:50%;
+  border:2.5px solid var(--ds-accent,var(--interactive-accent));background:var(--ds-paper,var(--background-primary));
+  box-shadow:0 0 0 3px rgba(255,255,255,.7),0 2px 6px rgba(0,0,0,.28);cursor:nwse-resize;opacity:0;transition:opacity 140ms ease,transform 140ms ease;
 }
-.aw-figure-editable .image-embed:hover > .aw-figure-resize,.aw-figure-resizing .aw-figure-resize {opacity:1;}
+.aw-figure-resize:hover {transform:scale(1.15);}
+.aw-figure-editable .image-embed:hover > :is(.aw-figure-resize,.aw-figure-grip),.aw-figure-resizing .aw-figure-resize {opacity:1;}
 .aw-figure-resizing img {outline:1.5px solid var(--ds-accent,var(--interactive-accent));outline-offset:2px;}
 .aw-figure-editable .image-embed[data-aw-width]::after {
-  content:attr(data-aw-width);position:absolute;right:14px;bottom:10px;padding:2px 7px;border-radius:6px;
+  content:attr(data-aw-width);position:absolute;right:30px;bottom:6px;padding:2px 7px;border-radius:6px;
   background:var(--ds-glass-strong,var(--background-primary));color:var(--ds-text,var(--text-normal));
-  font:500 11px var(--ds-font-numeric,var(--font-monospace));box-shadow:0 2px 8px rgba(0,0,0,.15);pointer-events:none;
+  font:500 11px var(--ds-font-numeric,var(--font-monospace));box-shadow:0 2px 8px rgba(0,0,0,.15);pointer-events:none;white-space:nowrap;
 }
-/* Grids: a grip at the top-left of each image; drop targets get a dashed outline. */
+/* Move grip at the top-left of every image. */
 .aw-figure-grip {
-  position:absolute;left:6px;top:6px;z-index:4;display:flex;align-items:center;justify-content:center;width:24px;height:24px;
-  border-radius:7px;border:1px solid var(--ds-glass-line,var(--background-modifier-border));
+  position:absolute;left:8px;top:8px;z-index:4;display:flex;align-items:center;justify-content:center;width:26px;height:26px;
+  border-radius:8px;border:1px solid var(--ds-glass-line,var(--background-modifier-border));
   background:var(--ds-glass-strong,var(--background-primary));color:var(--ds-muted,var(--text-muted));
   box-shadow:0 2px 8px rgba(0,0,0,.12);cursor:grab;opacity:0;transition:opacity 140ms ease;
 }
 .aw-figure-grip svg {width:14px;height:14px;}
-.aw-figure-editable .image-embed:hover > .aw-figure-grip {opacity:1;}
-.aw-figure-dragging {opacity:.45;}
-.aw-figure-drop img {outline:2px dashed var(--ds-accent,var(--interactive-accent));outline-offset:3px;}
-body.aw-figure-tools-off :is(.aw-figure-bar,.aw-figure-resize,.aw-figure-grip) {display:none;}
+.aw-figure-grip:hover {color:var(--ds-accent,var(--interactive-accent));}
+.aw-figure-moving,.aw-figure-moving * {cursor:grabbing;}
+.aw-figure-dragging {opacity:.35;}
+.aw-figure-editable.aw-figure-moving > .aw-figure-bar {opacity:0;pointer-events:none;}
+/* Drag feedback: dashed outlines in figure coordinates, and a small copy under the pointer. */
+.aw-figure-outline {
+  position:absolute;z-index:6;box-sizing:border-box;border-radius:12px;pointer-events:none;
+  border:2px dashed var(--ds-accent,var(--interactive-accent));
+  background:color-mix(in srgb, var(--ds-accent,var(--interactive-accent)) 10%, transparent);
+  transition:left 120ms ease,top 120ms ease,width 120ms ease,height 120ms ease,opacity 120ms ease;
+}
+.aw-figure-outline[hidden] {display:none;}
+.aw-figure-outline-label {
+  position:absolute;left:50%;top:12px;transform:translateX(-50%);padding:4px 10px;border-radius:999px;white-space:nowrap;
+  background:var(--ds-accent,var(--interactive-accent));color:#fff;font:600 12px var(--ds-font-ui,var(--font-interface));
+  box-shadow:0 6px 16px -6px rgba(0,0,0,.4);
+}
+/* Single-image alignment: the other positions show only their label until the pointer comes
+   near one; then that position gets the full outline. */
+.aw-figure-slot-quiet {border-color:transparent;background:transparent;}
+.aw-figure-slot-quiet .aw-figure-outline-label {background:var(--ds-glass-strong,var(--background-primary));color:var(--ds-muted,var(--text-muted));box-shadow:0 0 0 1px var(--ds-glass-line,var(--background-modifier-border)),0 6px 16px -8px rgba(0,0,0,.3);}
+/* Labels of overlapping positions sit at their own third of the column. */
+.aw-figure-slot-quiet[data-aw-slot="left"] .aw-figure-outline-label {left:16px;transform:none;}
+.aw-figure-slot-quiet[data-aw-slot="right"] .aw-figure-outline-label {left:auto;right:16px;transform:none;}
+.aw-figure-slot-quiet.is-target {border-color:var(--ds-accent,var(--interactive-accent));background:color-mix(in srgb, var(--ds-accent,var(--interactive-accent)) 10%, transparent);}
+.aw-figure-slot-quiet.is-target .aw-figure-outline-label {background:var(--ds-accent,var(--interactive-accent));color:#fff;}
+/* Resize snap guide: a solid outline at the snapped width. */
+.aw-figure-guide {border-style:solid;border-width:1.5px;background:transparent;}
+.aw-figure-ghost {
+  position:fixed;z-index:1000;width:120px;height:auto;max-height:120px;object-fit:contain;pointer-events:none;
+  transform:translate(14px,14px) rotate(-2deg);border-radius:10px;opacity:.9;background:#fff;
+  box-shadow:0 0 0 1px rgba(0,0,0,.08),0 18px 36px -12px rgba(0,0,0,.45);
+}
+@media (prefers-reduced-motion:reduce) {
+  .aw-figure-outline,.aw-figure-resize {transition:none;}
+}
+body.aw-figure-tools-off :is(.aw-figure-bar,.aw-figure-resize,.aw-figure-grip,.aw-figure-outline) {display:none;}
 @media print {
   :is(.aw-figure-bar,.aw-figure-resize,.aw-figure-grip) {display:none !important;}
+  :is(.aw-figure-outline,.aw-figure-ghost) {display:none !important;}
   .aw-figure-editable .image-embed[data-aw-width]::after {content:none;}
 }

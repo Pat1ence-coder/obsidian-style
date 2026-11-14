@@ -109,3 +109,10 @@ test('multi-image import inserts every file once in selected order',async()=>{
   assert.equal((f.content.match(/!\[\[/g)||[]).length,8);
   for(let i=1;i<8;i++)assert.ok(f.content.indexOf(`multi-${i-1}.png`)<f.content.indexOf(`multi-${i}.png`));
 });
+test('mosaic layouts emit every image in order and need at least two',()=>{
+  assert.equal(format.figureMarkdown(['![[big.png|900]]','![[a.png]]','![[b.png]]'],'图 4 · 一大两小','640','mosaic-left'),
+    '> [!figure|mosaic-left] 图 4 · 一大两小\n> ![[big.png]]\n> ![[a.png]]\n> ![[b.png]]');
+  assert.match(format.figureMarkdown(['![[a.png]]','![[b.png]]'],'图','','mosaic-right'),/^> \[!figure\|mosaic-right\]/);
+  assert.throws(()=>format.figureMarkdown(['![[a.png]]'],'图','','mosaic-left'));
+  assert.throws(()=>format.figureMarkdown(['![[a.png]]','![[b.png]]'],'图','','mosaic-up'));
+});

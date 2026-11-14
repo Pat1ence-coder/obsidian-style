@@ -8,7 +8,7 @@ function progressOf(top,height,client){
 }
 function topFor(fraction,height,client){return Math.round(Math.min(1,Math.max(0,fraction))*Math.max(0,height-client));}
 
-// A thin tick ruler on the right of each note (glass style): a dot marks the reading position
+// A thin tick ruler on the right of each note: a dot marks the reading position
 // with its fraction beside it; click or drag the ruler to jump.
 class ScrollRuler extends Component{
   constructor(plugin){super();this.plugin=plugin;this.app=plugin.app;this.entries=new Map();}
@@ -17,7 +17,7 @@ class ScrollRuler extends Component{
     this.app.workspace.onLayoutReady(()=>this.sync());
   }
   onunload(){for(const view of [...this.entries.keys()])this.detach(view);}
-  enabled(){const s=this.plugin.data.settings;return s.scrollRuler!==false&&s.style==='glass';}
+  enabled(){return this.plugin.data.settings.scrollRuler!==false;}
   sync(){
     const views=this.enabled()?this.app.workspace.getLeavesOfType('markdown').map(leaf=>leaf.view).filter(v=>v instanceof MarkdownView):[];
     for(const view of [...this.entries.keys()])if(!views.includes(view)||!view.contentEl?.isConnected)this.detach(view);
@@ -68,7 +68,7 @@ class ScrollRuler extends Component{
     doc.addEventListener('pointermove',jump);doc.addEventListener('pointerup',up);
   }
   displaySettings(container,Setting){
-    new Setting(container).setName('滚动刻度尺').setDesc('通透玻璃风格下，在笔记右侧显示阅读位置刻度；可点击或拖动跳转。')
+    new Setting(container).setName('滚动刻度尺').setDesc('在笔记右侧显示阅读位置刻度；可点击或拖动跳转。')
       .addToggle(t=>t.setValue(this.plugin.data.settings.scrollRuler!==false).onChange(v=>{this.plugin.data.settings.scrollRuler=v;this.sync();this.plugin.changed();}));
   }
 }

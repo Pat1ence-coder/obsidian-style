@@ -67,9 +67,9 @@
    Explicit widths (|640) are honoured; print keeps its own rules below. */
 @media screen {
   .callout[data-callout="figure"] {--aw-figure-max-width: 720px; --aw-figure-max-height: min(72vh, 680px); --aw-figure-cell-max: 420px;}
-  .callout[data-callout="figure"]:not([data-callout-metadata^="grid-"]) img:not([width]) {max-width:min(100%, var(--aw-figure-max-width));}
+  .callout[data-callout="figure"]:not([data-callout-metadata^="grid-"],[data-callout-metadata^="mosaic-"]) img:not([width]) {max-width:min(100%, var(--aw-figure-max-width));}
   /* Cap the embed box as well, so it hugs the image (the resize handle sits on the image corner). */
-  .callout[data-callout="figure"]:not([data-callout-metadata^="grid-"]) .image-embed:has(> img:not([width])) {max-width:min(100%, var(--aw-figure-max-width));}
+  .callout[data-callout="figure"]:not([data-callout-metadata^="grid-"],[data-callout-metadata^="mosaic-"]) .image-embed:has(> img:not([width])) {max-width:min(100%, var(--aw-figure-max-width));}
   .callout[data-callout="figure"] img {max-height:var(--aw-figure-max-height);object-fit:contain;}
 }
 
@@ -91,8 +91,11 @@
 .callout[data-callout="figure"][data-callout-metadata^="grid-"] > .callout-content br {display:none;}
 .callout[data-callout="figure"][data-callout-metadata^="grid-"] .image-embed,
 .callout[data-callout="figure"][data-callout-metadata^="grid-"] img {
-  display:block;width:100%;min-width:0;max-width:100%;height:auto;
+  display:block;min-width:0;max-width:100%;height:auto;
 }
+/* Unsized images fill their cell; an explicit width (|420) is honoured, capped by the cell. */
+.callout[data-callout="figure"][data-callout-metadata^="grid-"] img:not([width]) {width:100%;}
+.callout[data-callout="figure"][data-callout-metadata^="grid-"] .image-embed:has(> img:not([width])) {width:100%;}
 @media screen {
   /* Columns are capped and centred; small images keep their natural size instead of being stretched. */
   .callout[data-callout="figure"][data-callout-metadata^="grid-"] > .callout-content {
@@ -101,7 +104,45 @@
     margin-inline:auto;
     justify-items:center;
   }
-  .callout[data-callout="figure"][data-callout-metadata^="grid-"] :is(.image-embed,img) {width:auto;}
+  .callout[data-callout="figure"][data-callout-metadata^="grid-"] .image-embed,
+  .callout[data-callout="figure"][data-callout-metadata^="grid-"] img:not([width]) {width:auto;}
+}
+
+/* Mosaic: one large image beside a stack of the others ("一大多小"). mosaic-left puts the
+   large image (the first one) on the left, mosaic-right on the right. The large image spans
+   every row of the stack, so with three images it sits beside two. */
+.callout[data-callout="figure"][data-callout-metadata^="mosaic-"] {container: aw-figure / inline-size;}
+.callout[data-callout="figure"][data-callout-metadata^="mosaic-"] > .callout-content {
+  display:grid;
+  grid-template-columns:minmax(0,3fr) minmax(0,2fr);
+  grid-auto-flow:row dense;
+  align-items:center;
+  gap:16px;
+}
+.callout[data-callout="figure"][data-callout-metadata="mosaic-right"] > .callout-content {grid-template-columns:minmax(0,2fr) minmax(0,3fr);}
+.callout[data-callout="figure"][data-callout-metadata^="mosaic-"] > .callout-content > p {display:contents;}
+.callout[data-callout="figure"][data-callout-metadata^="mosaic-"] > .callout-content br {display:none;}
+.callout[data-callout="figure"][data-callout-metadata^="mosaic-"] .image-embed {display:block;min-width:0;max-width:100%;justify-self:center;grid-column:2;}
+.callout[data-callout="figure"][data-callout-metadata^="mosaic-"] img {display:block;min-width:0;max-width:100%;height:auto;}
+.callout[data-callout="figure"][data-callout-metadata^="mosaic-"] img:not([width]) {width:100%;}
+.callout[data-callout="figure"][data-callout-metadata^="mosaic-"] .image-embed:has(> img:not([width])) {width:100%;}
+.callout[data-callout="figure"][data-callout-metadata^="mosaic-"] .image-embed:first-of-type {grid-column:1;grid-row:span 2;}
+.callout[data-callout="figure"][data-callout-metadata="mosaic-right"] .image-embed {grid-column:1;}
+.callout[data-callout="figure"][data-callout-metadata="mosaic-right"] .image-embed:first-of-type {grid-column:2;}
+.callout[data-callout="figure"][data-callout-metadata^="mosaic-"] .image-embed:first-of-type:nth-last-of-type(2) {grid-row:span 1;}
+.callout[data-callout="figure"][data-callout-metadata^="mosaic-"] .image-embed:first-of-type:nth-last-of-type(4) {grid-row:span 3;}
+.callout[data-callout="figure"][data-callout-metadata^="mosaic-"] .image-embed:first-of-type:nth-last-of-type(5) {grid-row:span 4;}
+.callout[data-callout="figure"][data-callout-metadata^="mosaic-"] .image-embed:first-of-type:nth-last-of-type(n+6) {grid-row:span 5;}
+@media screen {
+  .callout[data-callout="figure"][data-callout-metadata^="mosaic-"] > .callout-content {width:100%;max-width:calc(var(--aw-figure-cell-max) * 2.5 + 16px);margin-inline:auto;}
+}
+@container aw-figure (max-width:520px) {
+  .callout[data-callout="figure"][data-callout-metadata^="mosaic-"] > .callout-content {grid-template-columns:minmax(0,1fr);}
+  .callout[data-callout="figure"][data-callout-metadata^="mosaic-"] .image-embed,
+  .callout[data-callout="figure"][data-callout-metadata^="mosaic-"] .image-embed:first-of-type {grid-column:1;grid-row:auto;}
+}
+@media print {
+  .callout[data-callout="figure"][data-callout-metadata^="mosaic-"] .image-embed {break-inside:avoid;}
 }
 @container aw-figure (max-width:720px) {
   .callout[data-callout="figure"]:is([data-callout-metadata="grid-3"],[data-callout-metadata="grid-4"]) > .callout-content {grid-template-columns:repeat(2,minmax(0,1fr));}
