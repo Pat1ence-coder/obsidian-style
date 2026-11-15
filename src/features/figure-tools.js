@@ -23,10 +23,14 @@ function nearestSlot(slots,x,y){
   return best;
 }
 // Snap a width to the nearest column fraction within SNAP px; returns {width, fraction|null}.
+// In a narrow column neighbouring fractions overlap, so the closest one wins.
 function snapWidth(width,column){
-  for(const f of SNAP_FRACTIONS){const w=column*f;if(Math.abs(width-w)<=SNAP)return {width:Math.round(w),fraction:f};}
-  return {width,fraction:null};
+  let best=null,bestDistance=Infinity;
+  for(const f of SNAP_FRACTIONS){const d=Math.abs(width-column*f);if(d<=SNAP&&d<bestDistance){best=f;bestDistance=d;}}
+  return best===null?{width,fraction:null}:{width:Math.round(column*best),fraction:best};
 }
+// A pointer position in the figure's own coordinates (stable while the page scrolls).
+const pointerIn=(figure,event)=>{const r=figure.getBoundingClientRect();return {x:event.clientX-r.left,y:event.clientY-r.top};};
 const percent=f=>f===1?'整列':`${Math.round(f*100)}%`;
 
 // Bold the "图 1" / "表 2" label of a caption; the rest stays a plain text node.
@@ -118,6 +122,8 @@ class FigureTools extends Component {
     if(!figure)return;
     // Keep CodeMirror from moving the cursor into the callout source.
     event.preventDefault();event.stopPropagation();
+    // Settle any gesture still open before the next one marks up the DOM.
+    this.endGesture(true);
     if(target.classList.contains('aw-figure-option')){
       const meta=target.dataset.awMeta;
       if(target.getAttribute('aria-pressed')!=='true')void this.edit(figure,(lines,block)=>Edit.setMeta(lines,block,meta));
@@ -148,10 +154,14 @@ class FigureTools extends Component {
     const column=group?null:(figure.querySelector(':scope > .callout-content')?.getBoundingClientRect().width||null);
     let width=start.width,fraction=null;
     // While dragging, the embed box follows the image so the dot stays on the image's corner
-    // (images that fill their cell or column otherwise leave the box at full width).
+    // (images that fill their cell or column otherwise leave the box at full width), and the
+    // screen cap on unsized images is lifted so a snap to 整列 really fills the column.
+    const preview=()=>{img.style.width='';img.style.maxWidth='';embed.style.width='';embed.style.maxWidth='';};
     figure.classList.add('aw-figure-resizing');embed.style.width='fit-content';
-    this.beginGesture(figure.ownerDocument,()=>{
-      img.style.width='';embed.style.width='';delete embed.dataset.awWidth;figure.classList.remove('aw-figure-resizing');
+    if(column){img.style.maxWidth='100%';embed.style.maxWidth='100%';}
+    this.beginGesture(figure.ownerDocument,{
+      cleanup:()=>{figure.classList.remove('aw-figure-resizing');delete embed.dataset.awWidth;},
+      revert:preview,
     });
     const guide=column?this.outline(figure,'aw-figure-guide',''):null;
     if(guide)guide.hidden=true;
@@ -168,65 +178,68 @@ class FigureTools extends Component {
         }else guide.hidden=true;
       }
     };
-    this.gesture.onEnd=()=>{
-      figure.classList.remove('aw-figure-resizing');
+    // The preview stays until the note re-renders with the new width; if nothing is written
+    // (no real change, or the write fails) the image goes back to how it was.
+    this.gesture.onEnd=async()=>{
       const shown=img.getBoundingClientRect().width||width;
-      if(Math.abs(shown-start.width)<3){img.style.width='';embed.style.width='';delete embed.dataset.awWidth;return;}
+      if(Math.abs(shown-start.width)<3){preview();return;}
       const final=Math.min(4096,Math.max(MIN_WIDTH,fraction?Math.round(shown):Math.round(shown/10)*10));
-      void this.edit(figure,(lines,block)=>Edit.setWidth(lines,block,index,final));
+      if(!await this.edit(figure,(lines,block)=>Edit.setWidth(lines,block,index,final)))preview();
     };
   }
   // Grid / mosaic: a small copy of the image follows the pointer; the nearest slot is outlined.
   startReorder(event,figure,embed,from){
-    const embeds=[...figure.querySelectorAll('.image-embed')],doc=figure.ownerDocument;
-    const origin=figure.getBoundingClientRect(),slots=embeds.map(e=>e.getBoundingClientRect());
+    const embeds=[...figure.querySelectorAll('.image-embed')],origin=figure.getBoundingClientRect();
+    // Slots are kept in figure coordinates, so scrolling during the drag doesn't shift them.
+    const slots=embeds.map(e=>rectIn(e.getBoundingClientRect(),origin));
     let to=from;
-    embed.classList.add('aw-figure-dragging');figure.classList.add('aw-figure-moving');
-    this.beginGesture(doc,()=>{embed.classList.remove('aw-figure-dragging');figure.classList.remove('aw-figure-moving');});
+    this.beginGesture(figure.ownerDocument,{cleanup:this.lift(figure,embed)});
     const slot=this.outline(figure,'aw-figure-slot','放到这里');slot.hidden=true;
     const ghost=this.ghost(embed,event);
     this.gesture.onMove=move=>{
       this.moveGhost(ghost,move);
-      to=nearestSlot(slots,move.clientX,move.clientY);
-      this.place(slot,to<0||to===from?null:rectIn(slots[to],origin));
+      const at=pointerIn(figure,move);
+      to=nearestSlot(slots,at.x,at.y);
+      this.place(slot,to<0||to===from?null:slots[to]);
     };
-    this.gesture.onEnd=()=>{
-      embed.classList.remove('aw-figure-dragging');figure.classList.remove('aw-figure-moving');
-      if(to>=0&&to!==from)void this.edit(figure,(lines,block)=>Edit.moveImage(lines,block,from,to));
-    };
+    this.gesture.onEnd=()=>{if(to>=0&&to!==from)void this.edit(figure,(lines,block)=>Edit.moveImage(lines,block,from,to));};
   }
   // Single image: three outlines (left / centre / right) of the image's size; drop on one to align.
   startAlign(event,figure,embed){
     const img=embed?.querySelector('img'),content=figure.querySelector(':scope > .callout-content');
     if(!img||!content)return;
-    const doc=figure.ownerDocument,origin=figure.getBoundingClientRect(),box=img.getBoundingClientRect(),area=content.getBoundingClientRect();
+    const doc=figure.ownerDocument,origin=figure.getBoundingClientRect(),box=rectIn(img.getBoundingClientRect(),origin),area=rectIn(content.getBoundingClientRect(),origin);
     const current=figure.dataset.calloutMetadata||'center';
     // A full-width image has nowhere to move: say so instead of offering identical targets.
     if(area.width-box.width<24){
-      this.beginGesture(doc,null);
-      this.place(this.outline(figure,'aw-figure-slot','图片已占满整列，先拖动右下角缩小'),rectIn(box,origin));
+      this.beginGesture(doc);
+      this.place(this.outline(figure,'aw-figure-slot','图片已占满整列，先拖动右下角缩小'),box);
       return;
     }
     const positions=[['left',area.left],['center',area.left+(area.width-box.width)/2],['right',area.left+area.width-box.width]];
     const slots=positions.map(([,left])=>({left,top:box.top,width:box.width,height:box.height}));
-    embed.classList.add('aw-figure-dragging');figure.classList.add('aw-figure-moving');
-    this.beginGesture(doc,()=>{embed.classList.remove('aw-figure-dragging');figure.classList.remove('aw-figure-moving');});
+    this.beginGesture(doc,{cleanup:this.lift(figure,embed)});
     const outlines=positions.map(([meta],i)=>{
       const o=this.outline(figure,'aw-figure-slot aw-figure-slot-quiet',{left:'左对齐',center:'居中',right:'右对齐'}[meta]);o.dataset.awSlot=meta;
-      this.place(o,rectIn(slots[i],origin));if(meta===current)o.hidden=true;return o;
+      this.place(o,slots[i]);if(meta===current)o.hidden=true;return o;
     });
     const ghost=this.ghost(embed,event);
     let target=-1;
     this.gesture.onMove=move=>{
       this.moveGhost(ghost,move);
-      target=nearestSlot(slots,move.clientX,move.clientY);
+      const at=pointerIn(figure,move);
+      target=nearestSlot(slots,at.x,at.y);
       outlines.forEach((o,i)=>o.classList.toggle('is-target',i===target));
     };
     this.gesture.onEnd=()=>{
-      embed.classList.remove('aw-figure-dragging');figure.classList.remove('aw-figure-moving');
       const meta=positions[target]?.[0];
       if(meta&&meta!==current)void this.edit(figure,(lines,block)=>Edit.setMeta(lines,block,meta));
     };
+  }
+  // Mark the image as picked up; returns the undo for the gesture's cleanup.
+  lift(figure,embed){
+    embed.classList.add('aw-figure-dragging');figure.classList.add('aw-figure-moving');
+    return ()=>{embed.classList.remove('aw-figure-dragging');figure.classList.remove('aw-figure-moving');};
   }
   ghost(embed,event){
     const img=embed.querySelector('img'),doc=embed.ownerDocument;
@@ -235,24 +248,30 @@ class FigureTools extends Component {
     doc.body.appendChild(ghost);this.gesture?.overlays.push(ghost);this.moveGhost(ghost,event);return ghost;
   }
   moveGhost(ghost,event){if(ghost){ghost.style.left=event.clientX+'px';ghost.style.top=event.clientY+'px';}}
-  // One gesture at a time. Overlays are removed however it ends; cancel() undoes live
-  // previews when the gesture is interrupted (Escape, unload) instead of completed.
-  beginGesture(doc,cancel){
+  // One gesture at a time. However it ends, overlays are removed and cleanup() runs;
+  // revert() also undoes live previews when the gesture is abandoned instead of completed:
+  // Escape, a cancelled pointer (system gesture, touch scroll, pen out of range) or unload.
+  beginGesture(doc,{cleanup=null,revert=null}={}){
     this.endGesture(true);
-    const gesture={doc,overlays:[],cancel,onMove:null,onEnd:null};
+    const gesture={doc,overlays:[],cleanup,revert,onMove:null,onEnd:null};
     gesture.move=event=>gesture.onMove?.(event);
-    gesture.up=()=>{const done=gesture.onEnd;this.endGesture(false);done?.();};
-    gesture.key=event=>{if(event.key==='Escape'){event.preventDefault();this.endGesture(true);}};
-    doc.addEventListener('pointermove',gesture.move);doc.addEventListener('pointerup',gesture.up);doc.addEventListener('keydown',gesture.key,true);
+    gesture.up=()=>{const done=gesture.onEnd;this.endGesture(false);void done?.();};
+    gesture.abort=()=>this.endGesture(true);
+    // Escape is consumed here so the editor doesn't also act on it (Vim mode, popovers).
+    gesture.key=event=>{if(event.key==='Escape'){event.preventDefault();event.stopPropagation();this.endGesture(true);}};
+    doc.addEventListener('pointermove',gesture.move);doc.addEventListener('pointerup',gesture.up);
+    doc.addEventListener('pointercancel',gesture.abort);doc.addEventListener('keydown',gesture.key,true);
     this.gesture=gesture;
   }
   endGesture(cancelled=true){
     const g=this.gesture;
     if(!g)return;
     this.gesture=null;
-    g.doc.removeEventListener('pointermove',g.move);g.doc.removeEventListener('pointerup',g.up);g.doc.removeEventListener('keydown',g.key,true);
+    g.doc.removeEventListener('pointermove',g.move);g.doc.removeEventListener('pointerup',g.up);
+    g.doc.removeEventListener('pointercancel',g.abort);g.doc.removeEventListener('keydown',g.key,true);
     for(const node of g.overlays)node.remove();
-    if(cancelled)g.cancel?.();
+    g.cleanup?.();
+    if(cancelled)g.revert?.();
   }
   // Live Preview edits go through the editor (undoable); reading view edits rewrite
   // the file after checking the recorded block is still where it was rendered.
@@ -277,12 +296,14 @@ class FigureTools extends Component {
       return change(lines,block).join(eol);
     })};
   }
+  // Resolves true once the change is written, false after showing why it wasn't.
   async edit(figure,change){
     try{
       const located=this.locate(figure);
-      if(!located){new Notice('无法定位这张插图的源码，请在编辑或阅读视图中重试。');return;}
+      if(!located){new Notice('无法定位这张插图的源码，请在编辑或阅读视图中重试。');return false;}
       await located.apply(change);
-    }catch(error){new Notice(error?.message||'修改插图失败。');}
+      return true;
+    }catch(error){new Notice(error?.message||'修改插图失败。');return false;}
   }
   displaySettings(container){
     new Setting(container).setName('插图编辑工具').setDesc('悬停插图时显示布局工具条；拖动右下角圆点调整宽度（单图靠近 1/4、1/3、1/2、2/3、3/4、整列时吸附）；拖动左上角手柄：多图组移动图片位置，单图移到左、中、右对齐。拖动时会显示目标位置的轮廓，按 Esc 取消。修改直接写回 Markdown。')

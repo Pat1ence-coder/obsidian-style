@@ -428,7 +428,9 @@ const Dash=__awRequire("features/dashboard-data.js");
 const VIEW='algorithm-workbench';
 const NAME='写作工作台';
 // notebook-pen is a newer Lucide icon; older Obsidian builds fall back to pencil.
-const viewIcon=()=>typeof getIcon==='function'&&!getIcon('notebook-pen')?'pencil':'notebook-pen';
+// Probed once: getIcon builds a throwaway SVG and Obsidian asks for the view icon often.
+let probedIcon=null;
+const viewIcon=()=>probedIcon??=(typeof getIcon==='function'&&!getIcon('notebook-pen')?'pencil':'notebook-pen');
 const WEEKS=53;
 const number=n=>new Intl.NumberFormat('zh-CN',{maximumFractionDigits:1}).format(n);
 const hours=minutes=>number(Math.round(minutes/6)/10);
@@ -533,7 +535,7 @@ class WorkbenchView extends ItemView{
       for(const [key,node] of this.statNumbers)if(node.textContent!==values[key])node.textContent=values[key];
       if(this.longestEl)this.longestEl.textContent=`最长连续 ${values.longest} 天`;
     }
-    for(const part of this.liveParts||[]){const key=part.key();if(key!==part.stamp){part.stamp=key;part.draw();}}
+    for(const part of this.liveParts||[]){const value=part.read(),key=JSON.stringify(value);if(key!==part.stamp){part.stamp=key;part.draw(value);}}
     if(this.heatCells)this.paintHeat();
     const files=Core.recentFiles(this.app.vault.getMarkdownFiles(),this.plugin.data.settings);
     if(this.recentEl&&this.recentStamp!==JSON.stringify(files.map(f=>[f.path,f.stat.mtime])))this.renderRecent(files);
@@ -601,8 +603,9 @@ class WorkbenchView extends ItemView{
     for(const value of Core.RANGES)menu.addItem(item=>item.setTitle(`最近 ${value} 天`).setChecked(settings.range===value).onClick(()=>choose(value)));
     menu.showAtMouseEvent(event);
   }
-  // A part that redraws itself on refresh() whenever its data key changes.
-  live(key,draw){const part={key,stamp:key(),draw};this.liveParts.push(part);draw();return part;}
+  // A part that redraws itself on refresh() whenever the value read() returns changes.
+  // read() runs once per check and its value goes straight to draw().
+  live(read,draw){const value=read(),part={read,stamp:JSON.stringify(value),draw};this.liveParts.push(part);draw(value);return part;}
   renderKpis(stack){
     const data=this.plugin.data,values=overview(data);this.statNumbers=new Map();
     const kpis=[
@@ -624,8 +627,8 @@ class WorkbenchView extends ItemView{
     const c=card(stack,{name:'today',iconName:'sun',title:'今日进度',sub:`${dateFormat.format(new Date())} · 对比近期日均`,badge:'',hue:'tone-accent'});
     const box=el(c.body,'div','aw-today'),range=this.plugin.data.settings.range;
     const read=()=>Dash.todayProgress(this.plugin.data,new Date(),range);
-    this.live(()=>JSON.stringify(read()),()=>{
-      const t=read();c.pill.textContent=`${number(t.score)} 分`;box.replaceChildren();
+    this.live(read,t=>{
+      c.pill.textContent=`${number(t.score)} 分`;box.replaceChildren();
       for(const [key,label,value,avg,unit] of [['characters','新增字数',t.characters,t.avgCharacters,'字'],['minutes','编辑时长',t.minutes,t.avgMinutes,'分钟']]){
         const row=tint(el(box,'div','aw-progress-row'),HUES[key]),top=el(row,'div','aw-progress-top');
         el(top,'span','aw-progress-label',label);
@@ -651,7 +654,7 @@ class WorkbenchView extends ItemView{
     }
     const plot=el(c.body,'div','aw-trend-plot');
     const read=()=>Dash.trendSeries(this.plugin.data,new Date(),n);
-    this.live(()=>JSON.stringify(read()),()=>{plot.replaceChildren();this.drawTrend(plot,read(),c.pill);});
+    this.live(read,series=>{plot.replaceChildren();this.drawTrend(plot,series,c.pill);});
   }
   drawTrend(plot,series,pill){
     const W=640,H=220,L=34,R=10,T=16,B=192,n=series.length,step=(W-L-R)/(n-1);
@@ -684,21 +687,25 @@ class WorkbenchView extends ItemView{
       svg(g,'rect',{x:x(i)-step/2,y:T,width:step,height:B-T,'data-aw-index':i});
       svg(g,'line',{x1:x(i),x2:x(i),y1:T,y2:B});svg(g,'circle',{cx:x(i),cy:y(d.avg),r:4.5});
     });
-    hits.addEventListener('pointerover',event=>{
-      const i=Number(event.target.getAttribute?.('data-aw-index'));if(!Number.isInteger(i))return;
-      const d=series[i];tip.replaceChildren();
+    const show=i=>{
+      const d=series[i];if(!d)return;tip.replaceChildren();
       el(tip,'span','aw-tip-date',d.date);
       const a=el(tip,'span','aw-tip-row');el(a,'i','aw-key-bar');el(a,'span','',`贡献分 ${number(d.score)}`);
       const b=el(tip,'span','aw-tip-row');el(b,'i','aw-key-line');el(b,'span','',`7 日均 ${number(d.avg)}`);
-      tip.style.setProperty('--aw-x',String(x(i)/W));tip.classList.add('is-shown');
+      tip.style.setProperty('--aw-x',String(x(i)/W));tip.classList.add('is-shown');plot.dataset.awHover=String(i);
+    };
+    hits.addEventListener('pointerover',event=>{
+      const i=Number(event.target.getAttribute?.('data-aw-index'));if(Number.isInteger(i))show(i);
     });
-    hits.addEventListener('pointerleave',()=>tip.classList.remove('is-shown'));
+    hits.addEventListener('pointerleave',()=>{tip.classList.remove('is-shown');delete plot.dataset.awHover;});
+    // A live redraw while typing keeps the day under the pointer on show.
+    if(plot.dataset.awHover!==undefined)show(Number(plot.dataset.awHover));
   }
   renderMonths(stack){
     const c=card(stack,{name:'months',iconName:'calendar-range',title:'月度贡献',sub:'最近 6 个月 · 贡献分',badge:'',hue:HUES.score});
     const read=()=>Dash.monthBars(months(this.plugin.data));
-    this.live(()=>JSON.stringify(read()),()=>{
-      const bars=read(),current=bars[bars.length-1];c.body.replaceChildren();
+    this.live(read,bars=>{
+      const current=bars[bars.length-1];c.body.replaceChildren();
       c.pill.textContent=`本月 ${current.active} 天活跃`;
       const chart=el(c.body,'div','aw-bars');chart.setAttribute('role','list');
       for(const b of bars){
@@ -1197,9 +1204,13 @@ module.exports={Figures,FigureModal};
 },
 "features/figure-format.js":(module,exports,__awRequire)=>{
 'use strict';
-// Multi-image layouts: grid-N (N columns) and mosaic-left/right (one large image beside a
-// stack of the others).
+// The one list of figure layouts. Single images: left / center / right. Multi-image groups:
+// grid-N (N columns) and mosaic-left/right (one large image beside a stack of the others).
 const GROUP=/^(?:grid-[1-4]|mosaic-(?:left|right))$/;
+const LAYOUT=/^(?:left|center|right|grid-[1-4]|mosaic-(?:left|right))$/;
+// Which family a figure renders as. Matches the stylesheet's [data-callout-metadata^="grid-"]
+// prefix test, so a hand-typed grid-5 still behaves as a group and can be switched to a valid one.
+const isGroup=meta=>/^(?:grid|mosaic)-/.test(meta);
 function imageReference(text) {
   const s=text.trim();
   if((s.match(/!\[/g)||[]).length!==1)return null;
@@ -1232,7 +1243,7 @@ function spacedFigure(before,after,figure) {
   return (before && !before.endsWith('\n\n') ? before.endsWith('\n')?'\n':'\n\n' : '')
     +figure+(after ? after.startsWith('\n\n')?'':after.startsWith('\n')?'\n':'\n\n' : '\n');
 }
-module.exports={imageReference,figureMarkdown,spacedFigure,GROUP};
+module.exports={imageReference,figureMarkdown,spacedFigure,GROUP,LAYOUT,isGroup};
 
 },
 "features/screenshot-names.js":(module,exports,__awRequire)=>{
@@ -1312,10 +1323,14 @@ function nearestSlot(slots,x,y){
   return best;
 }
 // Snap a width to the nearest column fraction within SNAP px; returns {width, fraction|null}.
+// In a narrow column neighbouring fractions overlap, so the closest one wins.
 function snapWidth(width,column){
-  for(const f of SNAP_FRACTIONS){const w=column*f;if(Math.abs(width-w)<=SNAP)return {width:Math.round(w),fraction:f};}
-  return {width,fraction:null};
+  let best=null,bestDistance=Infinity;
+  for(const f of SNAP_FRACTIONS){const d=Math.abs(width-column*f);if(d<=SNAP&&d<bestDistance){best=f;bestDistance=d;}}
+  return best===null?{width,fraction:null}:{width:Math.round(column*best),fraction:best};
 }
+// A pointer position in the figure's own coordinates (stable while the page scrolls).
+const pointerIn=(figure,event)=>{const r=figure.getBoundingClientRect();return {x:event.clientX-r.left,y:event.clientY-r.top};};
 const percent=f=>f===1?'整列':`${Math.round(f*100)}%`;
 
 // Bold the "图 1" / "表 2" label of a caption; the rest stays a plain text node.
@@ -1407,6 +1422,8 @@ class FigureTools extends Component {
     if(!figure)return;
     // Keep CodeMirror from moving the cursor into the callout source.
     event.preventDefault();event.stopPropagation();
+    // Settle any gesture still open before the next one marks up the DOM.
+    this.endGesture(true);
     if(target.classList.contains('aw-figure-option')){
       const meta=target.dataset.awMeta;
       if(target.getAttribute('aria-pressed')!=='true')void this.edit(figure,(lines,block)=>Edit.setMeta(lines,block,meta));
@@ -1437,10 +1454,14 @@ class FigureTools extends Component {
     const column=group?null:(figure.querySelector(':scope > .callout-content')?.getBoundingClientRect().width||null);
     let width=start.width,fraction=null;
     // While dragging, the embed box follows the image so the dot stays on the image's corner
-    // (images that fill their cell or column otherwise leave the box at full width).
+    // (images that fill their cell or column otherwise leave the box at full width), and the
+    // screen cap on unsized images is lifted so a snap to 整列 really fills the column.
+    const preview=()=>{img.style.width='';img.style.maxWidth='';embed.style.width='';embed.style.maxWidth='';};
     figure.classList.add('aw-figure-resizing');embed.style.width='fit-content';
-    this.beginGesture(figure.ownerDocument,()=>{
-      img.style.width='';embed.style.width='';delete embed.dataset.awWidth;figure.classList.remove('aw-figure-resizing');
+    if(column){img.style.maxWidth='100%';embed.style.maxWidth='100%';}
+    this.beginGesture(figure.ownerDocument,{
+      cleanup:()=>{figure.classList.remove('aw-figure-resizing');delete embed.dataset.awWidth;},
+      revert:preview,
     });
     const guide=column?this.outline(figure,'aw-figure-guide',''):null;
     if(guide)guide.hidden=true;
@@ -1457,65 +1478,68 @@ class FigureTools extends Component {
         }else guide.hidden=true;
       }
     };
-    this.gesture.onEnd=()=>{
-      figure.classList.remove('aw-figure-resizing');
+    // The preview stays until the note re-renders with the new width; if nothing is written
+    // (no real change, or the write fails) the image goes back to how it was.
+    this.gesture.onEnd=async()=>{
       const shown=img.getBoundingClientRect().width||width;
-      if(Math.abs(shown-start.width)<3){img.style.width='';embed.style.width='';delete embed.dataset.awWidth;return;}
+      if(Math.abs(shown-start.width)<3){preview();return;}
       const final=Math.min(4096,Math.max(MIN_WIDTH,fraction?Math.round(shown):Math.round(shown/10)*10));
-      void this.edit(figure,(lines,block)=>Edit.setWidth(lines,block,index,final));
+      if(!await this.edit(figure,(lines,block)=>Edit.setWidth(lines,block,index,final)))preview();
     };
   }
   // Grid / mosaic: a small copy of the image follows the pointer; the nearest slot is outlined.
   startReorder(event,figure,embed,from){
-    const embeds=[...figure.querySelectorAll('.image-embed')],doc=figure.ownerDocument;
-    const origin=figure.getBoundingClientRect(),slots=embeds.map(e=>e.getBoundingClientRect());
+    const embeds=[...figure.querySelectorAll('.image-embed')],origin=figure.getBoundingClientRect();
+    // Slots are kept in figure coordinates, so scrolling during the drag doesn't shift them.
+    const slots=embeds.map(e=>rectIn(e.getBoundingClientRect(),origin));
     let to=from;
-    embed.classList.add('aw-figure-dragging');figure.classList.add('aw-figure-moving');
-    this.beginGesture(doc,()=>{embed.classList.remove('aw-figure-dragging');figure.classList.remove('aw-figure-moving');});
+    this.beginGesture(figure.ownerDocument,{cleanup:this.lift(figure,embed)});
     const slot=this.outline(figure,'aw-figure-slot','放到这里');slot.hidden=true;
     const ghost=this.ghost(embed,event);
     this.gesture.onMove=move=>{
       this.moveGhost(ghost,move);
-      to=nearestSlot(slots,move.clientX,move.clientY);
-      this.place(slot,to<0||to===from?null:rectIn(slots[to],origin));
+      const at=pointerIn(figure,move);
+      to=nearestSlot(slots,at.x,at.y);
+      this.place(slot,to<0||to===from?null:slots[to]);
     };
-    this.gesture.onEnd=()=>{
-      embed.classList.remove('aw-figure-dragging');figure.classList.remove('aw-figure-moving');
-      if(to>=0&&to!==from)void this.edit(figure,(lines,block)=>Edit.moveImage(lines,block,from,to));
-    };
+    this.gesture.onEnd=()=>{if(to>=0&&to!==from)void this.edit(figure,(lines,block)=>Edit.moveImage(lines,block,from,to));};
   }
   // Single image: three outlines (left / centre / right) of the image's size; drop on one to align.
   startAlign(event,figure,embed){
     const img=embed?.querySelector('img'),content=figure.querySelector(':scope > .callout-content');
     if(!img||!content)return;
-    const doc=figure.ownerDocument,origin=figure.getBoundingClientRect(),box=img.getBoundingClientRect(),area=content.getBoundingClientRect();
+    const doc=figure.ownerDocument,origin=figure.getBoundingClientRect(),box=rectIn(img.getBoundingClientRect(),origin),area=rectIn(content.getBoundingClientRect(),origin);
     const current=figure.dataset.calloutMetadata||'center';
     // A full-width image has nowhere to move: say so instead of offering identical targets.
     if(area.width-box.width<24){
-      this.beginGesture(doc,null);
-      this.place(this.outline(figure,'aw-figure-slot','图片已占满整列，先拖动右下角缩小'),rectIn(box,origin));
+      this.beginGesture(doc);
+      this.place(this.outline(figure,'aw-figure-slot','图片已占满整列，先拖动右下角缩小'),box);
       return;
     }
     const positions=[['left',area.left],['center',area.left+(area.width-box.width)/2],['right',area.left+area.width-box.width]];
     const slots=positions.map(([,left])=>({left,top:box.top,width:box.width,height:box.height}));
-    embed.classList.add('aw-figure-dragging');figure.classList.add('aw-figure-moving');
-    this.beginGesture(doc,()=>{embed.classList.remove('aw-figure-dragging');figure.classList.remove('aw-figure-moving');});
+    this.beginGesture(doc,{cleanup:this.lift(figure,embed)});
     const outlines=positions.map(([meta],i)=>{
       const o=this.outline(figure,'aw-figure-slot aw-figure-slot-quiet',{left:'左对齐',center:'居中',right:'右对齐'}[meta]);o.dataset.awSlot=meta;
-      this.place(o,rectIn(slots[i],origin));if(meta===current)o.hidden=true;return o;
+      this.place(o,slots[i]);if(meta===current)o.hidden=true;return o;
     });
     const ghost=this.ghost(embed,event);
     let target=-1;
     this.gesture.onMove=move=>{
       this.moveGhost(ghost,move);
-      target=nearestSlot(slots,move.clientX,move.clientY);
+      const at=pointerIn(figure,move);
+      target=nearestSlot(slots,at.x,at.y);
       outlines.forEach((o,i)=>o.classList.toggle('is-target',i===target));
     };
     this.gesture.onEnd=()=>{
-      embed.classList.remove('aw-figure-dragging');figure.classList.remove('aw-figure-moving');
       const meta=positions[target]?.[0];
       if(meta&&meta!==current)void this.edit(figure,(lines,block)=>Edit.setMeta(lines,block,meta));
     };
+  }
+  // Mark the image as picked up; returns the undo for the gesture's cleanup.
+  lift(figure,embed){
+    embed.classList.add('aw-figure-dragging');figure.classList.add('aw-figure-moving');
+    return ()=>{embed.classList.remove('aw-figure-dragging');figure.classList.remove('aw-figure-moving');};
   }
   ghost(embed,event){
     const img=embed.querySelector('img'),doc=embed.ownerDocument;
@@ -1524,24 +1548,30 @@ class FigureTools extends Component {
     doc.body.appendChild(ghost);this.gesture?.overlays.push(ghost);this.moveGhost(ghost,event);return ghost;
   }
   moveGhost(ghost,event){if(ghost){ghost.style.left=event.clientX+'px';ghost.style.top=event.clientY+'px';}}
-  // One gesture at a time. Overlays are removed however it ends; cancel() undoes live
-  // previews when the gesture is interrupted (Escape, unload) instead of completed.
-  beginGesture(doc,cancel){
+  // One gesture at a time. However it ends, overlays are removed and cleanup() runs;
+  // revert() also undoes live previews when the gesture is abandoned instead of completed:
+  // Escape, a cancelled pointer (system gesture, touch scroll, pen out of range) or unload.
+  beginGesture(doc,{cleanup=null,revert=null}={}){
     this.endGesture(true);
-    const gesture={doc,overlays:[],cancel,onMove:null,onEnd:null};
+    const gesture={doc,overlays:[],cleanup,revert,onMove:null,onEnd:null};
     gesture.move=event=>gesture.onMove?.(event);
-    gesture.up=()=>{const done=gesture.onEnd;this.endGesture(false);done?.();};
-    gesture.key=event=>{if(event.key==='Escape'){event.preventDefault();this.endGesture(true);}};
-    doc.addEventListener('pointermove',gesture.move);doc.addEventListener('pointerup',gesture.up);doc.addEventListener('keydown',gesture.key,true);
+    gesture.up=()=>{const done=gesture.onEnd;this.endGesture(false);void done?.();};
+    gesture.abort=()=>this.endGesture(true);
+    // Escape is consumed here so the editor doesn't also act on it (Vim mode, popovers).
+    gesture.key=event=>{if(event.key==='Escape'){event.preventDefault();event.stopPropagation();this.endGesture(true);}};
+    doc.addEventListener('pointermove',gesture.move);doc.addEventListener('pointerup',gesture.up);
+    doc.addEventListener('pointercancel',gesture.abort);doc.addEventListener('keydown',gesture.key,true);
     this.gesture=gesture;
   }
   endGesture(cancelled=true){
     const g=this.gesture;
     if(!g)return;
     this.gesture=null;
-    g.doc.removeEventListener('pointermove',g.move);g.doc.removeEventListener('pointerup',g.up);g.doc.removeEventListener('keydown',g.key,true);
+    g.doc.removeEventListener('pointermove',g.move);g.doc.removeEventListener('pointerup',g.up);
+    g.doc.removeEventListener('pointercancel',g.abort);g.doc.removeEventListener('keydown',g.key,true);
     for(const node of g.overlays)node.remove();
-    if(cancelled)g.cancel?.();
+    g.cleanup?.();
+    if(cancelled)g.revert?.();
   }
   // Live Preview edits go through the editor (undoable); reading view edits rewrite
   // the file after checking the recorded block is still where it was rendered.
@@ -1566,12 +1596,14 @@ class FigureTools extends Component {
       return change(lines,block).join(eol);
     })};
   }
+  // Resolves true once the change is written, false after showing why it wasn't.
   async edit(figure,change){
     try{
       const located=this.locate(figure);
-      if(!located){new Notice('无法定位这张插图的源码，请在编辑或阅读视图中重试。');return;}
+      if(!located){new Notice('无法定位这张插图的源码，请在编辑或阅读视图中重试。');return false;}
       await located.apply(change);
-    }catch(error){new Notice(error?.message||'修改插图失败。');}
+      return true;
+    }catch(error){new Notice(error?.message||'修改插图失败。');return false;}
   }
   displaySettings(container){
     new Setting(container).setName('插图编辑工具').setDesc('悬停插图时显示布局工具条；拖动右下角圆点调整宽度（单图靠近 1/4、1/3、1/2、2/3、3/4、整列时吸附）；拖动左上角手柄：多图组移动图片位置，单图移到左、中、右对齐。拖动时会显示目标位置的轮廓，按 Esc 取消。修改直接写回 Markdown。')
@@ -1585,6 +1617,7 @@ module.exports={FigureTools,markLabel,nearestSlot,snapWidth};
 'use strict';
 // Line-level edits of a figure callout. Every function takes the note's lines and
 // returns new lines; nothing here touches the DOM or the vault.
+const {LAYOUT,isGroup}=__awRequire("features/figure-format.js");
 const HEADER=/^(\s*>\s*)\[!(figure|table)(?:\|([^\]]*))?\]([+-]?)(.*)$/i;
 const QUOTED=/^\s*>/;
 const IMAGE=/!\[\[([^\]|]+)(?:\|(\d+)(?:x\d+)?)?\]\]|!\[([^\]|]*)(?:\|(\d+)(?:x\d+)?)?\]\(([^)]+)\)/g;
@@ -1621,10 +1654,8 @@ function setWidth(lines, block, imageIndex, width) {
   next[image.line]=text.slice(0,found.index)+replaceWidth(found.text,width)+text.slice(found.index+found.text.length);
   return next;
 }
-const META=/^(left|center|right|grid-[1-4]|mosaic-(left|right))$/;
-const isGroup=meta=>/^(grid|mosaic)-/.test(meta);
 function setMeta(lines, block, meta) {
-  if(!META.test(meta))throw Error('不支持的布局。');
+  if(!LAYOUT.test(meta))throw Error('不支持的布局。');
   const grid=isGroup(meta),wasGrid=isGroup(block.meta);
   if(grid!==wasGrid)throw Error(grid?'单图不能切换为多图布局。':'多图组只能切换多图布局。');
   const next=lines.slice();

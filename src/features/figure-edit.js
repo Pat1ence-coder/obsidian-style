@@ -1,6 +1,7 @@
 'use strict';
 // Line-level edits of a figure callout. Every function takes the note's lines and
 // returns new lines; nothing here touches the DOM or the vault.
+const {LAYOUT,isGroup}=require('./figure-format');
 const HEADER=/^(\s*>\s*)\[!(figure|table)(?:\|([^\]]*))?\]([+-]?)(.*)$/i;
 const QUOTED=/^\s*>/;
 const IMAGE=/!\[\[([^\]|]+)(?:\|(\d+)(?:x\d+)?)?\]\]|!\[([^\]|]*)(?:\|(\d+)(?:x\d+)?)?\]\(([^)]+)\)/g;
@@ -37,10 +38,8 @@ function setWidth(lines, block, imageIndex, width) {
   next[image.line]=text.slice(0,found.index)+replaceWidth(found.text,width)+text.slice(found.index+found.text.length);
   return next;
 }
-const META=/^(left|center|right|grid-[1-4]|mosaic-(left|right))$/;
-const isGroup=meta=>/^(grid|mosaic)-/.test(meta);
 function setMeta(lines, block, meta) {
-  if(!META.test(meta))throw Error('不支持的布局。');
+  if(!LAYOUT.test(meta))throw Error('不支持的布局。');
   const grid=isGroup(meta),wasGrid=isGroup(block.meta);
   if(grid!==wasGrid)throw Error(grid?'单图不能切换为多图布局。':'多图组只能切换多图布局。');
   const next=lines.slice();

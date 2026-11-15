@@ -1,7 +1,11 @@
 'use strict';
-// Multi-image layouts: grid-N (N columns) and mosaic-left/right (one large image beside a
-// stack of the others).
+// The one list of figure layouts. Single images: left / center / right. Multi-image groups:
+// grid-N (N columns) and mosaic-left/right (one large image beside a stack of the others).
 const GROUP=/^(?:grid-[1-4]|mosaic-(?:left|right))$/;
+const LAYOUT=/^(?:left|center|right|grid-[1-4]|mosaic-(?:left|right))$/;
+// Which family a figure renders as. Matches the stylesheet's [data-callout-metadata^="grid-"]
+// prefix test, so a hand-typed grid-5 still behaves as a group and can be switched to a valid one.
+const isGroup=meta=>/^(?:grid|mosaic)-/.test(meta);
 function imageReference(text) {
   const s=text.trim();
   if((s.match(/!\[/g)||[]).length!==1)return null;
@@ -34,4 +38,4 @@ function spacedFigure(before,after,figure) {
   return (before && !before.endsWith('\n\n') ? before.endsWith('\n')?'\n':'\n\n' : '')
     +figure+(after ? after.startsWith('\n\n')?'':after.startsWith('\n')?'\n':'\n\n' : '\n');
 }
-module.exports={imageReference,figureMarkdown,spacedFigure,GROUP};
+module.exports={imageReference,figureMarkdown,spacedFigure,GROUP,LAYOUT,isGroup};

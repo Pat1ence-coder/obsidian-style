@@ -205,3 +205,25 @@ test('the view is called 写作工作台 with a notebook-and-pen icon, falling b
   assert.equal(old.view.getIcon(),'pencil');
   assert.equal(fixture({getIcon:()=>({})}).view.getIcon(),'notebook-pen');
 });
+test('a live trend redraw keeps the hovered day on show',()=>{
+  const f=fixture();f.view.render();
+  const plot=f.content.querySelector('.aw-trend-plot');
+  const find=(node,test)=>test(node)?node:node.children.map(c=>find(c,test)).find(Boolean)||null;
+  const hits=()=>find(plot,n=>n.events?.pointerover);
+  hits().dispatch('pointerover',{target:{getAttribute:()=>'29'}});
+  const tip=()=>plot.querySelector('.aw-tip');
+  assert.match(tip().className,/is-shown/);const date=tip().querySelector('.aw-tip-date').textContent;
+  f.plugin.data.days[Object.keys(f.plugin.data.days).sort().at(-1)].characters=2000;
+  f.view.refresh();
+  assert.match(tip().className,/is-shown/,'still shown after the redraw');
+  assert.equal(tip().querySelector('.aw-tip-date').textContent,date);
+  hits().dispatch('pointerleave');
+  assert.doesNotMatch(tip().className,/is-shown/);
+  f.plugin.data.days[Object.keys(f.plugin.data.days).sort().at(-1)].characters=3000;f.view.refresh();
+  assert.doesNotMatch(tip().className,/is-shown/,'no tooltip comes back once the pointer has left');
+});
+test('the view icon is probed once',()=>{
+  let probes=0;const f=fixture({getIcon:()=>{probes++;return {};}});
+  f.view.render();f.view.getIcon();f.view.getIcon();f.view.render();
+  assert.equal(probes,1);
+});

@@ -5,7 +5,9 @@ const Dash=require('./dashboard-data');
 const VIEW='algorithm-workbench';
 const NAME='写作工作台';
 // notebook-pen is a newer Lucide icon; older Obsidian builds fall back to pencil.
-const viewIcon=()=>typeof getIcon==='function'&&!getIcon('notebook-pen')?'pencil':'notebook-pen';
+// Probed once: getIcon builds a throwaway SVG and Obsidian asks for the view icon often.
+let probedIcon=null;
+const viewIcon=()=>probedIcon??=(typeof getIcon==='function'&&!getIcon('notebook-pen')?'pencil':'notebook-pen');
 const WEEKS=53;
 const number=n=>new Intl.NumberFormat('zh-CN',{maximumFractionDigits:1}).format(n);
 const hours=minutes=>number(Math.round(minutes/6)/10);
@@ -110,7 +112,7 @@ class WorkbenchView extends ItemView{
       for(const [key,node] of this.statNumbers)if(node.textContent!==values[key])node.textContent=values[key];
       if(this.longestEl)this.longestEl.textContent=`最长连续 ${values.longest} 天`;
     }
-    for(const part of this.liveParts||[]){const key=part.key();if(key!==part.stamp){part.stamp=key;part.draw();}}
+    for(const part of this.liveParts||[]){const value=part.read(),key=JSON.stringify(value);if(key!==part.stamp){part.stamp=key;part.draw(value);}}
     if(this.heatCells)this.paintHeat();
     const files=Core.recentFiles(this.app.vault.getMarkdownFiles(),this.plugin.data.settings);
     if(this.recentEl&&this.recentStamp!==JSON.stringify(files.map(f=>[f.path,f.stat.mtime])))this.renderRecent(files);
@@ -178,8 +180,9 @@ class WorkbenchView extends ItemView{
     for(const value of Core.RANGES)menu.addItem(item=>item.setTitle(`最近 ${value} 天`).setChecked(settings.range===value).onClick(()=>choose(value)));
     menu.showAtMouseEvent(event);
   }
-  // A part that redraws itself on refresh() whenever its data key changes.
-  live(key,draw){const part={key,stamp:key(),draw};this.liveParts.push(part);draw();return part;}
+  // A part that redraws itself on refresh() whenever the value read() returns changes.
+  // read() runs once per check and its value goes straight to draw().
+  live(read,draw){const value=read(),part={read,stamp:JSON.stringify(value),draw};this.liveParts.push(part);draw(value);return part;}
   renderKpis(stack){
     const data=this.plugin.data,values=overview(data);this.statNumbers=new Map();
     const kpis=[
@@ -201,8 +204,8 @@ class WorkbenchView extends ItemView{
     const c=card(stack,{name:'today',iconName:'sun',title:'今日进度',sub:`${dateFormat.format(new Date())} · 对比近期日均`,badge:'',hue:'tone-accent'});
     const box=el(c.body,'div','aw-today'),range=this.plugin.data.settings.range;
     const read=()=>Dash.todayProgress(this.plugin.data,new Date(),range);
-    this.live(()=>JSON.stringify(read()),()=>{
-      const t=read();c.pill.textContent=`${number(t.score)} 分`;box.replaceChildren();
+    this.live(read,t=>{
+      c.pill.textContent=`${number(t.score)} 分`;box.replaceChildren();
       for(const [key,label,value,avg,unit] of [['characters','新增字数',t.characters,t.avgCharacters,'字'],['minutes','编辑时长',t.minutes,t.avgMinutes,'分钟']]){
         const row=tint(el(box,'div','aw-progress-row'),HUES[key]),top=el(row,'div','aw-progress-top');
         el(top,'span','aw-progress-label',label);
@@ -228,7 +231,7 @@ class WorkbenchView extends ItemView{
     }
     const plot=el(c.body,'div','aw-trend-plot');
     const read=()=>Dash.trendSeries(this.plugin.data,new Date(),n);
-    this.live(()=>JSON.stringify(read()),()=>{plot.replaceChildren();this.drawTrend(plot,read(),c.pill);});
+    this.live(read,series=>{plot.replaceChildren();this.drawTrend(plot,series,c.pill);});
   }
   drawTrend(plot,series,pill){
     const W=640,H=220,L=34,R=10,T=16,B=192,n=series.length,step=(W-L-R)/(n-1);
@@ -261,21 +264,25 @@ class WorkbenchView extends ItemView{
       svg(g,'rect',{x:x(i)-step/2,y:T,width:step,height:B-T,'data-aw-index':i});
       svg(g,'line',{x1:x(i),x2:x(i),y1:T,y2:B});svg(g,'circle',{cx:x(i),cy:y(d.avg),r:4.5});
     });
-    hits.addEventListener('pointerover',event=>{
-      const i=Number(event.target.getAttribute?.('data-aw-index'));if(!Number.isInteger(i))return;
-      const d=series[i];tip.replaceChildren();
+    const show=i=>{
+      const d=series[i];if(!d)return;tip.replaceChildren();
       el(tip,'span','aw-tip-date',d.date);
       const a=el(tip,'span','aw-tip-row');el(a,'i','aw-key-bar');el(a,'span','',`贡献分 ${number(d.score)}`);
       const b=el(tip,'span','aw-tip-row');el(b,'i','aw-key-line');el(b,'span','',`7 日均 ${number(d.avg)}`);
-      tip.style.setProperty('--aw-x',String(x(i)/W));tip.classList.add('is-shown');
+      tip.style.setProperty('--aw-x',String(x(i)/W));tip.classList.add('is-shown');plot.dataset.awHover=String(i);
+    };
+    hits.addEventListener('pointerover',event=>{
+      const i=Number(event.target.getAttribute?.('data-aw-index'));if(Number.isInteger(i))show(i);
     });
-    hits.addEventListener('pointerleave',()=>tip.classList.remove('is-shown'));
+    hits.addEventListener('pointerleave',()=>{tip.classList.remove('is-shown');delete plot.dataset.awHover;});
+    // A live redraw while typing keeps the day under the pointer on show.
+    if(plot.dataset.awHover!==undefined)show(Number(plot.dataset.awHover));
   }
   renderMonths(stack){
     const c=card(stack,{name:'months',iconName:'calendar-range',title:'月度贡献',sub:'最近 6 个月 · 贡献分',badge:'',hue:HUES.score});
     const read=()=>Dash.monthBars(months(this.plugin.data));
-    this.live(()=>JSON.stringify(read()),()=>{
-      const bars=read(),current=bars[bars.length-1];c.body.replaceChildren();
+    this.live(read,bars=>{
+      const current=bars[bars.length-1];c.body.replaceChildren();
       c.pill.textContent=`本月 ${current.active} 天活跃`;
       const chart=el(c.body,'div','aw-bars');chart.setAttribute('role','list');
       for(const b of bars){
