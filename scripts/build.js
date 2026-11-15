@@ -36,7 +36,7 @@ const pluginOut=path.join(root,'dist/algorithm-workbench'),snippetOut=path.join(
 fs.mkdirSync(pluginOut,{recursive:true});fs.mkdirSync(snippetOut,{recursive:true});
 fs.writeFileSync(path.join(pluginOut,'styles.css'),generated+pluginTokens+'\n'+cssParts(['materials','workbench','workbench-glass','figure-tools','reading-tools']));
 // Build only inside this repository; installation is a separate explicit action.
-fs.writeFileSync(path.join(snippetOut,'style.css'),generated+cssParts(['tokens'])+'\n'+cssParts(['shell','controls','typography','components','editor','figures','blocks','glass','print']));
+fs.writeFileSync(path.join(snippetOut,'style.css'),generated+cssParts(['tokens'])+'\n'+cssParts(['shell','controls','typography','components','editor','figures','blocks','glass','translucent','print']));
 fs.writeFileSync(path.join(pluginOut,'main.js'),bundled);
 fs.copyFileSync(path.join(root,'manifest.json'),path.join(pluginOut,'manifest.json'));
 console.log(`Built ${modules.size} source modules and shared CSS into dist/`);
