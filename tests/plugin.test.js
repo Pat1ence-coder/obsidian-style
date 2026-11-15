@@ -21,7 +21,7 @@ function fixture() {
     registerMarkdownPostProcessor(fn){(this.postProcessors??=[]).push(fn);}
   }
   class TFile {constructor(path){this.path=path;this.extension='md';}}
-  const fakeDoc=()=>{const set=new Set(['theme-light']);return {classes:set,body:{classList:{add:n=>set.add(n),remove:n=>set.delete(n),[Symbol.iterator]:()=>set.values()}}};};
+  const fakeDoc=()=>{const set=new Set(['theme-light']),props=new Map();return {classes:set,props,body:{classList:{add:n=>set.add(n),remove:n=>set.delete(n),[Symbol.iterator]:()=>set.values()},style:{setProperty:(k,v)=>props.set(k,v),removeProperty:k=>props.delete(k)}}};};
   const main=fakeDoc(),classes=main.classes,leaves=[];
   const workspace={containerEl:{ownerDocument:main},on(){return {};},iterateAllLeaves(fn){leaves.forEach(fn);},
     onLayoutReady(fn){(this.readyFns??=[]).push(fn);this.ready=()=>this.readyFns.forEach(f=>f());},getLeavesOfType(){return [];},detachLeavesOfType(){this.detached=true;}};
@@ -207,4 +207,36 @@ test('ribbon and command use the 写作工作台 name and icon',async()=>{
   assert.deepEqual(plugin.ribbons,[['notebook-pen','打开写作工作台']]);
   assert.equal(plugin.commands['open-workbench'].name,'打开写作工作台');
   plugin.onunload();await plugin.saveQueue;
+});
+
+test('window glass: a vault picture becomes the window glass in every window, and leaves cleanly',async()=>{
+  const {plugin,classes,fakeDoc,leaves,workspace,handlers,TFile}=fixture();
+  const main=workspace.containerEl.ownerDocument,popout=fakeDoc();leaves.push({view:{containerEl:{ownerDocument:popout}}});
+  const picture=new TFile('assets/wall paper "1".jpg');picture.extension='jpg';
+  const files=new Map([[picture.path,picture]]);
+  plugin.app.vault.getAbstractFileByPath=p=>files.get(p)??null;
+  plugin.app.vault.getResourcePath=f=>'app://local/vault/'+f.path+'?1';
+  await plugin.onload();plugin.data.settings.openOnStartup=false;
+  assert.ok(!classes.has('aw-glass'),'no picture, no glass: the white look stays');
+  assert.equal(main.props.size,0);
+  plugin.data.settings.glassImage=picture.path;plugin.applyAppearanceEverywhere();
+  for(const doc of [main,popout]){
+    assert.ok(doc.classes.has('aw-glass')&&doc.classes.has('aw-glass-fog-normal'));
+    assert.equal(doc.props.get('--aw-glass-image'),'url("app://local/vault/assets/wall paper \\"1\\".jpg?1")','the path is quoted inside url()');
+  }
+  plugin.data.settings.glassFog='strong';plugin.applyAppearanceEverywhere();
+  assert.ok(classes.has('aw-glass-fog-strong')&&!classes.has('aw-glass-fog-normal'));
+  // Renaming the picture keeps the glass; deleting it falls back to white.
+  const moved=new TFile('壁纸/desk.jpg');moved.extension='jpg';files.delete(picture.path);files.set(moved.path,moved);
+  for(const fn of handlers.rename)fn(moved,picture.path);
+  assert.equal(plugin.data.settings.glassImage,'壁纸/desk.jpg');assert.match(main.props.get('--aw-glass-image'),/壁纸\/desk\.jpg/);
+  files.delete(moved.path);for(const fn of handlers.delete)fn(moved);
+  assert.ok(!classes.has('aw-glass'));assert.equal(main.props.has('--aw-glass-image'),false);
+  // A note is not a picture.
+  const note=new TFile('a.md');files.set(note.path,note);plugin.data.settings.glassImage='a.md';plugin.applyAppearanceEverywhere();
+  assert.ok(!classes.has('aw-glass'));
+  files.set(moved.path,moved);plugin.data.settings.glassImage=moved.path;plugin.applyAppearanceEverywhere();assert.ok(popout.classes.has('aw-glass'));
+  plugin.onunload();
+  for(const doc of [main,popout]){assert.deepEqual([...doc.classes],['theme-light']);assert.equal(doc.props.size,0);}
+  await plugin.saveQueue;
 });

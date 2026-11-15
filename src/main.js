@@ -10,8 +10,9 @@ const {FigureTools}=require('./features/figure-tools');
 const {Annotations}=require('./features/annotations');
 const {ScrollRuler}=require('./features/scroll-ruler');
 const {Decor}=require('./features/decor');
+const {WindowGlass}=require('./features/window-glass');
 // aw-palette-* and aw-style-* are listed so classes left by earlier versions are cleaned up.
-const APPEARANCE=/^aw-(?:palette|style|caption)-|^aw-figure-tools-off$/;
+const APPEARANCE=/^aw-(?:palette|style|caption|glass-fog)-|^aw-(?:figure-tools-off|glass)$/;
 
 class WorkbenchSettings extends PluginSettingTab {
   constructor(app,plugin){super(app,plugin);this.plugin=plugin;}
@@ -27,6 +28,7 @@ class WorkbenchSettings extends PluginSettingTab {
       for(const c of Core.CAPTION_SIZES)d.addOption(c.id,c.label);
       d.setValue(s.captionSize).onChange(v=>this.plugin.setCaptionSize(v));
     });
+    this.plugin.windowGlass.displaySettings(this.containerEl,Setting);
     this.plugin.scrollRuler.displaySettings(this.containerEl,Setting);
     this.plugin.decor.displaySettings(this.containerEl,Setting);
     this.containerEl.createEl('h3',{text:'工作台与写作统计'});
@@ -55,6 +57,7 @@ class WorkbenchPlugin extends Plugin {
     this.annotations=this.addChild(new Annotations(this));
     this.scrollRuler=this.addChild(new ScrollRuler(this));
     this.decor=this.addChild(new Decor(this));
+    this.windowGlass=this.addChild(new WindowGlass(this));
     this.registerView(VIEW,leaf=>new WorkbenchView(leaf,this));
     this.addRibbonIcon(viewIcon(),`打开${NAME}`,()=>this.openWorkbench());
     this.addCommand({id:'open-workbench',name:`打开${NAME}`,callback:()=>this.openWorkbench()});
@@ -162,7 +165,7 @@ class WorkbenchPlugin extends Plugin {
   // Appearance settings are body classes read by both stylesheets.
   appearanceClasses(){
     const s=this.data.settings;
-    return ['aw-caption-'+s.captionSize].concat(s.figureTools?[]:['aw-figure-tools-off']);
+    return ['aw-caption-'+s.captionSize].concat(s.figureTools?[]:['aw-figure-tools-off'],this.windowGlass?.classes()??[]);
   }
   applyAppearance(doc){
     if(!doc?.body)return;
@@ -170,6 +173,9 @@ class WorkbenchPlugin extends Plugin {
     const body=doc.body,wanted=this.appearanceClasses();
     for(const name of [...body.classList])if(APPEARANCE.test(name)&&!wanted.includes(name))body.classList.remove(name);
     for(const name of wanted)body.classList.add(name);
+    // The window glass picture, read by the theme as var(--aw-glass-image).
+    const image=this.windowGlass?.image()||'';
+    if(image)body.style.setProperty('--aw-glass-image',image);else body.style.removeProperty('--aw-glass-image');
   }
   applyAppearanceEverywhere(){
     const docs=new Set(this.appearanceDocs);
@@ -185,7 +191,10 @@ class WorkbenchPlugin extends Plugin {
   }
   changed(){this.scheduleSave();this.scheduleRefresh();}
   onunload(){
-    for(const doc of this.appearanceDocs??[])for(const name of [...doc.body.classList])if(APPEARANCE.test(name))doc.body.classList.remove(name);
+    for(const doc of this.appearanceDocs??[]){
+      for(const name of [...doc.body.classList])if(APPEARANCE.test(name))doc.body.classList.remove(name);
+      doc.body.style.removeProperty('--aw-glass-image');
+    }
     this.stopped=true;clearTimeout(this.saveTimer);clearTimeout(this.refreshTimer);this.documentCounts=new WeakMap();if(this.data)void this.flush();this.app.workspace.detachLeavesOfType(VIEW);}
 }
 module.exports=WorkbenchPlugin;

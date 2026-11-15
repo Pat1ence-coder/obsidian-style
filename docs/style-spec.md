@@ -46,7 +46,7 @@ PDF 中文正文使用宋体，英文使用 Times New Roman；中文标题使用
 
 窗口底层是纯色近白（--ds-bg，浅色 #f6f7f9，深色 #0f1013），不再有壁纸、薄纱和环境光渐变；看板窗格内的底色为 --ds-canvas（#fbfbfc），比纯白略深一丝，让白色卡片的边缘可辨。左右侧栏的内容区是悬浮面板：外边距 8px、圆角 16px、--ds-frost 填充、elevation 3。笔记卡片同为 --ds-frost，内部的 --background-primary 设为透明，使编辑器和阅读视图显示卡片本身的磨砂表面。当前标签是白色胶囊（elevation 1），状态栏为磨砂小面板。
 
-半透明窗口（translucent.css）：只在 Obsidian 打开「半透明窗口」时生效（body.is-translucent:not(.is-fullscreen)），磨砂由系统完成，主题不画壁纸、不用渐变、不加 backdrop-filter。主题只提供中性的雾：窗口 --workspace-background-translucent 为白 64%（深色为 rgb(18,18,18) 70%），笔记区额外叠白 20%（--ds-glass-wash），R=G=B，测试保证不带色相；侧栏面板、笔记卡片、状态栏和看板画布的底色、描边、阴影全部去掉，只留笔记区一条 40% 白的发丝边。白色卡片（菜单、弹窗、标签胶囊、插图、表格、代码块、看板卡片）保持不变。预览页 theme-translucent*.html 用渐变「桌面」加 backdrop-filter 模拟系统磨砂，仅用于预览，不随主题发布。
+窗口毛玻璃（window-glass.css）：由插件设置「窗口毛玻璃」开启，插件给 body 加 aw-glass 与 aw-glass-fog-{light,normal,strong}，并把库内图片写入 --aw-glass-image。主题在 .app-container 的 ::before 上铺这张图（cover、模糊 56px、饱和度 1.3，四周外扩避免露边），::after 上铺雾 --ds-glass-fog：浅色为白 45%、60%、75%，深色为 rgb(18,18,18) 55%、68%、80%。笔记区额外叠白 20%（--ds-glass-wash），只留一条 40% 白的发丝边；侧栏面板、笔记卡片、状态栏和看板画布的底色、描边、阴影全部去掉。所有颜色 R=G=B，测试保证不带色相，主题也不内置任何图片或渐变。窗口本身不透明，不使用 Obsidian 的「半透明窗口」（is-translucent），因为它在 macOS 上透不出桌面并产生重影。系统「减少透明度」或强制颜色模式下不画图片与雾。预览页 theme-glass*.html 用渐变代替用户图片，仅用于预览。
 
 控件（controls.css）：选中即蓝色实心、白色内容——侧栏视图切换的当前项（10px 圆角方块）、文件列表的当前笔记（10px 圆角胶囊，带 --ds-select-glow 蓝色光晕）、主按钮 button.mod-cta；其余控件静止时不着色，悬停时为 10% 主色浅底（--ds-hover-tile）。功能区图标为 36px、11px 圆角方块；笔记前的圆环 8px、1.5px 描边；树形引导线 1.5px、中性色 22%。普通按钮白底，以 1px 发丝描边和极轻投影表现（--input-shadow）。
 

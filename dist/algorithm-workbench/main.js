@@ -12,8 +12,9 @@ const {FigureTools}=__awRequire("features/figure-tools.js");
 const {Annotations}=__awRequire("features/annotations.js");
 const {ScrollRuler}=__awRequire("features/scroll-ruler.js");
 const {Decor}=__awRequire("features/decor.js");
+const {WindowGlass}=__awRequire("features/window-glass.js");
 // aw-palette-* and aw-style-* are listed so classes left by earlier versions are cleaned up.
-const APPEARANCE=/^aw-(?:palette|style|caption)-|^aw-figure-tools-off$/;
+const APPEARANCE=/^aw-(?:palette|style|caption|glass-fog)-|^aw-(?:figure-tools-off|glass)$/;
 
 class WorkbenchSettings extends PluginSettingTab {
   constructor(app,plugin){super(app,plugin);this.plugin=plugin;}
@@ -29,6 +30,7 @@ class WorkbenchSettings extends PluginSettingTab {
       for(const c of Core.CAPTION_SIZES)d.addOption(c.id,c.label);
       d.setValue(s.captionSize).onChange(v=>this.plugin.setCaptionSize(v));
     });
+    this.plugin.windowGlass.displaySettings(this.containerEl,Setting);
     this.plugin.scrollRuler.displaySettings(this.containerEl,Setting);
     this.plugin.decor.displaySettings(this.containerEl,Setting);
     this.containerEl.createEl('h3',{text:'工作台与写作统计'});
@@ -57,6 +59,7 @@ class WorkbenchPlugin extends Plugin {
     this.annotations=this.addChild(new Annotations(this));
     this.scrollRuler=this.addChild(new ScrollRuler(this));
     this.decor=this.addChild(new Decor(this));
+    this.windowGlass=this.addChild(new WindowGlass(this));
     this.registerView(VIEW,leaf=>new WorkbenchView(leaf,this));
     this.addRibbonIcon(viewIcon(),`打开${NAME}`,()=>this.openWorkbench());
     this.addCommand({id:'open-workbench',name:`打开${NAME}`,callback:()=>this.openWorkbench()});
@@ -164,7 +167,7 @@ class WorkbenchPlugin extends Plugin {
   // Appearance settings are body classes read by both stylesheets.
   appearanceClasses(){
     const s=this.data.settings;
-    return ['aw-caption-'+s.captionSize].concat(s.figureTools?[]:['aw-figure-tools-off']);
+    return ['aw-caption-'+s.captionSize].concat(s.figureTools?[]:['aw-figure-tools-off'],this.windowGlass?.classes()??[]);
   }
   applyAppearance(doc){
     if(!doc?.body)return;
@@ -172,6 +175,9 @@ class WorkbenchPlugin extends Plugin {
     const body=doc.body,wanted=this.appearanceClasses();
     for(const name of [...body.classList])if(APPEARANCE.test(name)&&!wanted.includes(name))body.classList.remove(name);
     for(const name of wanted)body.classList.add(name);
+    // The window glass picture, read by the theme as var(--aw-glass-image).
+    const image=this.windowGlass?.image()||'';
+    if(image)body.style.setProperty('--aw-glass-image',image);else body.style.removeProperty('--aw-glass-image');
   }
   applyAppearanceEverywhere(){
     const docs=new Set(this.appearanceDocs);
@@ -187,7 +193,10 @@ class WorkbenchPlugin extends Plugin {
   }
   changed(){this.scheduleSave();this.scheduleRefresh();}
   onunload(){
-    for(const doc of this.appearanceDocs??[])for(const name of [...doc.body.classList])if(APPEARANCE.test(name))doc.body.classList.remove(name);
+    for(const doc of this.appearanceDocs??[]){
+      for(const name of [...doc.body.classList])if(APPEARANCE.test(name))doc.body.classList.remove(name);
+      doc.body.style.removeProperty('--aw-glass-image');
+    }
     this.stopped=true;clearTimeout(this.saveTimer);clearTimeout(this.refreshTimer);this.documentCounts=new WeakMap();if(this.data)void this.flush();this.app.workspace.detachLeavesOfType(VIEW);}
 }
 module.exports=WorkbenchPlugin;
@@ -195,10 +204,12 @@ module.exports=WorkbenchPlugin;
 },
 "core.js":(module,exports,__awRequire)=>{
 'use strict';
-const DEFAULT_SETTINGS = { nameScreenshots: true, folderNotes: true, openOnStartup: true, tracking: true, recentLimit: 8, range: 90, metric: 'score', captionSize: 'normal', figureTools: true, scrollRuler: true, decorImage: '', excludedFolders: ['Templates', 'templates'] };
+const DEFAULT_SETTINGS = { nameScreenshots: true, folderNotes: true, openOnStartup: true, tracking: true, recentLimit: 8, range: 90, metric: 'score', captionSize: 'normal', figureTools: true, scrollRuler: true, decorImage: '', glassImage: '', glassFog: 'normal', excludedFolders: ['Templates', 'templates'] };
 const RANGES = [30, 90, 180, 365];
 // Figure and table caption sizes; body class aw-caption-<id>, defined in figures.css.
 const CAPTION_SIZES = [{id:'small', label:'小'}, {id:'normal', label:'标准'}, {id:'large', label:'大'}];
+// How much white fog lies over the blurred window picture.
+const GLASS_FOGS = [{id:'light', label:'淡'}, {id:'normal', label:'标准'}, {id:'strong', label:'浓'}];
 // Score weights are documented in the dashboard; values are derived, never stored.
 const METRICS = [
   {key:'score', label:'贡献分', unit:'分'},
@@ -262,7 +273,8 @@ function loadState(raw, now = new Date()) {
   if (RANGES.includes(s.range)) d.settings.range = s.range;
   if (METRICS.some(m => m.key === s.metric)) d.settings.metric = s.metric;
   if (CAPTION_SIZES.some(x => x.id === s.captionSize)) d.settings.captionSize = s.captionSize;
-  if (typeof s.decorImage === 'string') d.settings.decorImage = s.decorImage.trim().replace(/^\/+/, '').slice(0, 500);
+  for (const name of ['decorImage', 'glassImage']) if (typeof s[name] === 'string') d.settings[name] = s[name].trim().replace(/^\/+/, '').slice(0, 500);
+  if (GLASS_FOGS.some(x => x.id === s.glassFog)) d.settings.glassFog = s.glassFog;
   if (Number.isInteger(s.recentLimit)) d.settings.recentLimit = Math.min(30, Math.max(3,s.recentLimit));
   if (Array.isArray(s.excludedFolders)) d.settings.excludedFolders = s.excludedFolders.filter(x=>typeof x==='string').map(x=>x.trim().replace(/^\/+|\/+$/g,'')).filter(Boolean);
   for (const [date, value] of Object.entries(raw.days)) {
@@ -416,7 +428,7 @@ function calendarDays(now, weeks) {
   const start = shiftDay(monday,-7*(weeks-1));
   return Array.from({length:weeks*7},(_,i)=>dayKey(shiftDay(start,i)));
 }
-module.exports = {transactionCounts,pruneRecords,DEFAULT_SETTINGS,RANGES,METRICS,CAPTION_SIZES,dayKey,shiftDay,countCharacters,emptyData,loadState,isExcluded,recordChange,
+module.exports = {transactionCounts,pruneRecords,DEFAULT_SETTINGS,RANGES,METRICS,CAPTION_SIZES,GLASS_FOGS,dayKey,shiftDay,countCharacters,emptyData,loadState,isExcluded,recordChange,
   recordActivity,taskDelta,recordTasks,recordNote,dayScore,metricValue,lastDays,summary,currentStreak,activeValues,intensity,percentile,renamePath,recentFiles,calendarDays};
 
 },
@@ -1893,6 +1905,60 @@ class Decor extends Component{
   }
 }
 module.exports={Decor};
+
+},
+"features/window-glass.js":(module,exports,__awRequire)=>{
+'use strict';
+const {Component,TFile}=require('obsidian');
+const Core=__awRequire("core.js");
+const IMAGE=/^(png|jpe?g|gif|webp|avif)$/i;
+
+// Frosted window: a picture from the vault (typically the desktop wallpaper) becomes the
+// window's glass. The plugin only says which picture; the theme blurs it, lays a neutral fog
+// on top and lets the sidebar, tabs and note sit on that one sheet of glass.
+//
+// This replaces Obsidian's own "Translucent window" on macOS, which shows no desktop since
+// 1.8.9 and leaves ghosted text behind (an Electron compositing bug CSS can't fix). The window
+// stays opaque here, so nothing ghosts.
+class WindowGlass extends Component{
+  constructor(plugin){super();this.plugin=plugin;this.app=plugin.app;}
+  onload(){
+    this.app.workspace.onLayoutReady(()=>this.plugin.applyAppearanceEverywhere());
+    this.registerEvent(this.app.vault.on('rename',(file,oldPath)=>{
+      if(oldPath!==this.plugin.data.settings.glassImage)return;
+      this.plugin.data.settings.glassImage=file.path;this.plugin.changed();this.plugin.applyAppearanceEverywhere();
+    }));
+    this.registerEvent(this.app.vault.on('delete',file=>{if(file.path===this.plugin.data.settings.glassImage)this.plugin.applyAppearanceEverywhere();}));
+    this.registerEvent(this.app.vault.on('modify',file=>{if(file.path===this.plugin.data.settings.glassImage)this.plugin.applyAppearanceEverywhere();}));
+  }
+  file(){
+    const file=this.app.vault.getAbstractFileByPath(this.plugin.data.settings.glassImage||'');
+    return file instanceof TFile&&IMAGE.test(file.extension)?file:null;
+  }
+  // Body classes for the glass, or none when no usable picture is set.
+  classes(){
+    const fog=this.plugin.data.settings.glassFog;
+    return this.file()?['aw-glass','aw-glass-fog-'+(Core.GLASS_FOGS.some(f=>f.id===fog)?fog:'normal')]:[];
+  }
+  // The picture as a CSS image value, quoted so any path is safe inside url().
+  image(){
+    const file=this.file();
+    return file?`url(${JSON.stringify(this.app.vault.getResourcePath(file))})`:'';
+  }
+  displaySettings(container,Setting){
+    const s=this.plugin.data.settings;
+    new Setting(container).setName('窗口毛玻璃').setDesc('选一张笔记库内的图片（建议用你的桌面壁纸，例如 assets/wallpaper.jpg），主题会把它模糊后铺满窗口，侧栏和正文成为同一层玻璃，白色卡片浮在上面。玻璃本身无色，颜色来自这张图。留空则保持白色外观。不需要打开 Obsidian 的「半透明窗口」，打开它反而会在 macOS 上产生重影。')
+      .addText(t=>t.setPlaceholder('assets/wallpaper.jpg').setValue(s.glassImage||'').onChange(v=>{
+        s.glassImage=v.trim().replace(/^\/+/,'');this.plugin.applyAppearanceEverywhere();this.plugin.changed();
+      }));
+    new Setting(container).setName('毛玻璃雾的浓度').setDesc('图片上那层白雾（深色模式为暗雾）的厚度：越浓越素净，越淡图片颜色越明显。')
+      .addDropdown(d=>{
+        for(const f of Core.GLASS_FOGS)d.addOption(f.id,f.label);
+        d.setValue(s.glassFog||'normal').onChange(v=>{s.glassFog=v;this.plugin.applyAppearanceEverywhere();this.plugin.changed();});
+      });
+  }
+}
+module.exports={WindowGlass};
 
 }};
 const __awCache=Object.create(null);

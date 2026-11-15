@@ -227,19 +227,21 @@ test('the view icon is probed once',()=>{
   f.view.render();f.view.getIcon();f.view.getIcon();f.view.render();
   assert.equal(probes,1);
 });
-test('translucent window: one colourless sheet of glass, only when Obsidian turns it on',()=>{
+test('window glass: one colourless sheet of glass over the chosen picture, only when the plugin asks',()=>{
   const root=path.resolve(__dirname,'..'),css=fs.readFileSync(path.join(root,'dist/snippets/style.css'),'utf8');
-  const src=fs.readFileSync(path.join(root,'src/styles/translucent.css'),'utf8').replace(/\/\*[\s\S]*?\*\//g,'');
-  const block=src.slice(0,src.indexOf('@media screen'));
-  // The theme never tints the glass: every colour it lays over the desktop is a neutral grey.
-  const colours=block.match(/rgba\([^)]*\)/g);
-  assert.ok(colours.length>=8);
+  const src=fs.readFileSync(path.join(root,'src/styles/window-glass.css'),'utf8').replace(/\/\*[\s\S]*?\*\//g,'');
+  // The theme never tints the glass: every colour it lays over the picture is a neutral grey.
+  const colours=src.match(/rgba\([^)]*\)/g);
+  assert.ok(colours.length>=12);
   for(const c of colours){const [r,g,b]=c.slice(5,-1).split(',').map(Number);assert.ok(r===g&&g===b,`${c} is neutral`);}
-  assert.doesNotMatch(src,/#[0-9a-f]{3,6}\b|gradient|url\(/i,'no tint, no wallpaper, no image');
-  // Every rule is scoped to Obsidian's own switch, so with it off the opaque white look stays.
-  for(const rule of src.match(/^[^@{}\n][^{}]*\{/gm))assert.match(rule,/body(\.theme-dark)?\.is-translucent:not\(\.is-fullscreen\)/,rule);
-  assert.match(css,/body\.is-translucent:not\(\.is-fullscreen\) \.workspace-split\.mod-root \.workspace-leaf-content \{[^}]*background: var\(--ds-glass-wash\);[^}]*box-shadow: none;/);
-  assert.ok(css.indexOf('Source: src/styles/translucent.css')<css.indexOf('Source: src/styles/print.css'),'print rules still load last');
+  assert.doesNotMatch(src,/#[0-9a-f]{3,6}\b|gradient|url\(/i,'no tint, no built-in wallpaper: the picture comes from the user');
+  // Every rule hangs off the plugin's body class, so without a picture the opaque white look stays.
+  for(const rule of src.match(/^[^@{}\n][^{}]*\{/gm))assert.match(rule,/body(\.theme-dark)?\.aw-glass/,rule);
+  assert.doesNotMatch(css,/is-translucent/,"Obsidian's own translucent window is left alone (it ghosts on macOS)");
+  assert.match(css,/body\.aw-glass \.app-container::before \{[^}]*background: var\(--aw-glass-image\) center \/ cover no-repeat;[^}]*filter: blur\(var\(--ds-glass-blur\)\)/);
+  assert.match(css,/body\.aw-glass \.workspace-split\.mod-root \.workspace-leaf-content \{[^}]*background: var\(--ds-glass-wash\);[^}]*box-shadow: none;/);
+  assert.match(css,/@media \(prefers-reduced-transparency: reduce\)/);
+  assert.ok(css.indexOf('Source: src/styles/window-glass.css')<css.indexOf('Source: src/styles/print.css'),'print rules still load last');
   const plugin=fs.readFileSync(path.join(root,'dist/algorithm-workbench/styles.css'),'utf8');
-  assert.match(plugin,/body\.is-translucent:not\(\.is-fullscreen\) \.aw-view \{background:transparent;\}/,'the dashboard cards float on the glass');
+  assert.match(plugin,/body\.aw-glass \.aw-view \{background:transparent;\}/,'the dashboard cards float on the glass');
 });

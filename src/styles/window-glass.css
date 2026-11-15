@@ -1,0 +1,76 @@
+/* Frosted window. The plugin's "窗口毛玻璃" setting puts body.aw-glass on the window and the
+   chosen picture (usually the desktop wallpaper) in --aw-glass-image. The theme blurs that
+   picture across the whole window and lays one neutral fog on top; the ribbon, sidebar, tabs
+   and note are then one continuous sheet of glass with no opaque panels on it. White cards
+   still float on top: menus, dialogs, tab pills, images, tables, code blocks.
+
+   The glass is colourless: every colour here is a neutral grey, so what you see comes only
+   from the picture. The window itself stays opaque — Obsidian's own "Translucent window" is
+   not used, because on macOS it shows no desktop and leaves ghosted text behind.
+
+   Without the plugin, or with no picture set, none of this applies and the white look stays. */
+body.aw-glass {
+  --ds-glass-fog: rgba(255,255,255,.6);
+  /* The note sits a shade lighter than the sidebar so the reading area is calm. */
+  --ds-glass-wash: rgba(255,255,255,.2);
+  --ds-glass-divider: rgba(255,255,255,.4);
+  --ds-glass-field: rgba(255,255,255,.5);
+  --ds-glass-hover: rgba(255,255,255,.42);
+  --ds-glass-blur: 56px;
+  --background-primary: transparent;
+  --background-secondary: transparent;
+  --background-secondary-alt: transparent;
+}
+body.aw-glass.aw-glass-fog-light {--ds-glass-fog: rgba(255,255,255,.45);}
+body.aw-glass.aw-glass-fog-strong {--ds-glass-fog: rgba(255,255,255,.75);}
+body.theme-dark.aw-glass {
+  --ds-glass-fog: rgba(18,18,18,.68);
+  --ds-glass-wash: rgba(255,255,255,.035);
+  --ds-glass-divider: rgba(255,255,255,.08);
+  --ds-glass-field: rgba(255,255,255,.07);
+  --ds-glass-hover: rgba(255,255,255,.07);
+}
+body.theme-dark.aw-glass.aw-glass-fog-light {--ds-glass-fog: rgba(18,18,18,.55);}
+body.theme-dark.aw-glass.aw-glass-fog-strong {--ds-glass-fog: rgba(18,18,18,.8);}
+
+@media screen {
+  /* The glass: the picture, blurred and slightly overscanned so its edges never show, then the
+     fog. Both layers sit behind everything in the window and never take the pointer. */
+  body.aw-glass .app-container {position: relative;isolation: isolate;background: var(--ds-bg);}
+  body.aw-glass .app-container::before,
+  body.aw-glass .app-container::after {content: "";position: fixed;z-index: -1;pointer-events: none;}
+  body.aw-glass .app-container::before {
+    inset: calc(var(--ds-glass-blur) * -2);
+    background: var(--aw-glass-image) center / cover no-repeat;
+    filter: blur(var(--ds-glass-blur)) saturate(1.3);
+  }
+  body.aw-glass .app-container::after {inset: 0;background: var(--ds-glass-fog);}
+
+  body.aw-glass .workspace {background: transparent;}
+  /* Sidebars: no panel, the files sit straight on the glass. */
+  body.aw-glass .workspace .workspace-split.mod-sidedock .workspace-tabs > .workspace-tab-container {
+    border-color: transparent;
+    background: transparent;
+    box-shadow: none;
+  }
+  /* The note: the same glass, a touch lighter, with one soft hairline toward the sidebar. */
+  body.aw-glass .workspace-split.mod-root .workspace-leaf-content {
+    border-color: var(--ds-glass-divider);
+    background: var(--ds-glass-wash);
+    box-shadow: none;
+  }
+  body.aw-glass .status-bar {border-color: transparent;background: transparent;box-shadow: none;}
+  /* Fields and hover tiles: frosted white instead of flat grey, so they read on any picture. */
+  body.aw-glass .workspace-split.mod-sidedock .search-input-container input:not(:focus) {background: var(--ds-glass-field);box-shadow: inset 0 0 0 1px var(--ds-glass-divider);}
+  body.aw-glass .workspace .mod-root .workspace-tab-header:not(.is-active):hover {background: var(--ds-glass-hover);}
+}
+/* Users who ask the system for less transparency get the plain white look. */
+@media (prefers-reduced-transparency: reduce) {
+  body.aw-glass .app-container::before,
+  body.aw-glass .app-container::after {display: none;}
+}
+@media (forced-colors:active) {
+  body.aw-glass .app-container::before,
+  body.aw-glass .app-container::after {display: none;}
+  body.aw-glass .workspace-split.mod-root .workspace-leaf-content {background: Canvas;}
+}
