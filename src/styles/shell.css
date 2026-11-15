@@ -133,6 +133,9 @@ body:is(.theme-light,.theme-dark) {
   box-shadow: var(--ds-glass-highlight), var(--ds-elev-3);
 }
 .modal {border-radius: var(--ds-radius-card);}
+/* Notices are white cards here, so their text takes the normal ink (Obsidian's default is light text on a dark toast). */
+.notice {color: var(--ds-text);}
+.notice :is(a,.notice-message) {color: inherit;}
 :is(.menu,.suggestion-container,.prompt) {border-radius: 12px;}
 .vertical-tab-header {background: var(--ds-shell);}
 .modal-container .modal-bg {background-color: rgba(var(--ds-ink-rgb),.18);}

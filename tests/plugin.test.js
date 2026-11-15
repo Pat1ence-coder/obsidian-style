@@ -5,7 +5,9 @@ const vm=require('node:vm');
 const fs=require('node:fs');
 const path=require('node:path');
 const Core=require('../src/core');
-function fixture() {
+// options.layoutReady: the layout is already up (plugin enabled in a running app), so
+// onLayoutReady runs its callback at once, as Obsidian does.
+function fixture(options={}) {
   const notices=[], timers=new Map(), handlers={}; let timerId=0;
   class Component {
     registerEvent(){} registerDomEvent(){}
@@ -24,7 +26,7 @@ function fixture() {
   const fakeDoc=()=>{const set=new Set(['theme-light']),props=new Map();return {classes:set,props,body:{classList:{add:n=>set.add(n),remove:n=>set.delete(n),[Symbol.iterator]:()=>set.values()},style:{setProperty:(k,v)=>props.set(k,v),removeProperty:k=>props.delete(k)}}};};
   const main=fakeDoc(),classes=main.classes,leaves=[];
   const workspace={containerEl:{ownerDocument:main},on(){return {};},iterateAllLeaves(fn){leaves.forEach(fn);},
-    onLayoutReady(fn){(this.readyFns??=[]).push(fn);this.ready=()=>this.readyFns.forEach(f=>f());},getLeavesOfType(){return [];},detachLeavesOfType(){this.detached=true;}};
+    onLayoutReady(fn){if(options.layoutReady){fn();return;}(this.readyFns??=[]).push(fn);this.ready=()=>this.readyFns.forEach(f=>f());},getLeavesOfType(){return [];},detachLeavesOfType(){this.detached=true;}};
   const mod={exports:{}};
   const context={module:mod,require:name=>{
     if(name==='obsidian')return {Plugin,Component,TFile,TFolder:class{},Platform:{isMacOS:true},Modal:class{},FuzzySuggestModal:class{},ItemView:class{},PluginSettingTab:class{},Setting:class{},Notice:class{constructor(text){notices.push(text);}},setIcon(){},MarkdownView:class{},editorInfoField:'info'};
@@ -239,4 +241,16 @@ test('window glass: a vault picture becomes the window glass in every window, an
   plugin.onunload();
   for(const doc of [main,popout]){assert.deepEqual([...doc.classes],['theme-light']);assert.equal(doc.props.size,0);}
   await plugin.saveQueue;
+});
+
+test('enabling the plugin in a running app (layout already ready) loads cleanly, glass included',async()=>{
+  const {plugin,classes,notices,TFile}=fixture({layoutReady:true});
+  const picture=new TFile('assets/wall.jpg');picture.extension='jpg';
+  plugin.app.vault.getAbstractFileByPath=p=>p===picture.path?picture:null;
+  plugin.app.vault.getResourcePath=f=>'app://local/'+f.path;
+  plugin.initialData={...Core.emptyData(),settings:{...Core.DEFAULT_SETTINGS,glassImage:picture.path,openOnStartup:false}};
+  await plugin.onload();
+  assert.deepEqual(notices,[]);
+  assert.ok(classes.has('aw-caption-normal')&&classes.has('aw-glass'));
+  plugin.onunload();assert.deepEqual([...classes],['theme-light']);await plugin.saveQueue;
 });

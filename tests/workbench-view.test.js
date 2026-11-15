@@ -108,6 +108,7 @@ test('document snippet ships glass chrome with fallbacks and a screen-only figur
   assert.match(css,/--ds-frost: var\(--ds-grain\), var\(--ds-glass-sheen\), var\(--ds-paper\);/,'frost ends on an opaque paper layer');
   assert.match(css,/--ds-grain: url\("data:image\/svg\+xml;utf8,<svg [^\n]*<\/svg>"\);\n/,'the grain is one intact declaration');
   assert.match(css,/\.mod-root \.workspace-tab-header \{align-self: center;/,'note tabs clear the window top');
+  assert.match(css,/\.notice \{color: var\(--ds-text\);\}/,'notices are white cards, so their text must be dark to be readable');
   assert.match(css,/\.workspace \{background: var\(--ds-bg\);\}/,'the window floor is plain, no wallpaper or gradient');
   assert.doesNotMatch(css,/--ds-wallpaper|radial-gradient\(\d+px/,'no wallpaper and no ambient blooms');
   const chrome=css.slice(css.indexOf('Source: src/styles/shell.css'),css.indexOf('Source: src/styles/print.css'));

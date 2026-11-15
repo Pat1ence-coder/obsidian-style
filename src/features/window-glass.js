@@ -13,7 +13,7 @@ const IMAGE=/^(png|jpe?g|gif|webp|avif)$/i;
 class WindowGlass extends Component{
   constructor(plugin){super();this.plugin=plugin;this.app=plugin.app;}
   onload(){
-    this.app.workspace.onLayoutReady(()=>this.plugin.applyAppearanceEverywhere());
+    // The plugin applies the appearance itself once the layout (and the vault index) is ready.
     this.registerEvent(this.app.vault.on('rename',(file,oldPath)=>{
       if(oldPath!==this.plugin.data.settings.glassImage)return;
       this.plugin.data.settings.glassImage=file.path;this.plugin.changed();this.plugin.applyAppearanceEverywhere();

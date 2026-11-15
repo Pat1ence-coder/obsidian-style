@@ -49,7 +49,8 @@ class WorkbenchPlugin extends Plugin {
   async onload() {
     this.saveQueue=Promise.resolve(); this.saving=false; this.saveRequested=false;
     this.documentCounts=new WeakMap(); this.recordDay=Core.dayKey(); this.session={last:null,span:0};
-    this.stopped=false; this.saveError=false;
+    // Created first: features added below may already ask for the appearance to be applied.
+    this.stopped=false; this.saveError=false; this.appearanceDocs=new Set();
     try {this.data=Core.loadState(await this.loadData());}
     catch(error){new Notice('工作台统计数据无法读取，已停止加载，原文件未改动。请先备份 data.json。',10000);throw error;}
     this.folderNotes=this.addChild(new FolderNotes(this));
@@ -65,7 +66,7 @@ class WorkbenchPlugin extends Plugin {
     this.addCommand({id:'open-workbench',name:`打开${NAME}`,callback:()=>this.openWorkbench()});
     // Palette and caption size are body classes read by both stylesheets; popout windows get
     // them too. Windows already open (plugin re-enabled, restored layout) are found via leaves.
-    this.appearanceDocs=new Set();this.applyAppearanceEverywhere();
+    this.applyAppearanceEverywhere();
     this.app.workspace.onLayoutReady(()=>{if(!this.stopped)this.applyAppearanceEverywhere();});
     this.registerEvent(this.app.workspace.on('window-open',(_leaf,win)=>this.applyAppearance(win.document)));
     this.registerEvent(this.app.workspace.on('window-close',(_leaf,win)=>this.appearanceDocs.delete(win.document)));
@@ -171,7 +172,7 @@ class WorkbenchPlugin extends Plugin {
   }
   applyAppearance(doc){
     if(!doc?.body)return;
-    this.appearanceDocs.add(doc);
+    (this.appearanceDocs??=new Set()).add(doc);
     const body=doc.body,wanted=this.appearanceClasses();
     for(const name of [...body.classList])if(APPEARANCE.test(name)&&!wanted.includes(name))body.classList.remove(name);
     for(const name of wanted)body.classList.add(name);
@@ -1923,7 +1924,7 @@ const IMAGE=/^(png|jpe?g|gif|webp|avif)$/i;
 class WindowGlass extends Component{
   constructor(plugin){super();this.plugin=plugin;this.app=plugin.app;}
   onload(){
-    this.app.workspace.onLayoutReady(()=>this.plugin.applyAppearanceEverywhere());
+    // The plugin applies the appearance itself once the layout (and the vault index) is ready.
     this.registerEvent(this.app.vault.on('rename',(file,oldPath)=>{
       if(oldPath!==this.plugin.data.settings.glassImage)return;
       this.plugin.data.settings.glassImage=file.path;this.plugin.changed();this.plugin.applyAppearanceEverywhere();
