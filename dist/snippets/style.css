@@ -230,6 +230,11 @@ body:is(.theme-light,.theme-dark) {
 }
 /* Window floor: plain near-white. Panels stand on it through hairlines and soft shadows. */
 .workspace {background: var(--ds-bg);}
+/* The page itself is never see-through. Title bars are transparent so the main window's
+   floor shows through them; windows without a workspace (the separate settings window) would
+   otherwise show Electron's black backdrop behind the title. Opaque even with the window glass
+   on, which paints its own layer inside .app-container. */
+body:is(.theme-light,.theme-dark) {background-color: var(--ds-bg);}
 .workspace .workspace-ribbon.mod-left,
 .workspace .workspace-ribbon.mod-left:not(.is-collapsed) {border-right-color: transparent;box-shadow: none;}
 /* Sidebars: the icon row stays on the window floor next to the macOS traffic lights, like the
