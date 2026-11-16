@@ -1,6 +1,9 @@
 /* Hover tools on figure callouts (plugin UI inside documents). Theme tokens come from the
    document snippet; each has an Obsidian fallback so the tools work without it. */
 .callout[data-callout="figure"].aw-figure-editable {position:relative;}
+/* Live Preview outlines a hovered embed block; around a figure that frame doubles the image's
+   own card edge, and the figure has its tool bar for hover. Other callouts keep the frame. */
+.markdown-source-view.mod-cm6 .cm-embed-block:has(> .callout[data-callout="figure"]):hover {box-shadow:none;}
 .aw-figure-bar {
   position:absolute;top:6px;right:6px;z-index:5;display:flex;align-items:center;gap:2px;padding:3px;
   border-radius:10px;border:1px solid var(--ds-glass-line,var(--background-modifier-border));

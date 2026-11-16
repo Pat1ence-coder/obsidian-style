@@ -1,7 +1,10 @@
 /* Reading tools (plugin UI inside notes): the scroll ruler and the corner decoration. Theme tokens come from the document snippet, with fallbacks for running alone. */
 .aw-ruler,.aw-decor {display: none;}
 body:is(.theme-light,.theme-dark) .aw-has-ruler {position: relative;}
-/* The ruler replaces the vertical scrollbar of the note it sits on. */
+/* The ruler replaces the vertical scrollbar of the note it sits on. Newer Chromium ignores the
+   ::-webkit-scrollbar rule once an element has scrollbar-width or scrollbar-color, so the
+   standard property hides it there and the old rule covers older builds. */
+body:is(.theme-light,.theme-dark) .aw-has-ruler :is(.cm-scroller,.markdown-preview-view) {scrollbar-width: none;}
 body:is(.theme-light,.theme-dark) .aw-has-ruler :is(.cm-scroller,.markdown-preview-view)::-webkit-scrollbar:vertical {width: 0;}
 body:is(.theme-light,.theme-dark) .aw-ruler {
   display: block;

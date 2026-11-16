@@ -542,6 +542,9 @@ body.theme-dark:not(.theme-light) .aw-view .is-current .aw-bar-value {color: var
 /* Hover tools on figure callouts (plugin UI inside documents). Theme tokens come from the
    document snippet; each has an Obsidian fallback so the tools work without it. */
 .callout[data-callout="figure"].aw-figure-editable {position:relative;}
+/* Live Preview outlines a hovered embed block; around a figure that frame doubles the image's
+   own card edge, and the figure has its tool bar for hover. Other callouts keep the frame. */
+.markdown-source-view.mod-cm6 .cm-embed-block:has(> .callout[data-callout="figure"]):hover {box-shadow:none;}
 .aw-figure-bar {
   position:absolute;top:6px;right:6px;z-index:5;display:flex;align-items:center;gap:2px;padding:3px;
   border-radius:10px;border:1px solid var(--ds-glass-line,var(--background-modifier-border));
@@ -633,7 +636,10 @@ body.aw-figure-tools-off :is(.aw-figure-bar,.aw-figure-resize,.aw-figure-grip,.a
 /* Reading tools (plugin UI inside notes): the scroll ruler and the corner decoration. Theme tokens come from the document snippet, with fallbacks for running alone. */
 .aw-ruler,.aw-decor {display: none;}
 body:is(.theme-light,.theme-dark) .aw-has-ruler {position: relative;}
-/* The ruler replaces the vertical scrollbar of the note it sits on. */
+/* The ruler replaces the vertical scrollbar of the note it sits on. Newer Chromium ignores the
+   ::-webkit-scrollbar rule once an element has scrollbar-width or scrollbar-color, so the
+   standard property hides it there and the old rule covers older builds. */
+body:is(.theme-light,.theme-dark) .aw-has-ruler :is(.cm-scroller,.markdown-preview-view) {scrollbar-width: none;}
 body:is(.theme-light,.theme-dark) .aw-has-ruler :is(.cm-scroller,.markdown-preview-view)::-webkit-scrollbar:vertical {width: 0;}
 body:is(.theme-light,.theme-dark) .aw-ruler {
   display: block;

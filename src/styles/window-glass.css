@@ -17,6 +17,8 @@ body.aw-glass {
   --ds-glass-field: rgba(255,255,255,.5);
   --ds-glass-hover: rgba(255,255,255,.42);
   --ds-glass-blur: 56px;
+  /* One line between sidebar and note: the note's soft hairline, not the split divider too. */
+  --divider-color: transparent;
   --background-primary: transparent;
   --background-secondary: transparent;
   --background-secondary-alt: transparent;

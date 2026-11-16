@@ -72,6 +72,10 @@ body:is(.theme-light,.theme-dark) {
   background: var(--ds-inset-bg);
   box-shadow: var(--ds-inset);
 }
+/* Room on the right for the clear button, and for the "Aa" match-case toggle where there is one,
+   so the text never runs underneath them. */
+.workspace-split.mod-sidedock .search-input-container input {padding-inline-end: 32px;text-overflow: ellipsis;}
+.workspace-split.mod-sidedock .search-input-container:has(.input-right-decorator) input {padding-inline-end: 64px;}
 /* Recessed until focused; then it lifts to white with a blue ring. */
 .workspace-split.mod-sidedock .search-input-container input:focus {background: var(--ds-paper);box-shadow: 0 0 0 1px rgba(var(--ds-tone-accent),.6), 0 0 0 4px rgba(var(--ds-tone-accent),.14);}
 

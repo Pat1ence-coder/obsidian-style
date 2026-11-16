@@ -247,3 +247,13 @@ test('window glass: one colourless sheet of glass over the chosen picture, only 
   const plugin=fs.readFileSync(path.join(root,'dist/algorithm-workbench/styles.css'),'utf8');
   assert.match(plugin,/body\.aw-glass \.aw-view \{background:transparent;\}/,'the dashboard cards float on the glass');
 });
+test('small fixes stay: search text clears its buttons, one divider on glass, no frame around figures, ruler hides the scrollbar',()=>{
+  const root=path.resolve(__dirname,'..');
+  const css=fs.readFileSync(path.join(root,'dist/snippets/style.css'),'utf8'),plugin=fs.readFileSync(path.join(root,'dist/algorithm-workbench/styles.css'),'utf8');
+  assert.match(css,/\.search-input-container input \{padding-inline-end: 32px;text-overflow: ellipsis;\}/);
+  assert.match(css,/\.search-input-container:has\(\.input-right-decorator\) input \{padding-inline-end: 64px;\}/,'room for the Aa match-case toggle');
+  assert.match(css,/body\.aw-glass \{[^}]*--divider-color: transparent;/,'on glass only the note hairline separates sidebar and note');
+  assert.match(plugin,/\.cm-embed-block:has\(> \.callout\[data-callout="figure"\]\):hover \{box-shadow:none;\}/);
+  // Newer Chromium ignores ::-webkit-scrollbar once scrollbar-color is set, so the standard property must be there.
+  assert.match(plugin,/\.aw-has-ruler :is\(\.cm-scroller,\.markdown-preview-view\) \{scrollbar-width: none;\}/);
+});
