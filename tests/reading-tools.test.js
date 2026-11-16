@@ -152,6 +152,92 @@ test('scroll ruler maps scroll position to a fraction and back, and idles on sho
   assert.equal(progressOf(5000,2000,800),1);assert.equal(progressOf(0,802,800),null);
   assert.equal(topFor(.5,2000,800),600);assert.equal(topFor(-1,2000,800),0);assert.equal(topFor(2,2000,800),1200);assert.equal(topFor(.5,500,800),0);
 });
+test('ruler headings: the one being read is the last tick at or above the dot; clashing labels give way by level',()=>{
+  const {currentHeading,layoutHeadings}=loadModule('scroll-ruler.js',{obsidian:{Component:class{},MarkdownView:class{}}});
+  assert.equal(currentHeading([.1,.4,.8],0),-1,'above the first heading');
+  assert.equal(currentHeading([0,.4,.8],0),0);assert.equal(currentHeading([.1,.4,.8],.4),1);assert.equal(currentHeading([.1,.4,.8],1),2);
+  const items=[{index:0,level:2,top:0},{index:1,level:2,top:100},{index:2,level:1,top:108},{index:3,level:3,top:200},{index:4,level:2,top:210}];
+  assert.deepEqual(Array.from(layoutHeadings(items,16)),[0,2,4],'h1 beats h2, h2 beats h3');
+  assert.deepEqual(Array.from(layoutHeadings(items,16,3)),[0,2,3],'the heading being read always stays');
+  assert.deepEqual(Array.from(layoutHeadings([{index:0,level:2,top:0},{index:1,level:2,top:10}],16)),[0],'equal levels: the earlier one');
+  assert.deepEqual(Array.from(layoutHeadings([],16)),[]);
+});
+// A note view with a ruler: Live Preview (CodeMirror) or reading view, a text column and a ruler.
+function rulerFixture({mode='source',headings,sections,settings={},column={right:700,pad:20}}={}){
+  const listeners=[];
+  const make=tag=>{
+    const n={tag,children:[],parentNode:null,className:'',dataset:{},title:'',textContent:'',hidden:false,rect:null,
+      style:{props:{},setProperty(k,v){this.props[k]=v;}},
+      classList:{add(){},remove(){},toggle(c,on){n[c]=on;}},
+      get isConnected(){return !!n.parentNode;},
+      get firstChild(){return n.children[0];},
+      appendChild(c){c.parentNode=n;n.children.push(c);return c;},
+      setAttribute(){},
+      remove(){if(n.parentNode)n.parentNode.children.splice(n.parentNode.children.indexOf(n),1);n.parentNode=null;},
+      addEventListener(type,fn){listeners.push({node:n,type,fn});},
+      getBoundingClientRect(){return n.rect||{top:0,left:0,right:0,height:0};},
+      querySelector(sel){return n.query?.(sel)??null;}};
+    n.ownerDocument=doc;return n;
+  };
+  const doc={createElement:make,defaultView:{getComputedStyle:el=>({paddingRight:String(el.pad||0)})}};
+  // The note scrolls 2000px through a 500px window, scrolled to 1000 (two thirds of the way).
+  const scroller=make('div');Object.assign(scroller,{scrollTop:1000,scrollHeight:2000,clientHeight:500,rect:{top:50}});
+  const sizer=make('div');sizer.rect={right:column.right,top:50-1000+30};sizer.pad=column.pad;
+  scroller.query=sel=>/sizer/.test(sel)?sizer:null;
+  const host=make('div');host.query=()=>scroller;
+  // CodeMirror: line n (1-based) starts at 10(n-1) and sits 20px per line below the document top.
+  const cm={documentTop:50-1000,state:{doc:{lines:100,line:n=>({from:(n-1)*10})}},lineBlockAt:pos=>({top:pos*2})};
+  const view={file:{path:'note.md'},contentEl:host,getMode:()=>mode,editor:{cm,lineCount:()=>100},
+    previewMode:{renderer:{sections}}};
+  const H=(heading,level,line)=>({heading,level,position:{start:{line}}});
+  const list=headings??[H('Intro',1,0),H('Too deep',4,5),H('XOR',2,40),H('Close',2,41),H('',2,60),H('End',2,90)];
+  class Component{addChild(c){return c;}removeChild(){}registerEvent(){}registerDomEvent(){}}
+  const {ScrollRuler}=loadModule('scroll-ruler.js',{obsidian:{Component,MarkdownView:class{}}});
+  const ruler=new ScrollRuler({app:{metadataCache:{getFileCache:()=>({headings:list})}},data:{settings:{scrollRuler:true,...settings}}});
+  ruler.attach(view);
+  const entry=ruler.entries.get(view);entry.el.rect={top:66,left:900,height:400};
+  const marks=()=>entry.heads.children.map(m=>({text:m.firstChild.textContent,cls:m.className,top:m.style.top,line:m.dataset.line}));
+  return {ruler,view,entry,scroller,sizer,marks,listeners};
+}
+test('ruler headings sit at their place in the note, the one being read darker; clicking one moves the dot onto it',()=>{
+  const f=rulerFixture();f.ruler.update(f.view);
+  // Headings at lines 0, 40, 41, 90 are 0, 800, 820, 1800px down a 2000px note. XOR and Close are
+  // 8px apart on a 400px ruler, so only Close (the one being read, at 0.67) keeps its label.
+  assert.deepEqual(f.marks(),[
+    {text:'Intro',cls:'aw-ruler-head is-level-1',top:'0.00%',line:'0'},
+    {text:'Close',cls:'aw-ruler-head is-level-2 is-current',top:'41.00%',line:'41'},
+    {text:'End',cls:'aw-ruler-head is-level-2',top:'90.00%',line:'90'}]);
+  assert.equal(f.entry.heads.style.props['--aw-heads-width'],'196px','the margin is 220px from text to ruler');
+  assert.equal(f.entry.el['is-on-heading'],false);assert.equal(f.entry.el['is-compact'],false,'wide margin: the names sit in it');
+  // Clicking End moves the dot onto its tick (0.9 of the 1500px scroll range).
+  const down=f.listeners.find(l=>l.node===f.entry.heads.children[2]&&l.type==='pointerdown');
+  let stopped=false;down.fn({button:0,preventDefault(){},stopPropagation(){stopped=true;}});
+  assert.equal(f.scroller.scrollTop,1350);assert.ok(stopped,'the ruler does not also start a drag');
+  // Scrolled on: labels are reused, End is the one being read, and the dot's number gives way on it.
+  f.view.editor.cm.documentTop=50-1350;f.ruler.update(f.view);
+  assert.deepEqual(f.marks().map(m=>m.cls.includes('is-current')?m.text:null).filter(Boolean),['End']);
+  assert.equal(f.entry.heads.children.length,3);assert.equal(f.entry.el['is-on-heading'],true,'0.90 sits on End: its number gives way');
+  // A narrow margin: the same headings, shown over the text while the pointer is on the ruler.
+  f.sizer.rect.right=820;f.ruler.update(f.view);
+  assert.equal(f.entry.el['is-compact'],true);assert.equal(f.marks().length,3);
+  assert.equal(f.entry.heads.style.props['--aw-heads-width'],'220px');
+});
+test('ruler headings can be turned off, and follow the reading view or the line count when there is no editor',()=>{
+  const off=rulerFixture({settings:{rulerHeadings:false}});off.ruler.update(off.view);
+  assert.deepEqual(off.marks(),[]);assert.equal(off.entry.el['is-compact'],false);
+  // Reading view: Obsidian's sections (heights), from the top of the sizer (30px into the note).
+  const sections=[{lineStart:0,lineEnd:0,height:70},{lineStart:1,lineEnd:39,height:900},{lineStart:40,lineEnd:40,height:40},{lineStart:41,lineEnd:41,height:40},{lineStart:42,lineEnd:100,height:900}];
+  const read=rulerFixture({mode:'preview',sections});
+  const hs=read.ruler.headings(read.view);
+  assert.deepEqual(hs.map(h=>h.text),['Intro','XOR','Close','End'],'levels 1–3 with a name');
+  assert.deepEqual(Array.from(read.ruler.fractions(read.view,read.scroller,hs)),[30/2000,1000/2000,1040/2000,1080/2000]);
+  // A section on screen corrects the estimate.
+  sections[2].el={isConnected:true,offsetParent:{},getBoundingClientRect:()=>({top:50-1000+990})};
+  assert.deepEqual(Array.from(read.ruler.fractions(read.view,read.scroller,hs)),[30/2000,990/2000,1030/2000,1070/2000]);
+  // No sections and no CodeMirror: the share of lines above.
+  const plain=rulerFixture({mode:'preview'});
+  assert.deepEqual(Array.from(plain.ruler.fractions(plain.view,plain.scroller,hs)),[0,.4,.41,.9]);
+});
 test('the document look is screen-only and every token it sets has a dark twin',()=>{
   const glass=fs.readFileSync(path.join(root,'src/styles/glass.css'),'utf8');
   const outside=glass.replace(/@media screen[^{]*\{[\s\S]*?\n\}/g,'').replace(/@supports[^{]*\{\s*@media screen \{[\s\S]*?\n  \}\n\}/g,'').replace(/\/\*[\s\S]*?\*\//g,'');

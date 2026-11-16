@@ -18,7 +18,7 @@
 - glass.css：文档外观细化（等宽字体、暖色代码与高亮、白色表格底板、图片卡片），仅作用于屏幕。
 - window-glass.css：窗口毛玻璃。插件设置了库内图片时，图片模糊后铺满窗口、加中性雾，整窗成为一片无色玻璃，白色卡片浮在上面；未设置时不生效。
 - workbench-glass.css：看板外观，含便当格布局、指标卡光斑、趋势图与月度柱（插件样式）。
-- reading-tools.css：滚动刻度尺与角落装饰图（插件样式）。
+- reading-tools.css：滚动刻度尺、刻度尺旁的标题与角落装饰图（插件样式）。
 
 scripts/build.js 输出两个样式文件：dist/snippets/style.css 管理文档；dist/algorithm-workbench/styles.css 只管理工作台与弹窗。两者共享同一份 tokens.css。figure 样式因此在文档样式启用时无需插件运行也能使用。
 

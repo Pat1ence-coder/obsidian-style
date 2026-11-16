@@ -682,6 +682,44 @@ body:is(.theme-light,.theme-dark) .aw-ruler.is-idle {display: none;}
   color: var(--ds-faint, var(--text-faint));
   white-space: nowrap;
 }
+/* Headings beside the ruler: right-aligned in the page margin at their place in the note, each
+   with a short dash to the ruler's long ticks. The one being read is darker with a longer dash.
+   Only the names take the pointer, so the rest of the margin stays free. */
+.aw-ruler-heads {position: absolute;top: 0;bottom: 0;right: 12px;width: var(--aw-heads-width, 160px);pointer-events: none;}
+.aw-ruler-head {
+  position: absolute;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  transform: translateY(-50%);
+  font: 400 10px/14px var(--ds-font-mono, var(--font-monospace));
+  color: var(--ds-faint, var(--text-faint));
+  white-space: nowrap;
+  pointer-events: auto;
+  cursor: pointer;
+  transition: color 160ms ease;
+}
+.aw-ruler-head-text {min-width: 0;overflow: hidden;text-overflow: ellipsis;}
+.aw-ruler-head::after {content: "";flex: none;width: 6px;height: 1px;background: currentColor;opacity: .6;transition: width 160ms ease, opacity 160ms ease;}
+.aw-ruler-head.is-level-1 {color: var(--ds-muted, var(--text-muted));}
+.aw-ruler-head.is-current {color: var(--ds-text, var(--text-normal));}
+.aw-ruler-head.is-current::after {width: 14px;opacity: 1;}
+.aw-ruler-head:hover {color: var(--ds-accent, var(--text-accent));}
+/* The dot's number gives way when the dot sits on a heading's name. */
+.aw-ruler.is-on-heading:not(.is-compact) .aw-ruler-label,
+.aw-ruler.is-compact.is-on-heading:is(:hover,.is-dragging) .aw-ruler-label {visibility: hidden;}
+/* Narrow margin: the headings wait until the pointer is on the ruler, then show over the text
+   as small white cards. */
+.aw-ruler.is-compact .aw-ruler-heads {visibility: hidden;opacity: 0;transition: opacity 160ms ease, visibility 0s 160ms;}
+.aw-ruler.is-compact:is(:hover,.is-dragging) .aw-ruler-heads {visibility: visible;opacity: 1;transition: opacity 160ms ease;}
+.aw-ruler.is-compact .aw-ruler-head-text {
+  padding: 0 6px;
+  border-radius: 5px;
+  background: var(--ds-bg, var(--background-primary));
+  box-shadow: 0 0 0 1px rgba(var(--ds-ink-rgb,0,0,0),.07), 0 2px 8px rgba(var(--ds-ink-rgb,0,0,0),.1);
+}
 body:is(.theme-light,.theme-dark) .aw-decor {
   display: block;
   position: fixed;
@@ -697,7 +735,7 @@ body:is(.theme-light,.theme-dark) .aw-decor {
   .aw-ruler,.aw-decor {display: none !important;}
 }
 @media (prefers-reduced-motion:reduce) {
-  .aw-ruler {transition: none;}
+  .aw-ruler,.aw-ruler-head,.aw-ruler-head::after,.aw-ruler.is-compact .aw-ruler-heads {transition: none;}
 }
 
 /* Source: src/styles/annotations.css */

@@ -160,5 +160,6 @@ test('scroll ruler and decoration settings validate; a style saved by an older v
   const load=settings=>C.loadState({...JSON.parse(JSON.stringify(d)),settings},new Date(2026,9,12,12)).settings;
   assert.equal(load({style:'card'}).style,undefined);
   assert.equal(load({scrollRuler:false}).scrollRuler,false);assert.equal(load({scrollRuler:1}).scrollRuler,true);
+  assert.equal(d.settings.rulerHeadings,true);assert.equal(load({rulerHeadings:false}).rulerHeadings,false);assert.equal(load({rulerHeadings:'off'}).rulerHeadings,true);
   assert.equal(load({decorImage:'  /assets/dog.png '}).decorImage,'assets/dog.png');assert.equal(load({decorImage:42}).decorImage,'');
 });

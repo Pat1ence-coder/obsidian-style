@@ -34,7 +34,7 @@ function fixture(options={}) {
     throw Error(name);
   },window:{setInterval:()=>1},setTimeout:fn=>{timers.set(++timerId,fn);return timerId;},clearTimeout:id=>timers.delete(id),console,Intl,Date};
   vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../dist/algorithm-workbench/main.js'),'utf8'),context);
-  const plugin=new mod.exports();plugin.saved=[];plugin.app={workspace,vault:{getAbstractFileByPath:()=>null,on:(name,fn)=>{(handlers[name]??=[]).push(fn);return {};}}};
+  const plugin=new mod.exports();plugin.saved=[];plugin.app={workspace,metadataCache:{on:(name,fn)=>{(handlers['metadata:'+name]??=[]).push(fn);return {};},getFileCache:()=>null},vault:{getAbstractFileByPath:()=>null,on:(name,fn)=>{(handlers[name]??=[]).push(fn);return {};}}};
   const docs=new Map();
   const doc=text=>{
     if(!docs.has(text))docs.set(text,{length:text.length,scans:0,toString(){this.scans++;return text;},sliceString:(a,b)=>text.slice(a,b),
