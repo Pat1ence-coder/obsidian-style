@@ -101,7 +101,7 @@ class AnnotationModal extends Modal{
     choose(colors,'color',this.spec.color);
     new Setting(el).setName('高亮标注目标').setDesc('目标文字带一层与标注同色的浅底；目标本身已有底色时可以关掉。')
       .addToggle(t=>t.setValue(this.spec.highlight!==false).onChange(v=>{this.spec.highlight=v;}));
-    new Setting(el).setName('线条').setDesc('双线、虚线为斜向引出的箭头；内联则把标注直接写在文字后面。')
+    new Setting(el).setName('线条').setDesc('箭头用两条虚线还是一条虚线。')
       .addDropdown(d=>{for(const l of LINES)d.addOption(l.id,l.label);d.setValue(this.spec.line).onChange(v=>{this.spec.line=v;});});
     new Setting(el).addButton(b=>b.setButtonText('取消').onClick(()=>this.close()))
       .addButton(b=>b.setButtonText(this.action).setCta().onClick(()=>this.done()));

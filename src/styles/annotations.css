@@ -2,7 +2,7 @@
    tint of the note's colour; the note is written in a handwriting face and joined to the target
    by a dashed leader with an open arrowhead. Eight positions pin the note outside the line (an
    invisible inline block makes that line tall enough, so nothing overlaps the next line);
-   右 and 左 and the 内联 line put it in the text flow. Theme tokens come from the document
+   右 and 左 put it in the text flow. Theme tokens come from the document
    snippet, with fallbacks for running alone. Annotations print as they look on screen. */
 body {
   --aw-annot-face: var(--aw-annot-font, "Hannotate SC", "HanziPen SC", "Xingkai SC", "LXGW WenKai", "Kaiti SC", "STKaiti", "KaiTi", cursive);
@@ -81,11 +81,10 @@ body .cm-highlight:has(.aw-annot-target) {background-color: transparent;}
 .aw-annot-n .aw-annot-pin {left: 50%;top: 0;--aw-annot-angle: -90deg;--aw-annot-x: 0em;--aw-annot-y: -2.2em;--aw-annot-shift: translate(-50%, calc(-100% - .15em));}
 .aw-annot-nw .aw-annot-pin {left: .8em;top: 0;--aw-annot-angle: -135deg;--aw-annot-x: -1.56em;--aw-annot-y: -1.56em;--aw-annot-shift: translate(-75%, calc(-100% - .15em));}
 
-/* Notes in the text flow: right of the target (leader pointing back), left of it, or inline. */
+/* Notes in the text flow: right of the target (leader pointing back) or left of it. */
 .aw-annot-flow {margin-inline: .35em;}
 .aw-annot-flow .aw-annot-arrow {display: inline-block;width: 2em;height: .9em;margin-inline: .15em;vertical-align: middle;}
 .aw-annot-flow.aw-annot-w .aw-annot-arrow {transform: scaleX(-1);}
-.aw-annot-glyph {margin-inline-end: .3em;letter-spacing: -.06em;opacity: .75;}
 
 /* Live Preview while the cursor is on an annotation: the braces show as source. */
 .markdown-source-view.mod-cm6 .aw-annot-source {font-family: var(--aw-annot-face);color: rgb(var(--ds-tone-accent, 52,128,246));}

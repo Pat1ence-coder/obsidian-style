@@ -1804,7 +1804,7 @@ class AnnotationModal extends Modal{
     choose(colors,'color',this.spec.color);
     new Setting(el).setName('高亮标注目标').setDesc('目标文字带一层与标注同色的浅底；目标本身已有底色时可以关掉。')
       .addToggle(t=>t.setValue(this.spec.highlight!==false).onChange(v=>{this.spec.highlight=v;}));
-    new Setting(el).setName('线条').setDesc('双线、虚线为斜向引出的箭头；内联则把标注直接写在文字后面。')
+    new Setting(el).setName('线条').setDesc('箭头用两条虚线还是一条虚线。')
       .addDropdown(d=>{for(const l of LINES)d.addOption(l.id,l.label);d.setValue(this.spec.line).onChange(v=>{this.spec.line=v;});});
     new Setting(el).addButton(b=>b.setButtonText('取消').onClick(()=>this.close()))
       .addButton(b=>b.setButtonText(this.action).setCta().onClick(()=>this.done()));
@@ -1890,7 +1890,7 @@ module.exports={Annotations,AnnotationModal,noteNode,placement,targetClasses};
 // after the last "|" set where the note sits, its colour and its line:
 //   position  右下 (default) 下 左下 右 左 右上 上 左上, or the arrows ↘ ↓ ↙ → ← ↗ ↑ ↖
 //   colour    蓝 (default) 中性 琥珀 橙 绿 红 紫 彩虹, or #rgb / #rrggbb
-//   line      双线 (default) 虚线 内联 (inline: the note follows the text, no leader line)
+//   line      双线 (default) 虚线
 //   无高亮     the target keeps no tinted background
 // Text after a "|" that isn't all options belongs to the note. Nothing here touches the DOM.
 const MAX_NOTE=80;
@@ -1904,7 +1904,7 @@ const COLORS=[
   {id:'blue',label:'蓝'},{id:'green',label:'绿'},{id:'red',label:'红'},
   {id:'purple',label:'紫'},{id:'rainbow',label:'彩虹'},
 ];
-const LINES=[{id:'double',label:'双线'},{id:'dashed',label:'虚线'},{id:'inline',label:'内联'}];
+const LINES=[{id:'double',label:'双线'},{id:'dashed',label:'虚线'}];
 const DEFAULTS={dir:'se',color:'blue',custom:null,line:'double',highlight:true};
 const HEX=/^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i;
 const NO_HIGHLIGHT=['无高亮','不高亮'];
@@ -1972,9 +1972,9 @@ function formatAnnotation(spec){
   return `{${note}${words.length?'|'+words.join(' '):''}}`;
 }
 // Where the note goes relative to its target: pinned outside the line (the eight positions),
-// or in the text flow after / before the target (右, 左, and the 内联 line).
+// or in the text flow after / before the target (右, 左).
 function placement(spec){
-  if(spec.line==='inline'||spec.dir==='e')return 'after';
+  if(spec.dir==='e')return 'after';
   if(spec.dir==='w')return 'before';
   return 'pin';
 }
@@ -1993,7 +1993,6 @@ function noteTree(spec){
   const text={tag:'span',cls:'aw-annot-text',text:spec.note};
   let children;
   if(where==='pin')children=[{tag:'span',cls:'aw-annot-room',attrs:{'aria-hidden':'true'}},{tag:'span',cls:'aw-annot-pin',children:[leader,text]}];
-  else if(spec.line==='inline')children=[{tag:'span',cls:'aw-annot-glyph',text:'<---',attrs:{'aria-hidden':'true'}},text];
   else children=where==='before'?[text,leader]:[leader,text];
   return {tag:'span',cls:['aw-annot','aw-annot-'+spec.dir,'aw-annot-'+spec.line,'aw-annot-c-'+spec.color,where==='pin'?'aw-annot-pinned':'aw-annot-flow'].join(' '),
     attrs:{title:'标注：'+spec.note},color:spec.color==='custom'?spec.custom:null,children};

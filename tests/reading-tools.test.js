@@ -11,7 +11,8 @@ test('annotation syntax: {note} or {note|options} right after the highlight; def
   assert.deepEqual(p('{这是标注|左下}'),{note:'这是标注',dir:'sw',color:'blue',custom:null,line:'double',highlight:true,rest:''});
   assert.deepEqual(p('{冗长代码|右下 橙 虚线}x'),{note:'冗长代码',dir:'se',color:'orange',custom:null,line:'dashed',highlight:true,rest:'x'});
   assert.deepEqual(p('{饱和区|↗ #D0428A 无高亮}'),{note:'饱和区',dir:'ne',color:'custom',custom:'#d0428a',line:'double',highlight:false,rest:''});
-  assert.equal(p('{看这里|内联 红色}').line,'inline');assert.equal(p('{看这里|内联 红色}').color,'red');
+  assert.equal(p('{看这里|虚线 红色}').line,'dashed');assert.equal(p('{看这里|虚线 红色}').color,'red');
+  assert.equal(p('{旧写法|内联}').note,'旧写法|内联','the inline line style is gone: 内联 is just text now');
   // A "|" followed by words that aren't all options belongs to the note.
   assert.equal(p('{a|b}').note,'a|b');assert.equal(p('{输入|输出 右}').note,'输入|输出 右');
   for(const text of [' {有空格}','{}','{  }','{|右下}','{跨\n行}','{'+'长'.repeat(81)+'}','{'+'长'.repeat(81)+'|右}','(括号)'])assert.equal(A.parseAnnotation(text),null,text);
@@ -33,7 +34,7 @@ test('annotation braces are written with defaults left out, and read back the sa
   assert.equal(f({note:'饱和区',dir:'ne',color:'custom',custom:'#D0428A',highlight:false}),'{饱和区|右上 #d0428a 无高亮}');
   assert.equal(f({note:'换{行}\n了'}),'{换 行 了}','braces and line breaks never leak into the note');
   assert.equal(f({note:'输入|红'}),'{输入|红|右下}','a note that looks like options gets the default position spelled out');
-  for(const spec of [{note:'输入|红'},{note:'a|b',dir:'n'},{note:'看',color:'rainbow',line:'inline'},{note:'x',color:'custom',custom:'#abc'}]){
+  for(const spec of [{note:'输入|红'},{note:'a|b',dir:'n'},{note:'看',color:'rainbow',line:'dashed'},{note:'x',color:'custom',custom:'#abc'}]){
     const back=A.parseAnnotation(f(spec));
     for(const k of Object.keys(spec))assert.equal(back[k],spec[k],`${k} of ${JSON.stringify(spec)}`);
   }
@@ -78,7 +79,7 @@ function readingView(source){
   new Annotations({app:{workspace:{on(){}}}}).process(el);
   return p;
 }
-test('reading view: an annotation tints its target and pins the note to it; 右, 左 and 内联 sit in the text flow',()=>{
+test('reading view: an annotation tints its target and pins the note to it; 右 and 左 sit in the text flow',()=>{
   const p=readingView('前文 ==decryption method=={标注}。中间 ==只是高亮== 后文');
   const [mark,plain]=p.querySelectorAll('mark');
   assert.match(mark.className,/aw-annot-target aw-annot-c-blue aw-annot-holds/);
@@ -96,8 +97,6 @@ test('reading view: an annotation tints its target and pins the note to it; 右,
   assert.equal(ra.nextSibling.children[0].children.filter(c=>c.tag==='line').length,1,'dashed leader');
   assert.equal(left.children[1].className.includes('aw-annot-w'),true,'左: the note comes before the target');
   assert.match(lb.className,/aw-annot-plain/);assert.doesNotMatch(lb.className,/aw-annot-holds/);
-  const inline=readingView('==c=={旧写法|内联}');
-  assert.equal(inline.querySelectorAll('mark')[0].nextSibling.children[0].textContent,'<---','内联 keeps the old handwritten arrow');
   const custom=readingView('==d=={粉|#d0428a}');const [cm]=custom.querySelectorAll('mark');
   assert.equal(cm.props['--aw-annot-color'],'#d0428a');assert.equal(cm.children.at(-1).props['--aw-annot-color'],'#d0428a');
 });
@@ -111,7 +110,7 @@ test('Live Preview: pinned notes are drawn inside a mark over target and braces;
     '@codemirror/view':{Decoration,WidgetType:class{},ViewPlugin:{fromClass:(cls,spec)=>{made.push({cls,spec});return 'plugin';}}}});
   const plugin={registerMarkdownPostProcessor(){},registerEditorExtension(){},app:{workspace:{on(){}}}};
   const a=new Annotations(plugin);a.registerEvent=()=>{};a.onload();
-  const source='x ==ab=={标注} y ==cd=={左边|左} ==ef=={粉|#d0428a 内联}';
+  const source='x ==ab=={标注} y ==cd=={左边|左} ==ef=={粉|#d0428a 右}';
   const view=sel=>({state:{doc:{lineAt:()=>({from:0,to:source.length})},sliceDoc:(f,t)=>source.slice(f,t),selection:{ranges:[{from:sel,to:sel}]},field:()=>true},visibleRanges:[{from:0,to:source.length}]});
   const {list,sort}=new made[0].cls(view(0)).decorations;
   assert.equal(sort,true);
