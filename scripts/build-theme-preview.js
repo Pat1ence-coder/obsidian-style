@@ -75,11 +75,25 @@ const tree=[['研究',[['Attention 机制与梯度推导',true],['对比学习�
 const files=tree.map(([folder,items])=>`<div class="tree-item nav-folder"><div class="tree-item-self nav-folder-title is-clickable mod-collapsible"><div class="tree-item-icon collapse-icon">${ico('chevron')}</div><div class="tree-item-inner nav-folder-title-content">${folder}</div></div><div class="tree-item-children nav-folder-children">`
   +items.map(([name,active])=>`<div class="tree-item nav-file"><div class="tree-item-self nav-file-title is-clickable${active?' is-active':''}"><div class="tree-item-inner nav-file-title-content">${name}</div></div></div>`).join('')+'</div></div>').join('')
   +`<div class="tree-item nav-file"><div class="tree-item-self nav-file-title is-clickable"><div class="tree-item-inner nav-file-title-content">README</div></div></div>`;
+// Annotations drawn by the plugin's own tree (annotation-format.js is pure), so the preview
+// shows exactly what the plugin renders.
+const Annot=require('../src/features/annotation-format');
+const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const toHTML=node=>{
+  const attrs=Object.entries(node.attrs||{}).map(([k,v])=>` ${k}="${esc(v)}"`).join('');
+  const cls=node.cls?` class="${esc(node.cls)}"`:'',style=node.color?` style="--aw-annot-color:${esc(node.color)}"`:'';
+  return `<${node.tag}${cls}${attrs}${style}>${node.text!=null?esc(node.text):''}${(node.children||[]).map(toHTML).join('')}</${node.tag}>`;
+};
+const annotate=source=>source.replace(/==([^=]+)==(\{[^{}]+\})/g,(_m,target,braces)=>{
+  const spec=Annot.parseAnnotation(braces),where=Annot.placement(spec),note=toHTML(Annot.noteTree(spec));
+  const mark=`<mark class="${Annot.targetClasses(spec).join(' ')}">${esc(target)}${where==='pin'?note:''}</mark>`;
+  return where==='before'?note+mark:where==='after'?mark+note:mark;
+});
 const note=`<div class="inline-title">Attention 机制与梯度推导</div>
 <p><a class="tag">#研究</a> <a class="tag">#transformer</a></p>
 <p>缩放点积注意力把查询与键的相似度归一化后，对值做加权平均。下面整理前向公式与 <code>softmax</code> 的雅可比矩阵，并记录一次<a>消融实验</a>的结论。</p>
 <h2>1. 前向计算</h2>
-<p>给定 <strong>Q、K、V</strong>，输出为 softmax(QKᵀ/√d)·V。缩放因子防止点积随维度增大而进入 <mark>softmax 的饱和区</mark><span class="aw-annot"><span class="aw-annot-arrow">&lt;---</span>标注下</span>。</p>
+<p>给定 <strong>Q、K、V</strong>，输出为 softmax(QKᵀ/√d)·V。缩放因子${annotate('防止点积随维度增大而进入 ==softmax 的饱和区=={标注一下}，梯度几乎为零；')}${annotate('在 ==√d 缩放=={防止梯度消失|右上 橙}之外，')}还可以引入 ${annotate('==温度系数=={可学习|左下 绿 虚线}')}，并在消融中对比 ${annotate('==旧写法=={行内|内联 紫}')}。</p>
 <div class="callout" data-callout="diagram"><div class="callout-title"><div class="callout-icon"></div><div class="callout-title-inner">Knowledge / four states</div></div><div class="callout-content"><ul><li><strong>原始输入</strong>文章 · 想法 · 记录<code>raw</code></li><li><strong>参考资料</strong>来源 · 证据 · 资料<code>source</code></li><li><strong>综合认识</strong>对照 · 判断 · 提炼<code>knowledge</code></li><li><strong>场景输出</strong>文章 · 方案 · 答案<code>output</code></li></ul><p>按需要来回使用，也可以停留在任何一种状态</p></div></div>
 <div class="callout" data-callout="diagram" data-callout-metadata="rows"><div class="callout-title"><div class="callout-icon"></div><div class="callout-title-inner">Vault / three planes</div></div><div class="callout-content"><ul><li><strong>CORE /</strong>跨主题规范与系统规则<code>protected</code></li><li><strong>TOPICS /</strong>资料、研究、知识与输出<code>context</code></li><li><strong>SIDECAR /</strong>工具、索引与运行状态<code>runtime</code></li></ul></div></div>
 <div class="callout" data-callout="note"><div class="callout-title">ⓘ 记录</div><div class="callout-content"><p>维度 d=64 时，未缩放版本训练前 2k 步的梯度范数下降约 40%。</p></div></div>

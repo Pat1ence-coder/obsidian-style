@@ -1,11 +1,5 @@
-/* Content blocks shared by both styles: margin annotations and the grid-paper diagram. */
-
-/* Annotation: ==highlighted text=={note} shows "<--- note" in a handwriting face after the
-   highlight (rendered by the plugin; without it the braces stay as plain text). */
-body {--ds-font-annot: "Hannotate SC", "HanziPen SC", "Xingkai SC", "LXGW WenKai", "Kaiti SC", "STKaiti", "KaiTi", cursive;}
-.aw-annot {margin-inline-start: .4em;font-family: var(--ds-font-annot);font-size: .92em;font-weight: 400;letter-spacing: 0;color: rgb(var(--ds-tone-1));}
-.aw-annot-arrow {margin-inline-end: .3em;letter-spacing: -.06em;opacity: .75;}
-.markdown-source-view.mod-cm6 .aw-annot-source {font-family: var(--ds-font-annot);color: rgb(var(--ds-tone-1));}
+/* Content blocks: the grid-paper diagram. (Handwritten annotations are drawn by the plugin;
+   their styles live in annotations.css.) */
 
 /* Diagram: > [!diagram] SECTION / TITLE, then a list. Each item becomes a pastel card
    (bold = card title, inline code = small tag); a closing paragraph is the footnote.
@@ -59,5 +53,4 @@ body.theme-dark .callout[data-callout="diagram"] > .callout-content > ul > li {b
   .callout[data-callout="diagram"] {break-inside: avoid;page-break-inside: avoid;}
   .markdown-rendered .callout[data-callout="diagram"] {background-color: transparent;border-color: #bbb;}
   .callout[data-callout="diagram"] > .callout-content > ul > li {box-shadow: none;border-color: #bbb;}
-  .aw-annot {color: #555;}
 }

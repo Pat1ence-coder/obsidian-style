@@ -1,5 +1,5 @@
 'use strict';
-const DEFAULT_SETTINGS = { nameScreenshots: true, folderNotes: true, openOnStartup: true, tracking: true, recentLimit: 8, range: 90, metric: 'score', captionSize: 'normal', figureTools: true, scrollRuler: true, decorImage: '', glassImage: '', glassFog: 'normal', excludedFolders: ['Templates', 'templates'] };
+const DEFAULT_SETTINGS = { nameScreenshots: true, folderNotes: true, openOnStartup: true, tracking: true, recentLimit: 8, range: 90, metric: 'score', captionSize: 'normal', figureTools: true, scrollRuler: true, decorImage: '', glassImage: '', glassFog: 'normal', annotFont: '', excludedFolders: ['Templates', 'templates'] };
 const RANGES = [30, 90, 180, 365];
 // Figure and table caption sizes; body class aw-caption-<id>, defined in figures.css.
 const CAPTION_SIZES = [{id:'small', label:'小'}, {id:'normal', label:'标准'}, {id:'large', label:'大'}];
@@ -70,6 +70,7 @@ function loadState(raw, now = new Date()) {
   if (CAPTION_SIZES.some(x => x.id === s.captionSize)) d.settings.captionSize = s.captionSize;
   for (const name of ['decorImage', 'glassImage']) if (typeof s[name] === 'string') d.settings[name] = s[name].trim().replace(/^\/+/, '').slice(0, 500);
   if (GLASS_FOGS.some(x => x.id === s.glassFog)) d.settings.glassFog = s.glassFog;
+  if (typeof s.annotFont === 'string') d.settings.annotFont = s.annotFont.replace(/[;{}<>\\]/g, '').trim().slice(0, 200);
   if (Number.isInteger(s.recentLimit)) d.settings.recentLimit = Math.min(30, Math.max(3,s.recentLimit));
   if (Array.isArray(s.excludedFolders)) d.settings.excludedFolders = s.excludedFolders.filter(x=>typeof x==='string').map(x=>x.trim().replace(/^\/+|\/+$/g,'')).filter(Boolean);
   for (const [date, value] of Object.entries(raw.days)) {

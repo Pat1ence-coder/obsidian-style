@@ -29,6 +29,7 @@ class WorkbenchSettings extends PluginSettingTab {
       d.setValue(s.captionSize).onChange(v=>this.plugin.setCaptionSize(v));
     });
     this.plugin.windowGlass.displaySettings(this.containerEl,Setting);
+    this.plugin.annotations.displaySettings(this.containerEl);
     this.plugin.scrollRuler.displaySettings(this.containerEl,Setting);
     this.plugin.decor.displaySettings(this.containerEl,Setting);
     this.containerEl.createEl('h3',{text:'工作台与写作统计'});
@@ -177,6 +178,9 @@ class WorkbenchPlugin extends Plugin {
     // The window glass picture, read by the theme as var(--aw-glass-image).
     const image=this.windowGlass?.image()||'';
     if(image)body.style.setProperty('--aw-glass-image',image);else body.style.removeProperty('--aw-glass-image');
+    // The handwriting face for annotations, when the user names one.
+    const font=this.data?.settings?.annotFont||'';
+    if(font)body.style.setProperty('--aw-annot-font',font);else body.style.removeProperty('--aw-annot-font');
   }
   applyAppearanceEverywhere(){
     const docs=new Set(this.appearanceDocs);
@@ -195,6 +199,7 @@ class WorkbenchPlugin extends Plugin {
     for(const doc of this.appearanceDocs??[]){
       for(const name of [...doc.body.classList])if(APPEARANCE.test(name))doc.body.classList.remove(name);
       doc.body.style.removeProperty('--aw-glass-image');
+      doc.body.style.removeProperty('--aw-annot-font');
     }
     this.stopped=true;clearTimeout(this.saveTimer);clearTimeout(this.refreshTimer);this.documentCounts=new WeakMap();if(this.data)void this.flush();this.app.workspace.detachLeavesOfType(VIEW);}
 }

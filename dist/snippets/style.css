@@ -48,6 +48,7 @@ body {
   --ds-tone-4: 236,136,52;
   --ds-tone-5: 229,96,94;
   --ds-tone-neutral: 112,122,140;
+  --ds-tone-amber: 184,134,22;
   --ds-ink-rgb: 16,24,40;
   --ds-bg: #f6f7f9;
   --ds-paper: #ffffff;
@@ -109,6 +110,7 @@ body.theme-dark {
   --ds-tone-4: 212,122,48;
   --ds-tone-5: 224,95,93;
   --ds-tone-neutral: 150,158,175;
+  --ds-tone-amber: 212,162,64;
   --ds-ink-rgb: 0,0,0;
   --ds-bg: #0f1013;
   --ds-canvas: #131519;
@@ -773,14 +775,8 @@ body.aw-caption-large {--ds-caption-size: calc(var(--ds-body-size) * .875);}
 }
 
 /* Source: src/styles/blocks.css */
-/* Content blocks shared by both styles: margin annotations and the grid-paper diagram. */
-
-/* Annotation: ==highlighted text=={note} shows "<--- note" in a handwriting face after the
-   highlight (rendered by the plugin; without it the braces stay as plain text). */
-body {--ds-font-annot: "Hannotate SC", "HanziPen SC", "Xingkai SC", "LXGW WenKai", "Kaiti SC", "STKaiti", "KaiTi", cursive;}
-.aw-annot {margin-inline-start: .4em;font-family: var(--ds-font-annot);font-size: .92em;font-weight: 400;letter-spacing: 0;color: rgb(var(--ds-tone-1));}
-.aw-annot-arrow {margin-inline-end: .3em;letter-spacing: -.06em;opacity: .75;}
-.markdown-source-view.mod-cm6 .aw-annot-source {font-family: var(--ds-font-annot);color: rgb(var(--ds-tone-1));}
+/* Content blocks: the grid-paper diagram. (Handwritten annotations are drawn by the plugin;
+   their styles live in annotations.css.) */
 
 /* Diagram: > [!diagram] SECTION / TITLE, then a list. Each item becomes a pastel card
    (bold = card title, inline code = small tag); a closing paragraph is the footnote.
@@ -834,7 +830,6 @@ body.theme-dark .callout[data-callout="diagram"] > .callout-content > ul > li {b
   .callout[data-callout="diagram"] {break-inside: avoid;page-break-inside: avoid;}
   .markdown-rendered .callout[data-callout="diagram"] {background-color: transparent;border-color: #bbb;}
   .callout[data-callout="diagram"] > .callout-content > ul > li {box-shadow: none;border-color: #bbb;}
-  .aw-annot {color: #555;}
 }
 
 /* Source: src/styles/glass.css */

@@ -34,7 +34,7 @@ const pluginTokens=fs.readFileSync(path.join(styleSource,'tokens.css'),'utf8')
   .replace(/\bbody((?:\.[\w-]+)*)\s*\{/g,(_match,classes)=>classes?`body${classes} ${LEAF}, body${classes} .aw-view, body${classes} .aw-figure-modal {`:`${LEAF}, .aw-view, .aw-figure-modal {`);
 const pluginOut=path.join(root,'dist/algorithm-workbench'),snippetOut=path.join(root,'dist/snippets');
 fs.mkdirSync(pluginOut,{recursive:true});fs.mkdirSync(snippetOut,{recursive:true});
-fs.writeFileSync(path.join(pluginOut,'styles.css'),generated+pluginTokens+'\n'+cssParts(['materials','workbench','workbench-glass','figure-tools','reading-tools']));
+fs.writeFileSync(path.join(pluginOut,'styles.css'),generated+pluginTokens+'\n'+cssParts(['materials','workbench','workbench-glass','figure-tools','reading-tools','annotations']));
 // Build only inside this repository; installation is a separate explicit action.
 fs.writeFileSync(path.join(snippetOut,'style.css'),generated+cssParts(['tokens'])+'\n'+cssParts(['shell','controls','typography','components','editor','figures','blocks','glass','window-glass','print']));
 fs.writeFileSync(path.join(pluginOut,'main.js'),bundled);

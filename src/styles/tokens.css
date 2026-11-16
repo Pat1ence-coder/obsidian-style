@@ -46,6 +46,7 @@ body {
   --ds-tone-4: 236,136,52;
   --ds-tone-5: 229,96,94;
   --ds-tone-neutral: 112,122,140;
+  --ds-tone-amber: 184,134,22;
   --ds-ink-rgb: 16,24,40;
   --ds-bg: #f6f7f9;
   --ds-paper: #ffffff;
@@ -107,6 +108,7 @@ body.theme-dark {
   --ds-tone-4: 212,122,48;
   --ds-tone-5: 224,95,93;
   --ds-tone-neutral: 150,158,175;
+  --ds-tone-amber: 212,162,64;
   --ds-ink-rgb: 0,0,0;
   --ds-bg: #0f1013;
   --ds-canvas: #131519;

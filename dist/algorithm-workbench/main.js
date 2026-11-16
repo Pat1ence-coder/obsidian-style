@@ -31,6 +31,7 @@ class WorkbenchSettings extends PluginSettingTab {
       d.setValue(s.captionSize).onChange(v=>this.plugin.setCaptionSize(v));
     });
     this.plugin.windowGlass.displaySettings(this.containerEl,Setting);
+    this.plugin.annotations.displaySettings(this.containerEl);
     this.plugin.scrollRuler.displaySettings(this.containerEl,Setting);
     this.plugin.decor.displaySettings(this.containerEl,Setting);
     this.containerEl.createEl('h3',{text:'工作台与写作统计'});
@@ -179,6 +180,9 @@ class WorkbenchPlugin extends Plugin {
     // The window glass picture, read by the theme as var(--aw-glass-image).
     const image=this.windowGlass?.image()||'';
     if(image)body.style.setProperty('--aw-glass-image',image);else body.style.removeProperty('--aw-glass-image');
+    // The handwriting face for annotations, when the user names one.
+    const font=this.data?.settings?.annotFont||'';
+    if(font)body.style.setProperty('--aw-annot-font',font);else body.style.removeProperty('--aw-annot-font');
   }
   applyAppearanceEverywhere(){
     const docs=new Set(this.appearanceDocs);
@@ -197,6 +201,7 @@ class WorkbenchPlugin extends Plugin {
     for(const doc of this.appearanceDocs??[]){
       for(const name of [...doc.body.classList])if(APPEARANCE.test(name))doc.body.classList.remove(name);
       doc.body.style.removeProperty('--aw-glass-image');
+      doc.body.style.removeProperty('--aw-annot-font');
     }
     this.stopped=true;clearTimeout(this.saveTimer);clearTimeout(this.refreshTimer);this.documentCounts=new WeakMap();if(this.data)void this.flush();this.app.workspace.detachLeavesOfType(VIEW);}
 }
@@ -205,7 +210,7 @@ module.exports=WorkbenchPlugin;
 },
 "core.js":(module,exports,__awRequire)=>{
 'use strict';
-const DEFAULT_SETTINGS = { nameScreenshots: true, folderNotes: true, openOnStartup: true, tracking: true, recentLimit: 8, range: 90, metric: 'score', captionSize: 'normal', figureTools: true, scrollRuler: true, decorImage: '', glassImage: '', glassFog: 'normal', excludedFolders: ['Templates', 'templates'] };
+const DEFAULT_SETTINGS = { nameScreenshots: true, folderNotes: true, openOnStartup: true, tracking: true, recentLimit: 8, range: 90, metric: 'score', captionSize: 'normal', figureTools: true, scrollRuler: true, decorImage: '', glassImage: '', glassFog: 'normal', annotFont: '', excludedFolders: ['Templates', 'templates'] };
 const RANGES = [30, 90, 180, 365];
 // Figure and table caption sizes; body class aw-caption-<id>, defined in figures.css.
 const CAPTION_SIZES = [{id:'small', label:'小'}, {id:'normal', label:'标准'}, {id:'large', label:'大'}];
@@ -276,6 +281,7 @@ function loadState(raw, now = new Date()) {
   if (CAPTION_SIZES.some(x => x.id === s.captionSize)) d.settings.captionSize = s.captionSize;
   for (const name of ['decorImage', 'glassImage']) if (typeof s[name] === 'string') d.settings[name] = s[name].trim().replace(/^\/+/, '').slice(0, 500);
   if (GLASS_FOGS.some(x => x.id === s.glassFog)) d.settings.glassFog = s.glassFog;
+  if (typeof s.annotFont === 'string') d.settings.annotFont = s.annotFont.replace(/[;{}<>\\]/g, '').trim().slice(0, 200);
   if (Number.isInteger(s.recentLimit)) d.settings.recentLimit = Math.min(30, Math.max(3,s.recentLimit));
   if (Array.isArray(s.excludedFolders)) d.settings.excludedFolders = s.excludedFolders.filter(x=>typeof x==='string').map(x=>x.trim().replace(/^\/+|\/+$/g,'')).filter(Boolean);
   for (const [date, value] of Object.entries(raw.days)) {
@@ -1696,26 +1702,40 @@ module.exports={findBlock,setWidth,setMeta,moveImage,captionLabel,imagesIn,isGro
 },
 "features/annotations.js":(module,exports,__awRequire)=>{
 'use strict';
-const {Component,editorLivePreviewField}=require('obsidian');
+const {Component,Modal,Notice,Setting,editorLivePreviewField}=require('obsidian');
 const {ViewPlugin,Decoration,WidgetType}=require('@codemirror/view');
-const {parseAnnotation,findAnnotations}=__awRequire("features/annotation-format.js");
+const Format=__awRequire("features/annotation-format.js");
+const {parseAnnotation,findAnnotations,formatAnnotation,placement,targetClasses,noteTree,DIRECTIONS,COLORS,LINES}=Format;
+const SVG='http://www.w3.org/2000/svg';
 
-// "<--- note" in a handwriting face, placed after the highlighted text.
-function noteNode(doc,note){
-  const span=doc.createElement('span');span.className='aw-annot';span.title='批注：'+note;
-  const arrow=doc.createElement('span');arrow.className='aw-annot-arrow';arrow.textContent='<---';arrow.setAttribute('aria-hidden','true');
-  span.appendChild(arrow);span.appendChild(doc.createTextNode(note));
-  return span;
+function tint(el,spec){
+  if(spec.color==='custom'&&spec.custom)el.style.setProperty('--aw-annot-color',spec.custom);
+  return el;
 }
+// The note element for an annotation (reading view and Live Preview build the same thing).
+function build(doc,node){
+  const el=node.svg?doc.createElementNS(SVG,node.tag):doc.createElement(node.tag);
+  if(node.cls)el.className=node.cls;
+  for(const [k,v] of Object.entries(node.attrs||{}))el.setAttribute(k,v);
+  if(node.color)el.style.setProperty('--aw-annot-color',node.color);
+  if(node.text!=null)el.textContent=node.text;
+  for(const child of node.children||[])el.appendChild(build(doc,child));
+  return el;
+}
+const noteNode=(doc,spec)=>build(doc,noteTree(spec));
 const livePreview=state=>!editorLivePreviewField||state.field(editorLivePreviewField,false)===true;
+const KEYS=['note','dir','color','custom','line','highlight'];
+const sameSpec=(a,b)=>KEYS.every(k=>a[k]===b[k]);
 
-// Live Preview: {note} becomes the handwritten widget unless the cursor is on the annotation,
-// in which case the source stays editable (as Obsidian does for its own formatting).
+// Live Preview: the braces become the note unless the cursor is on the annotation, in which
+// case the source stays editable (as Obsidian does for its own formatting). A pinned note is
+// drawn inside a mark over target and braces, so it is placed against the target's box.
 function editorExtension(){
   class NoteWidget extends WidgetType{
-    constructor(note){super();this.note=note;}
-    eq(other){return other.note===this.note;}
-    toDOM(view){return noteNode(view.dom.ownerDocument,this.note);}
+    constructor(spec){super();this.spec=spec;}
+    eq(other){return sameSpec(other.spec,this.spec);}
+    toDOM(view){return noteNode(view.dom.ownerDocument,this.spec);}
+    ignoreEvent(){return false;}
   }
   const build=view=>{
     if(!livePreview(view.state))return Decoration.none;
@@ -1725,11 +1745,17 @@ function editorExtension(){
       const start=doc.lineAt(from).from,end=doc.lineAt(to).to;
       for(const a of findAnnotations(view.state.sliceDoc(start,end),start))seen.set(a.from,a);
     }
-    const decorations=[...seen.values()].sort((a,b)=>a.from-b.from).map(a=>{
-      const editing=ranges.some(r=>r.from<=a.to&&r.to>=a.markFrom);
-      return (editing?Decoration.mark({class:'aw-annot-source'}):Decoration.replace({widget:new NoteWidget(a.note)})).range(a.from,a.to);
-    });
-    return Decoration.set(decorations);
+    const out=[];
+    for(const a of [...seen.values()].sort((x,y)=>x.markFrom-y.markFrom)){
+      if(ranges.some(r=>r.from<=a.to&&r.to>=a.markFrom)){out.push(Decoration.mark({class:'aw-annot-source'}).range(a.from,a.to));continue;}
+      const where=placement(a),attributes=a.color==='custom'?{style:`--aw-annot-color:${a.custom}`}:undefined;
+      out.push(Decoration.mark({class:targetClasses(a).join(' '),attributes}).range(a.targetFrom,where==='pin'?a.to:a.targetTo));
+      if(where==='before'){
+        out.push(Decoration.widget({widget:new NoteWidget(a),side:-1}).range(a.markFrom));
+        out.push(Decoration.replace({}).range(a.from,a.to));
+      }else out.push(Decoration.replace({widget:new NoteWidget(a)}).range(a.from,a.to));
+    }
+    return Decoration.set(out,true);
   };
   return ViewPlugin.fromClass(class{
     constructor(view){this.decorations=build(view);}
@@ -1740,11 +1766,63 @@ function editorExtension(){
   },{decorations:plugin=>plugin.decorations});
 }
 
+// The add / edit dialog: note, position (3×3 around the text), colour, highlight, line.
+class AnnotationModal extends Modal{
+  constructor(app,spec,{title,action},submit){
+    super(app);this.spec={...Format.DEFAULTS,...spec};this.title=title;this.action=action;this.submit=submit;
+  }
+  onOpen(){
+    const el=this.contentEl,doc=el.ownerDocument;
+    this.setTitle(this.title);el.addClass('aw-annot-modal');
+    new Setting(el).setName('笔记').setDesc('阅读时显示的简短标签，最多 80 个字。').addText(t=>{
+      t.setPlaceholder('写一句简短标注…').setValue(this.spec.note||'').onChange(v=>{this.spec.note=v;});
+      t.inputEl.maxLength=Format.MAX_NOTE;this.noteInput=t.inputEl;
+      t.inputEl.addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.isComposing){event.preventDefault();this.done();}});
+    });
+    const pickers=el.createDiv({cls:'aw-annot-pickers'});
+    const group=(name,desc)=>{const box=pickers.createDiv({cls:'aw-annot-picker'});box.createDiv({cls:'aw-annot-picker-name',text:name});box.createDiv({cls:'aw-annot-picker-desc',text:desc});return box;};
+    const choose=(buttons,key,value)=>{this.spec[key]=value;for(const b of buttons)b.setAttribute('aria-pressed',String(b.dataset.value===value));};
+    // Position: the eight directions around a small "文字" chip.
+    const compass=group('位置','标注相对目标文字的位置。').createDiv({cls:'aw-annot-compass'}),dirs=[];
+    for(const id of ['nw','n','ne','w','center','e','sw','s','se']){
+      if(id==='center'){compass.createSpan({cls:'aw-annot-compass-center',text:'文字'});continue;}
+      const d=DIRECTIONS.find(x=>x.id===id),b=compass.createEl('button',{cls:'aw-annot-choice',text:d.arrow,attr:{type:'button','aria-label':d.label}});
+      b.dataset.value=id;b.addEventListener('click',()=>choose(dirs,'dir',id));dirs.push(b);
+    }
+    choose(dirs,'dir',this.spec.dir);
+    // Colour: eight named colours and a custom one.
+    const swatches=group('颜色','随标注一起保存在笔记里。').createDiv({cls:'aw-annot-swatches'}),colors=[];
+    for(const c of COLORS){
+      const b=swatches.createEl('button',{cls:'aw-annot-choice aw-annot-c-'+c.id,attr:{type:'button'}});
+      b.createSpan({cls:'aw-annot-dot'});b.createSpan({text:c.label});
+      b.dataset.value=c.id;b.addEventListener('click',()=>{this.spec.custom=null;choose(colors,'color',c.id);});colors.push(b);
+    }
+    const custom=swatches.createEl('label',{cls:'aw-annot-choice aw-annot-custom'});
+    const picker=custom.createEl('input',{attr:{type:'color','aria-label':'自定义颜色'}});picker.value=this.spec.custom||'#d0428a';
+    custom.createSpan({text:'自定义'});custom.dataset.value='custom';colors.push(custom);
+    picker.addEventListener('input',()=>{this.spec.custom=picker.value;choose(colors,'color','custom');});
+    choose(colors,'color',this.spec.color);
+    new Setting(el).setName('高亮标注目标').setDesc('目标文字带一层与标注同色的浅底；目标本身已有底色时可以关掉。')
+      .addToggle(t=>t.setValue(this.spec.highlight!==false).onChange(v=>{this.spec.highlight=v;}));
+    new Setting(el).setName('线条').setDesc('双线、虚线为斜向引出的箭头；内联则把标注直接写在文字后面。')
+      .addDropdown(d=>{for(const l of LINES)d.addOption(l.id,l.label);d.setValue(this.spec.line).onChange(v=>{this.spec.line=v;});});
+    new Setting(el).addButton(b=>b.setButtonText('取消').onClick(()=>this.close()))
+      .addButton(b=>b.setButtonText(this.action).setCta().onClick(()=>this.done()));
+    doc.defaultView?.setTimeout(()=>this.noteInput?.focus(),0);
+  }
+  done(){
+    if(!String(this.spec.note||'').trim()){new Notice('请填写标注内容。');this.noteInput?.focus();return;}
+    try{this.submit(this.spec);this.close();}catch(error){new Notice(error?.message||'标注没有写入。');}
+  }
+  onClose(){this.contentEl.empty();}
+}
+
 class Annotations extends Component{
-  constructor(plugin){super();this.plugin=plugin;}
+  constructor(plugin){super();this.plugin=plugin;this.app=plugin.app;}
   onload(){
     this.plugin.registerMarkdownPostProcessor(el=>this.process(el));
     this.plugin.registerEditorExtension(editorExtension());
+    this.registerEvent(this.app.workspace.on('editor-menu',(menu,editor)=>this.menu(menu,editor)));
   }
   // Reading view: Obsidian renders ==text== as <mark>; the {note} is the text right after it.
   process(el){
@@ -1754,37 +1832,173 @@ class Annotations extends Component{
       const found=parseAnnotation(next.textContent);
       if(!found)continue;
       next.textContent=found.rest;
-      mark.parentNode.insertBefore(noteNode(el.ownerDocument,found.note),next);
+      for(const name of targetClasses(found))mark.classList.add(name);
+      tint(mark,found);
+      const note=noteNode(el.ownerDocument,found),where=placement(found);
+      if(where==='pin')mark.appendChild(note);
+      else mark.parentNode.insertBefore(note,where==='before'?mark:next);
     }
   }
+  // The annotation the cursor is on, with its line, or null.
+  annotationAt(editor){
+    const cursor=editor.getCursor(),text=editor.getLine(cursor.line);
+    const found=findAnnotations(text,0).find(a=>a.markFrom<=cursor.ch&&cursor.ch<=a.to);
+    return found?{...found,line:cursor.line}:null;
+  }
+  // Right-click: add an annotation to selected text, or edit / remove the one under the cursor.
+  menu(menu,editor){
+    if(!this.plugin.data?.settings)return;
+    const selected=editor.getSelection();
+    if(selected.trim()&&!/[\r\n]/.test(selected)){
+      menu.addItem(item=>item.setTitle('添加标注').setIcon('message-square-plus').onClick(()=>this.add(editor)));
+      return;
+    }
+    const at=this.annotationAt(editor);
+    if(!at)return;
+    menu.addItem(item=>item.setTitle('编辑标注').setIcon('message-square-text').onClick(()=>this.edit(editor,at)));
+    menu.addItem(item=>item.setTitle('删除标注').setIcon('message-square-x').onClick(()=>
+      editor.replaceRange('',{line:at.line,ch:at.from},{line:at.line,ch:at.to})));
+  }
+  add(editor){
+    const selected=editor.getSelection(),lead=selected.match(/^\s*/)[0],trail=selected.match(/\s*$/)[0];
+    // Already highlighted text keeps one pair of ==.
+    const target=selected.trim().replace(/^==([\s\S]*)==$/,'$1');
+    if(!target||target.includes('==')){new Notice('请选择一段不含 == 的文字。');return;}
+    this.openModal({note:''},{title:'添加标注',action:'添加标注'},spec=>
+      editor.replaceSelection(`${lead}==${target}==${formatAnnotation(spec)}${trail}`));
+  }
+  edit(editor,at){
+    this.openModal(at,{title:'编辑标注',action:'保存'},spec=>
+      editor.replaceRange(formatAnnotation(spec),{line:at.line,ch:at.from},{line:at.line,ch:at.to}));
+  }
+  openModal(spec,labels,submit){new AnnotationModal(this.app,spec,labels,submit).open();}
+  displaySettings(container){
+    const s=this.plugin.data.settings;
+    new Setting(container).setName('标注字体').setDesc('手写标注使用的字体，填写本机已安装的字体名，多个用逗号分隔；留空依次使用手札体、翩翩体、行楷、霞鹜文楷和楷体。')
+      .addText(t=>t.setPlaceholder('"LXGW WenKai", KaiTi').setValue(s.annotFont||'').onChange(v=>{
+        s.annotFont=v.replace(/[;{}<>\\]/g,'').trim().slice(0,200);this.plugin.applyAppearanceEverywhere();this.plugin.changed();
+      }));
+  }
 }
-module.exports={Annotations,noteNode};
+module.exports={Annotations,AnnotationModal,noteNode,placement,targetClasses};
 
 },
 "features/annotation-format.js":(module,exports,__awRequire)=>{
 'use strict';
-// Margin-style annotations: ==highlighted text=={note}. The note sits right after the closing
-// == with no space, on one line, up to 80 characters. Nothing here touches the DOM.
-const NOTE=/^\{([^{}\n]{1,80})\}/;
-const SOURCE=/==([^=\n]+)==\{([^{}\n]{1,80})\}/g;
+// Handwritten annotations: ==target=={note} or ==target=={note|options}. The braces sit right
+// after the closing == with no space, on one line. The note is up to 80 characters; options
+// after the last "|" set where the note sits, its colour and its line:
+//   position  右下 (default) 下 左下 右 左 右上 上 左上, or the arrows ↘ ↓ ↙ → ← ↗ ↑ ↖
+//   colour    蓝 (default) 中性 琥珀 橙 绿 红 紫 彩虹, or #rgb / #rrggbb
+//   line      双线 (default) 虚线 内联 (inline: the note follows the text, no leader line)
+//   无高亮     the target keeps no tinted background
+// Text after a "|" that isn't all options belongs to the note. Nothing here touches the DOM.
+const MAX_NOTE=80;
+const DIRECTIONS=[
+  {id:'nw',arrow:'↖',label:'左上'},{id:'n',arrow:'↑',label:'上'},{id:'ne',arrow:'↗',label:'右上'},
+  {id:'w',arrow:'←',label:'左'},{id:'e',arrow:'→',label:'右'},
+  {id:'sw',arrow:'↙',label:'左下'},{id:'s',arrow:'↓',label:'下'},{id:'se',arrow:'↘',label:'右下'},
+];
+const COLORS=[
+  {id:'neutral',label:'中性'},{id:'amber',label:'琥珀'},{id:'orange',label:'橙'},
+  {id:'blue',label:'蓝'},{id:'green',label:'绿'},{id:'red',label:'红'},
+  {id:'purple',label:'紫'},{id:'rainbow',label:'彩虹'},
+];
+const LINES=[{id:'double',label:'双线'},{id:'dashed',label:'虚线'},{id:'inline',label:'内联'}];
+const DEFAULTS={dir:'se',color:'blue',custom:null,line:'double',highlight:true};
+const HEX=/^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i;
+const NO_HIGHLIGHT=['无高亮','不高亮'];
+
+// One option word, or null when the word isn't an option.
+function option(word){
+  const dir=DIRECTIONS.find(d=>d.arrow===word||d.label===word);
+  if(dir)return {dir:dir.id};
+  const color=COLORS.find(c=>c.label===word||c.label+'色'===word);
+  if(color)return {color:color.id,custom:null};
+  if(HEX.test(word))return {color:'custom',custom:word.toLowerCase()};
+  const line=LINES.find(l=>l.label===word);
+  if(line)return {line:line.id};
+  if(NO_HIGHLIGHT.includes(word))return {highlight:false};
+  return null;
+}
+// "note|options" (the text inside the braces) to a full annotation, or null.
+function parseBody(body){
+  let note=body,spec={...DEFAULTS};
+  const bar=body.lastIndexOf('|');
+  if(bar>=0){
+    const words=body.slice(bar+1).trim().split(/\s+/).filter(Boolean);
+    const options=words.map(option);
+    if(words.length&&options.every(Boolean)){note=body.slice(0,bar);for(const o of options)Object.assign(spec,o);}
+  }
+  note=note.trim();
+  if(!note||note.length>MAX_NOTE)return null;
+  return {...spec,note};
+}
+// Braces, with up to 80 characters of note and room for a few options.
+const BODY='[^{}\\n]{1,120}';
+const NOTE=new RegExp(`^\\{(${BODY})\\}`);
+const SOURCE=new RegExp(`==([^=\\n]+)==\\{(${BODY})\\}`,'g');
 
 // Reading view: the text that follows a rendered <mark>.
 function parseAnnotation(text) {
   const m=NOTE.exec(text||'');
-  if(!m||!m[1].trim())return null;
-  return {note:m[1].trim(),rest:text.slice(m[0].length)};
+  const spec=m&&parseBody(m[1]);
+  return spec?{...spec,rest:text.slice(m[0].length)}:null;
 }
-// Live Preview: offsets of every {note} in a stretch of source text.
+// Live Preview: offsets of every annotation in a stretch of source text. markFrom is the opening
+// ==, targetFrom..targetTo the highlighted words, from..to the braces.
 function findAnnotations(text, offset=0) {
   const found=[];
   for(const m of text.matchAll(SOURCE)){
-    if(!m[2].trim())continue;
-    const to=m.index+m[0].length,from=to-m[2].length-2;
-    found.push({markFrom:offset+m.index,from:offset+from,to:offset+to,note:m[2].trim()});
+    const spec=parseBody(m[2]);
+    if(!spec)continue;
+    const markFrom=offset+m.index,targetFrom=markFrom+2,targetTo=targetFrom+m[1].length;
+    found.push({...spec,markFrom,targetFrom,targetTo,from:targetTo+2,to:markFrom+m[0].length});
   }
   return found;
 }
-module.exports={parseAnnotation,findAnnotations};
+// The braces for an annotation; defaults are left out, so a plain note stays {note}.
+function formatAnnotation(spec){
+  const s={...DEFAULTS,...spec},note=String(s.note||'').replace(/[{}\r\n]+/g,' ').trim().slice(0,MAX_NOTE);
+  if(!note)throw Error('请填写标注内容。');
+  const words=[];
+  if(s.dir!==DEFAULTS.dir)words.push(DIRECTIONS.find(d=>d.id===s.dir)?.label??DIRECTIONS.find(d=>d.id===DEFAULTS.dir).label);
+  if(s.color==='custom'&&HEX.test(s.custom||''))words.push(s.custom.toLowerCase());
+  else if(s.color!==DEFAULTS.color&&COLORS.some(c=>c.id===s.color))words.push(COLORS.find(c=>c.id===s.color).label);
+  if(s.line!==DEFAULTS.line&&LINES.some(l=>l.id===s.line))words.push(LINES.find(l=>l.id===s.line).label);
+  if(s.highlight===false)words.push(NO_HIGHLIGHT[0]);
+  // A note that itself ends in "|option" would be misread; spell out the default position then.
+  if(!words.length&&note.includes('|')&&parseBody(note)?.note!==note)words.push(DIRECTIONS.find(d=>d.id===DEFAULTS.dir).label);
+  return `{${note}${words.length?'|'+words.join(' '):''}}`;
+}
+// Where the note goes relative to its target: pinned outside the line (the eight positions),
+// or in the text flow after / before the target (右, 左, and the 内联 line).
+function placement(spec){
+  if(spec.line==='inline'||spec.dir==='e')return 'after';
+  if(spec.dir==='w')return 'before';
+  return 'pin';
+}
+// Classes for the highlighted target. A pinned note is laid out against the target's box.
+function targetClasses(spec){
+  return ['aw-annot-target','aw-annot-c-'+spec.color].concat(spec.highlight?[]:['aw-annot-plain'],placement(spec)==='pin'?['aw-annot-holds']:[]);
+}
+// The note as a plain tree ({tag, cls, attrs, text, children, svg}); the plugin turns it into
+// DOM and the preview script into HTML, so both draw the same thing.
+function noteTree(spec){
+  const where=placement(spec);
+  const leader={tag:'svg',svg:true,attrs:{class:'aw-annot-arrow',viewBox:'0 0 32 12','aria-hidden':'true'},children:[
+    {tag:'path',svg:true,attrs:{d:'M8 2 L2 6 L8 10',class:'aw-annot-head'}},
+    ...(spec.line==='double'?[4.6,7.4]:[6]).map(y=>({tag:'line',svg:true,attrs:{x1:'4',y1:String(y),x2:'32',y2:String(y),class:'aw-annot-line'}})),
+  ]};
+  const text={tag:'span',cls:'aw-annot-text',text:spec.note};
+  let children;
+  if(where==='pin')children=[{tag:'span',cls:'aw-annot-room',attrs:{'aria-hidden':'true'}},{tag:'span',cls:'aw-annot-pin',children:[leader,text]}];
+  else if(spec.line==='inline')children=[{tag:'span',cls:'aw-annot-glyph',text:'<---',attrs:{'aria-hidden':'true'}},text];
+  else children=where==='before'?[text,leader]:[leader,text];
+  return {tag:'span',cls:['aw-annot','aw-annot-'+spec.dir,'aw-annot-'+spec.line,'aw-annot-c-'+spec.color,where==='pin'?'aw-annot-pinned':'aw-annot-flow'].join(' '),
+    attrs:{title:'标注：'+spec.note},color:spec.color==='custom'?spec.custom:null,children};
+}
+module.exports={parseAnnotation,findAnnotations,formatAnnotation,parseBody,placement,targetClasses,noteTree,DIRECTIONS,COLORS,LINES,DEFAULTS,MAX_NOTE};
 
 },
 "features/scroll-ruler.js":(module,exports,__awRequire)=>{
