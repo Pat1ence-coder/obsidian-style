@@ -19,6 +19,7 @@
 - window-glass.css：窗口毛玻璃。插件设置了库内图片时，图片模糊后铺满窗口、加中性雾，整窗成为一片无色玻璃，白色卡片浮在上面；未设置时不生效。
 - workbench-glass.css：看板外观，含便当格布局、指标卡光斑、趋势图与月度柱（插件样式）。
 - reading-tools.css：滚动刻度尺、刻度尺旁的标题与角落装饰图（插件样式）。
+- library.css：素材库（插件样式）：搜索与筛选、目录树与标签、瀑布流卡片；面板窄于 560px 时目录树收成下拉框。
 
 scripts/build.js 输出两个样式文件：dist/snippets/style.css 管理文档；dist/algorithm-workbench/styles.css 只管理工作台与弹窗。两者共享同一份 tokens.css。figure 样式因此在文档样式启用时无需插件运行也能使用。
 

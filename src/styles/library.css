@@ -1,0 +1,165 @@
+/* Image library (素材库), plugin styles. A header with search and filter pills; a side list of
+   scopes, folders and tags; white picture cards in columns. It opens in the right sidebar and
+   turns into a wide grid when the pane is dragged wider; below 560px the side list folds into a
+   dropdown. Theme tokens come from the document snippet, with fallbacks for running alone. */
+.workspace-leaf-content[data-type="aw-library"] .view-content.aw-lib {padding: 0;overflow: hidden;}
+.aw-lib {
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  font-family: var(--ds-font-ui, var(--font-interface));
+  color: var(--ds-text, var(--text-normal));
+}
+
+/* Header: title and count, search, filters. */
+.aw-lib-head {flex: none;display: flex;flex-direction: column;gap: 10px;padding: 14px 14px 12px;}
+.aw-lib-title {display: flex;align-items: center;gap: 8px;font-size: 14px;font-weight: 650;color: var(--ds-heading, var(--text-normal));}
+.aw-lib-title-icon {display: flex;color: var(--ds-accent, var(--interactive-accent));}
+.aw-lib-title-icon svg {width: 16px;height: 16px;}
+.aw-lib-count {margin-left: auto;font: 500 11px var(--ds-font-mono, var(--font-monospace));color: var(--ds-faint, var(--text-faint));}
+.aw-lib-search {position: relative;display: flex;align-items: center;}
+.aw-lib-search-icon {position: absolute;left: 10px;display: flex;color: var(--ds-faint, var(--text-faint));pointer-events: none;}
+.aw-lib-search-icon svg {width: 14px;height: 14px;}
+.aw-lib .aw-lib-search input {width: 100%;height: 32px;padding: 0 10px 0 30px;border-radius: 10px;font-size: 13px;}
+.aw-lib-filters {display: flex;flex-wrap: wrap;align-items: center;gap: 6px;}
+.aw-lib select.aw-lib-pill {
+  height: 28px;
+  min-width: 0;
+  padding: 0 24px 0 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  background-position: right 7px center;
+  background-size: 9px;
+}
+.aw-lib select.aw-lib-scope {display: none;max-width: 100%;}
+.aw-lib-sizes {display: inline-flex;margin-left: auto;padding: 2px;gap: 2px;border-radius: 9px;background: var(--ds-surface, var(--background-secondary));}
+.aw-lib .aw-lib-size {height: 24px;min-width: 26px;padding: 0 6px;border: 0;border-radius: 7px;background: transparent;box-shadow: none;font-size: 12px;color: var(--ds-muted, var(--text-muted));cursor: pointer;}
+.aw-lib .aw-lib-size[aria-pressed="true"] {background: var(--ds-paper, var(--background-primary));color: var(--ds-heading, var(--text-normal));box-shadow: 0 0 0 1px rgba(var(--ds-ink-rgb,16,24,40),.06), 0 1px 3px rgba(var(--ds-ink-rgb,16,24,40),.1);}
+
+/* Body: side list and the grid, each scrolling on its own. */
+.aw-lib-body {flex: 1;display: flex;min-height: 0;}
+.aw-lib-side {flex: none;width: 210px;overflow-y: auto;padding: 0 8px 16px 10px;border-right: 1px solid var(--ds-border, var(--background-modifier-border));}
+.aw-lib-main {flex: 1;min-width: 0;overflow-y: auto;padding: 2px 14px 24px;}
+.aw-lib-group {display: flex;flex-direction: column;gap: 1px;}
+.aw-lib-heading {margin: 16px 8px 6px;font-size: 11.5px;font-weight: 600;color: var(--ds-faint, var(--text-faint));}
+.aw-lib .aw-lib-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  height: 28px;
+  padding: 0 8px 0 calc(8px + var(--aw-lib-depth, 0) * 14px);
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  box-shadow: none;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--ds-text, var(--text-normal));
+  text-align: left;
+  cursor: pointer;
+}
+.aw-lib .aw-lib-row:hover {background: var(--ds-surface-hover, var(--background-modifier-hover));}
+.aw-lib .aw-lib-row[aria-pressed="true"] {background: var(--ds-accent-soft, var(--background-modifier-active-hover));color: var(--ds-accent, var(--interactive-accent));font-weight: 600;}
+.aw-lib-row-icon {flex: none;display: flex;color: rgb(var(--aw-lib-tone, var(--ds-tone-neutral, 112,122,140)));}
+.aw-lib-row-icon svg {width: 15px;height: 15px;}
+.aw-lib .aw-lib-row[aria-pressed="true"] .aw-lib-row-icon {color: inherit;}
+.aw-lib-row-text {flex: 1;min-width: 0;overflow: hidden;text-overflow: ellipsis;white-space: nowrap;}
+.aw-lib-row-count {flex: none;font: 500 11px var(--ds-font-mono, var(--font-monospace));color: var(--ds-faint, var(--text-faint));}
+.aw-lib-twist {flex: none;display: flex;width: 14px;margin-left: -4px;margin-right: -3px;color: var(--ds-faint, var(--text-faint));}
+.aw-lib-twist svg {width: 12px;height: 12px;}
+.aw-lib-row.is-leaf {padding-left: calc(25px + var(--aw-lib-depth, 0) * 14px);}
+.aw-lib-tags {display: flex;flex-wrap: wrap;gap: 5px;padding: 0 6px;}
+.aw-lib .aw-lib-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 7px;
+  background: var(--ds-surface, var(--background-secondary));
+  box-shadow: none;
+  font-size: 12px;
+  color: var(--ds-text, var(--text-normal));
+  cursor: pointer;
+}
+.aw-lib .aw-lib-tag[aria-pressed="true"] {background: var(--ds-accent-soft, var(--background-modifier-active-hover));color: var(--ds-accent, var(--interactive-accent));}
+.aw-lib-tag-count {font: 500 10.5px var(--ds-font-mono, var(--font-monospace));color: var(--ds-faint, var(--text-faint));}
+.aw-lib-hint {padding: 2px 2px;font-size: 12px;color: var(--ds-faint, var(--text-faint));}
+
+/* Grid: columns side by side, cards stacked in each. */
+.aw-lib-grid {display: flex;align-items: flex-start;gap: 12px;}
+.aw-lib-col {flex: 1 1 0;min-width: 0;display: flex;flex-direction: column;gap: 12px;}
+.aw-lib-more {height: 1px;}
+.aw-lib-empty:not(:empty) {padding: 48px 12px;text-align: center;font-size: 13px;color: var(--ds-muted, var(--text-muted));}
+
+/* A card: the picture on a white card with a soft shadow; a ring on hover and focus. */
+.aw-lib-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 14px;
+  background: var(--ds-paper, var(--background-primary));
+  box-shadow: 0 0 0 1px rgba(var(--ds-ink-rgb,16,24,40),.06), 0 1px 2px rgba(var(--ds-ink-rgb,16,24,40),.04), 0 6px 16px rgba(var(--ds-ink-rgb,16,24,40),.06);
+  cursor: pointer;
+  transition: box-shadow 140ms ease, transform 140ms ease;
+}
+.aw-lib-card:hover {box-shadow: 0 0 0 2px rgba(var(--ds-tone-accent,52,128,246),.55), 0 8px 22px rgba(var(--ds-ink-rgb,16,24,40),.1);}
+.aw-lib-card:focus-visible {outline: none;box-shadow: 0 0 0 2px var(--ds-accent, var(--interactive-accent)), 0 8px 22px rgba(var(--ds-ink-rgb,16,24,40),.1);}
+.aw-lib-thumb {position: relative;overflow: hidden;background: var(--ds-surface, var(--background-secondary));}
+.aw-lib-thumb img {display: block;width: 100%;height: 100%;object-fit: cover;}
+/* Long screenshots show their top. */
+.aw-lib-thumb.is-cropped img {object-position: top;}
+/* Drawings keep their whole shape, on white. */
+.aw-lib-card:has(.aw-lib-kind-svg) .aw-lib-thumb {background: var(--ds-paper, var(--background-primary));}
+.aw-lib-card:has(.aw-lib-kind-svg) .aw-lib-thumb img {object-fit: contain;padding: 10px;}
+.aw-lib-card.is-broken .aw-lib-thumb img {visibility: hidden;}
+.aw-lib-badges {position: absolute;top: 8px;left: 8px;right: 8px;display: flex;flex-wrap: wrap;gap: 4px;pointer-events: none;}
+.aw-lib-badges > span {
+  padding: 2px 6px;
+  border-radius: 6px;
+  font: 600 10px/1.4 var(--ds-font-mono, var(--font-monospace));
+  color: #fff;
+  background: rgba(16,24,40,.52);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+.aw-lib-badges > .aw-lib-kind-gif {background: rgba(var(--ds-tone-4,236,136,52),.92);}
+.aw-lib-badges > .aw-lib-kind-svg {background: rgba(var(--ds-tone-3,139,108,240),.9);}
+.aw-lib-caption {padding: 8px 10px 9px;}
+.aw-lib-name {overflow: hidden;font-size: 12.5px;font-weight: 600;line-height: 1.45;color: var(--ds-heading, var(--text-normal));text-overflow: ellipsis;white-space: nowrap;}
+.aw-lib-meta {display: flex;align-items: center;justify-content: space-between;gap: 6px;margin-top: 1px;}
+.aw-lib-type {overflow: hidden;font: 500 10.5px var(--ds-font-mono, var(--font-monospace));color: var(--ds-faint, var(--text-faint));text-overflow: ellipsis;white-space: nowrap;}
+/* Stars: shown once a picture is rated, or while the pointer is on the card. */
+.aw-lib-stars {flex: none;display: inline-flex;opacity: 0;transition: opacity 140ms ease;}
+.aw-lib-card:is(:hover,:focus-within,.is-rated) .aw-lib-stars {opacity: 1;}
+.aw-lib .aw-lib-star {width: auto;height: auto;padding: 0 1px;border: 0;background: none;box-shadow: none;font-size: 12px;line-height: 1;color: rgba(var(--ds-ink-rgb,16,24,40),.18);cursor: pointer;}
+.aw-lib .aw-lib-star.is-on {color: rgb(var(--ds-tone-amber,184,134,22));}
+.aw-lib .aw-lib-stars:hover .aw-lib-star {color: rgb(var(--ds-tone-amber,184,134,22));}
+.aw-lib .aw-lib-stars .aw-lib-star:hover ~ .aw-lib-star {color: rgba(var(--ds-ink-rgb,16,24,40),.18);}
+.aw-lib-card-tags {display: flex;flex-wrap: wrap;gap: 4px;}
+.aw-lib-card-tags:not(:empty) {margin-top: 6px;}
+.aw-lib .aw-lib-chip {height: 18px;padding: 0 6px;border: 0;border-radius: 6px;background: var(--ds-accent-soft, var(--background-modifier-hover));box-shadow: none;font-size: 10.5px;color: var(--ds-accent, var(--interactive-accent));cursor: pointer;}
+
+/* Narrow pane (the sidebar's usual width): no side list, a scope dropdown instead. */
+@container (max-width: 559px) {
+  .aw-lib-side {display: none;}
+  .aw-lib select.aw-lib-scope {display: inline-block;flex: 1 1 100%;}
+  .aw-lib-main {padding-inline: 12px;}
+}
+
+/* Dark: the cards are the dark paper; the unlit stars a light ink. */
+body.theme-dark .aw-lib-card {box-shadow: 0 0 0 1px rgba(255,255,255,.07), 0 6px 18px rgba(0,0,0,.35);}
+body.theme-dark .aw-lib .aw-lib-star {color: rgba(255,255,255,.2);}
+body.theme-dark .aw-lib .aw-lib-stars .aw-lib-star:hover ~ .aw-lib-star {color: rgba(255,255,255,.2);}
+body.theme-dark .aw-lib .aw-lib-star.is-on,
+body.theme-dark .aw-lib .aw-lib-stars:hover .aw-lib-star {color: rgb(var(--ds-tone-amber,212,162,64));}
+
+/* Tag dialog. */
+.aw-lib-modal .aw-lib-known {margin: 4px 0 8px;padding: 0;}
+.aw-lib-modal .aw-lib-tag {display: inline-flex;align-items: center;height: 24px;padding: 0 8px;border-radius: 7px;font-size: 12px;}
+
+@media (prefers-reduced-motion: reduce) {
+  .aw-lib-card,.aw-lib-stars {transition: none;}
+}

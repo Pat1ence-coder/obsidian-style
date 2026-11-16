@@ -17,7 +17,7 @@ function fixture(options={}) {
   class Plugin extends Component {
     async loadData(){return this.initialData??null;}
     async saveData(data){this.saved.push(data);}
-    registerView(type,create){this.makeView=create;}
+    registerView(type,create){(this.views??={})[type]=create;if(type==='algorithm-workbench')this.makeView=create;}
     addRibbonIcon(icon,title){(this.ribbons??=[]).push([icon,title]);} addCommand(command){(this.commands??={})[command.id]=command;} addSettingTab(){}
     registerEditorExtension(ext){(this.extensions??=[]).push(ext);if(typeof ext==='function')this.extension??=ext;} registerEvent(){} registerInterval(){}
     registerMarkdownPostProcessor(fn){(this.postProcessors??=[]).push(fn);}
@@ -206,8 +206,10 @@ test('caption size and figure tools are body classes that follow settings and le
 
 test('ribbon and command use the 写作工作台 name and icon',async()=>{
   const {plugin}=fixture();await plugin.onload();
-  assert.deepEqual(plugin.ribbons,[['notebook-pen','打开写作工作台']]);
+  assert.deepEqual(plugin.ribbons,[['notebook-pen','打开写作工作台'],['images','打开素材库']],'the workbench first, then the image library');
   assert.equal(plugin.commands['open-workbench'].name,'打开写作工作台');
+  assert.equal(plugin.commands['open-library'].name,'打开素材库');
+  assert.equal(typeof plugin.views['aw-library'],'function');
   plugin.onunload();await plugin.saveQueue;
 });
 

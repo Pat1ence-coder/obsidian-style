@@ -11,6 +11,7 @@ const {Annotations}=require('./features/annotations');
 const {ScrollRuler}=require('./features/scroll-ruler');
 const {Decor}=require('./features/decor');
 const {WindowGlass}=require('./features/window-glass');
+const {Library}=require('./features/library');
 // aw-palette-* and aw-style-* are listed so classes left by earlier versions are cleaned up.
 const APPEARANCE=/^aw-(?:palette|style|caption|glass-fog)-|^aw-(?:figure-tools-off|glass)$/;
 
@@ -40,7 +41,7 @@ class WorkbenchSettings extends PluginSettingTab {
       s.excludedFolders=v.split('\n').map(x=>x.trim().replace(/^\/+|\/+$/g,'')).filter(Boolean);this.plugin.data.records={};this.plugin.changed();
     }));
     new Setting(this.containerEl).setName('立即打开工作台').addButton(b=>b.setButtonText('打开').onClick(()=>this.plugin.openWorkbench()));
-    this.containerEl.createEl('p',{text:'数据保存在此插件目录的 data.json，仅包含设置、日期、文件路径和计数。针对单台设备，不合并多设备统计。'});
+    this.containerEl.createEl('p',{text:'数据保存在此插件目录的 data.json，仅包含设置、日期、文件路径、计数，以及素材库里的星级和标签。针对单台设备，不合并多设备统计。'});
   }
 }
 
@@ -63,6 +64,8 @@ class WorkbenchPlugin extends Plugin {
     this.registerView(VIEW,leaf=>new WorkbenchView(leaf,this));
     this.addRibbonIcon(viewIcon(),`打开${NAME}`,()=>this.openWorkbench());
     this.addCommand({id:'open-workbench',name:`打开${NAME}`,callback:()=>this.openWorkbench()});
+    // The image library: its own pane, opened in the right sidebar.
+    this.library=this.addChild(new Library(this));
     // Palette and caption size are body classes read by both stylesheets; popout windows get
     // them too. Windows already open (plugin re-enabled, restored layout) are found via leaves.
     this.applyAppearanceEverywhere();

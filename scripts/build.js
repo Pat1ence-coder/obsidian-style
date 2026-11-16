@@ -28,13 +28,15 @@ const generated='/* GENERATED from src/styles. Edit the source modules, then run
 // override document print tokens (especially when exporting from dark mode).
 // The view's pane (leaf) gets the tokens too: it paints the dashboard background behind the header.
 const LEAF='.workspace-leaf-content[data-type="algorithm-workbench"]';
+// The image library pane and its tag dialog read the same tokens.
+const ROOTS=[LEAF,'.aw-view','.aw-figure-modal','.aw-lib','.aw-lib-modal'];
 const pluginTokens=fs.readFileSync(path.join(styleSource,'tokens.css'),'utf8')
   // body → the plugin's own roots (pane, view, modal); body.theme-dark keeps its class qualifier
   // so dark mode applies inside the plugin too.
-  .replace(/\bbody((?:\.[\w-]+)*)\s*\{/g,(_match,classes)=>classes?`body${classes} ${LEAF}, body${classes} .aw-view, body${classes} .aw-figure-modal {`:`${LEAF}, .aw-view, .aw-figure-modal {`);
+  .replace(/\bbody((?:\.[\w-]+)*)\s*\{/g,(_match,classes)=>classes?ROOTS.map(r=>`body${classes} ${r}`).join(', ')+' {':ROOTS.join(', ')+' {');
 const pluginOut=path.join(root,'dist/algorithm-workbench'),snippetOut=path.join(root,'dist/snippets');
 fs.mkdirSync(pluginOut,{recursive:true});fs.mkdirSync(snippetOut,{recursive:true});
-fs.writeFileSync(path.join(pluginOut,'styles.css'),generated+pluginTokens+'\n'+cssParts(['materials','workbench','workbench-glass','figure-tools','reading-tools','annotations']));
+fs.writeFileSync(path.join(pluginOut,'styles.css'),generated+pluginTokens+'\n'+cssParts(['materials','workbench','workbench-glass','figure-tools','reading-tools','annotations','library']));
 // Build only inside this repository; installation is a separate explicit action.
 fs.writeFileSync(path.join(snippetOut,'style.css'),generated+cssParts(['tokens'])+'\n'+cssParts(['shell','controls','typography','components','editor','figures','blocks','glass','window-glass','print']));
 fs.writeFileSync(path.join(pluginOut,'main.js'),bundled);

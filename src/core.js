@@ -1,4 +1,5 @@
 'use strict';
+const Library = require('./features/library-data');
 const DEFAULT_SETTINGS = { nameScreenshots: true, folderNotes: true, openOnStartup: true, tracking: true, recentLimit: 8, range: 90, metric: 'score', captionSize: 'normal', figureTools: true, scrollRuler: true, rulerHeadings: true, decorImage: '', glassImage: '', glassFog: 'normal', annotFont: '', excludedFolders: ['Templates', 'templates'] };
 const RANGES = [30, 90, 180, 365];
 // Figure and table caption sizes; body class aw-caption-<id>, defined in figures.css.
@@ -53,7 +54,7 @@ function pruneRecords(data, date) {
   return changed;
 }
 function emptyData(now = new Date()) {
-  return { version: 2, started: dayKey(now), activityStarted: dayKey(now), settings: {...DEFAULT_SETTINGS}, days: dict(), records: dict() };
+  return { version: 2, started: dayKey(now), activityStarted: dayKey(now), settings: {...DEFAULT_SETTINGS}, days: dict(), records: dict(), library: Library.emptyLibrary() };
 }
 function validCount(n) { return Number.isSafeInteger(n) && n >= 0; }
 function loadState(raw, now = new Date()) {
@@ -93,6 +94,8 @@ function loadState(raw, now = new Date()) {
     if ((r.taskNet !== undefined && !Number.isSafeInteger(r.taskNet)) || (r.taskPeak !== undefined && !validCount(r.taskPeak))) throw Error('任务基线损坏');
     if (r.day === dayKey(now)) d.records[path] = {...r};
   }
+  // Ratings and tags of the image library: optional, and anything malformed is dropped.
+  d.library = Library.loadLibrary(raw.library);
   return d;
 }
 function isExcluded(path, folders) {
@@ -215,6 +218,7 @@ function renamePath(data, oldPath, newPath) {
     const next = renamed(path); if (!next) continue;
     day.files[next] = (own(day.files,next) ? day.files[next] : 0)+n; delete day.files[path];
   }
+  if (data.library) Library.renameInLibrary(data.library, oldPath, newPath);
 }
 function recentFiles(files, settings) {
   return files.filter(f=>!isExcluded(f.path,settings.excludedFolders)).sort((a,b)=>b.stat.mtime-a.stat.mtime || a.path.localeCompare(b.path)).slice(0,settings.recentLimit);
