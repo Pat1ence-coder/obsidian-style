@@ -43,7 +43,7 @@ function editorExtension(){
     eq(other){return other.target===this.target&&sameSpec(other.spec,this.spec);}
     toDOM(view){
       const doc=view.dom.ownerDocument,el=doc.createElement('span');
-      el.className=targetClasses(this.spec).join(' ');tint(el,this.spec);
+      el.className=targetClasses(this.spec,this.target).join(' ');tint(el,this.spec);
       el.appendChild(doc.createTextNode(this.target));el.appendChild(noteNode(doc,this.spec));
       return el;
     }
@@ -145,7 +145,7 @@ class Annotations extends Component{
       const found=parseAnnotation(next.textContent);
       if(!found)continue;
       next.textContent=found.rest;
-      for(const name of targetClasses(found))mark.classList.add(name);
+      for(const name of targetClasses(found,mark.textContent))mark.classList.add(name);
       tint(mark,found);
       const note=noteNode(el.ownerDocument,found),where=placement(found);
       if(where==='pin')mark.appendChild(note);

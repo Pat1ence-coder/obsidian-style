@@ -86,7 +86,7 @@ const toHTML=node=>{
 };
 const annotate=source=>source.replace(/==([^=]+)==(\{[^{}]+\})/g,(_m,target,braces)=>{
   const spec=Annot.parseAnnotation(braces),where=Annot.placement(spec),note=toHTML(Annot.noteTree(spec));
-  const mark=`<mark class="${Annot.targetClasses(spec).join(' ')}">${esc(target)}${where==='pin'?note:''}</mark>`;
+  const mark=`<mark class="${Annot.targetClasses(spec,target).join(' ')}">${esc(target)}${where==='pin'?note:''}</mark>`;
   return where==='before'?note+mark:where==='after'?mark+note:mark;
 });
 const note=`<div class="inline-title">Attention 机制与梯度推导</div>

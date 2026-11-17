@@ -777,6 +777,8 @@ body .aw-annot-target.aw-annot-plain,
 body .markdown-rendered mark.aw-annot-target.aw-annot-plain {background-color: transparent;}
 body .cm-highlight:has(.aw-annot-target) {background-color: transparent;}
 .aw-annot-target.aw-annot-holds {position: relative;}
+/* Short targets of pinned notes stay on one line, so the note's anchor box is one box. */
+.aw-annot-target.aw-annot-keep {white-space: nowrap;}
 
 /* The note. */
 .aw-annot {

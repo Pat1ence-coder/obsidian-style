@@ -33,7 +33,7 @@ python3 -B scripts/install.py --target /path/to/vault/.obsidian/plugins/algorith
 - `src/`：插件功能、共享样式与必要图片资源。
 - `tests/`：使用模拟宿主 API 的项目测试。
 - `scripts/`：构建、安装、静态预览及预览库准备工具。
-- `examples/notes/`：排版验收笔记与图片；`examples/templates/`：笔记模板。
+- `examples/notes/`：示例笔记与图片，覆盖全部可在笔记里展示的写法；「06-功能导览」列出需要在 Obsidian 里操作的功能。`examples/templates/`：笔记模板。
 - `docs/`：使用说明、样式规范和开发约定。
 - `dist/`：仅提交三个插件运行文件和一个 CSS snippet，供直接下载安装。源码变更后重新构建并一并提交对应产物。
 - `sandbox-vault/`：本地预览库；`artifacts/`：本地产物与历史归档。这两个目录不提交 Git。

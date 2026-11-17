@@ -1931,7 +1931,7 @@ function editorExtension(){
     eq(other){return other.target===this.target&&sameSpec(other.spec,this.spec);}
     toDOM(view){
       const doc=view.dom.ownerDocument,el=doc.createElement('span');
-      el.className=targetClasses(this.spec).join(' ');tint(el,this.spec);
+      el.className=targetClasses(this.spec,this.target).join(' ');tint(el,this.spec);
       el.appendChild(doc.createTextNode(this.target));el.appendChild(noteNode(doc,this.spec));
       return el;
     }
@@ -2033,7 +2033,7 @@ class Annotations extends Component{
       const found=parseAnnotation(next.textContent);
       if(!found)continue;
       next.textContent=found.rest;
-      for(const name of targetClasses(found))mark.classList.add(name);
+      for(const name of targetClasses(found,mark.textContent))mark.classList.add(name);
       tint(mark,found);
       const note=noteNode(el.ownerDocument,found),where=placement(found);
       if(where==='pin')mark.appendChild(note);
@@ -2180,8 +2180,13 @@ function placement(spec){
   return 'pin';
 }
 // Classes for the highlighted target. A pinned note is laid out against the target's box.
-function targetClasses(spec){
-  return ['aw-annot-target','aw-annot-c-'+spec.color].concat(spec.highlight?[]:['aw-annot-plain'],placement(spec)==='pin'?['aw-annot-holds']:[]);
+// A pinned note hangs off its target's box, so a short target is kept on one line (it wraps
+// to the next line as a whole): split over two lines, its box would span both and the note
+// would drift. Targets longer than KEEP characters may still wrap, so they never overflow.
+const KEEP=24;
+function targetClasses(spec,target){
+  const pin=placement(spec)==='pin',keep=pin&&target!=null&&[...String(target)].length<=KEEP;
+  return ['aw-annot-target','aw-annot-c-'+spec.color].concat(spec.highlight?[]:['aw-annot-plain'],pin?['aw-annot-holds']:[],keep?['aw-annot-keep']:[]);
 }
 // The note as a plain tree ({tag, cls, attrs, text, children, svg}); the plugin turns it into
 // DOM and the preview script into HTML, so both draw the same thing.
@@ -2195,10 +2200,12 @@ function noteTree(spec){
   let children;
   if(where==='pin')children=[{tag:'span',cls:'aw-annot-room',attrs:{'aria-hidden':'true'}},{tag:'span',cls:'aw-annot-pin',children:[leader,text]}];
   else children=where==='before'?[text,leader]:[leader,text];
-  return {tag:'span',cls:['aw-annot','aw-annot-'+spec.dir,'aw-annot-'+spec.line,'aw-annot-c-'+spec.color,where==='pin'?'aw-annot-pinned':'aw-annot-flow'].join(' '),
+  // A pinned note starts with a word joiner (U+2060): no line break between the target's last
+  // character and the note's room block, so the room stays on the target's line.
+  return {tag:'span',text:where==='pin'?'\u2060':null,cls:['aw-annot','aw-annot-'+spec.dir,'aw-annot-'+spec.line,'aw-annot-c-'+spec.color,where==='pin'?'aw-annot-pinned':'aw-annot-flow'].join(' '),
     attrs:{title:'标注：'+spec.note},color:spec.color==='custom'?spec.custom:null,children};
 }
-module.exports={parseAnnotation,findAnnotations,formatAnnotation,parseBody,placement,targetClasses,noteTree,DIRECTIONS,COLORS,LINES,DEFAULTS,MAX_NOTE};
+module.exports={parseAnnotation,findAnnotations,formatAnnotation,parseBody,placement,targetClasses,noteTree,DIRECTIONS,COLORS,LINES,DEFAULTS,MAX_NOTE,KEEP};
 
 },
 "features/scroll-ruler.js":(module,exports,__awRequire)=>{
