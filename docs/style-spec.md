@@ -61,6 +61,10 @@ glass.css 中的规则全部写在 @media screen 中，打印与 PDF 不受影�
 - 字体：正文、标题与界面使用等宽字体栈，行高 1.85，字距 .01em。
 - 暖橙色 --aw-warm（浅色 204,110,48；深色 238,154,98）用于行内代码、高亮与刻度尺圆点；链接与标签等界面强调用主色亮蓝。
 - 表格：分离边框，14px 圆角白色底板（elevation 1），表头为凹陷灰底（--ds-inset-bg）；academia 三线表保持不变。
+- 实时预览中的表格与阅读视图一致。
+  - Obsidian 的表格部件本身带 .markdown-rendered，却位于 .markdown-source-view 之内，所以白色底板用 `:not(.academia, .academia *)` 从祖先上排除 academia。
+  - 单元格间距是表格上的变量 --aw-cell-pad（默认 10px 14px，experiment 8px 12px，白色底板 12px 16px）：阅读视图加在单元格上；实时预览的单元格本身无内边距，加在 .table-cell-wrapper 上。
+  - 实时预览的 .table-wrapper 默认按内容收缩（fit-content），除未加 wideTable 的 academia 外都设为整行宽，与阅读视图的满宽表格相同。
 - 代码块为凹陷底（--ds-code-bg 与内阴影）；图片放在 12px 内边距、14px 圆角的白色卡片上（elevation 2）。
 
 看板（workbench-glass.css，仅插件样式）：

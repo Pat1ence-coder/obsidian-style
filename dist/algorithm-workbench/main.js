@@ -14,6 +14,7 @@ const {ScrollRuler}=__awRequire("features/scroll-ruler.js");
 const {Decor}=__awRequire("features/decor.js");
 const {WindowGlass}=__awRequire("features/window-glass.js");
 const {Library}=__awRequire("features/library.js");
+const {MarkdownPaste}=__awRequire("features/markdown-paste.js");
 // aw-palette-* and aw-style-* are listed so classes left by earlier versions are cleaned up.
 const APPEARANCE=/^aw-(?:palette|style|caption|glass-fog)-|^aw-(?:figure-tools-off|glass)$/;
 
@@ -23,6 +24,7 @@ class WorkbenchSettings extends PluginSettingTab {
     this.containerEl.replaceChildren(); const s=this.plugin.data.settings;
     this.containerEl.createEl('h3',{text:'文件与新建'});
     this.plugin.folderNotes.displaySettings(this.containerEl);
+    this.plugin.markdownPaste.displaySettings(this.containerEl,Setting);
     this.containerEl.createEl('h3',{text:'图片与附件'});
     this.plugin.screenshotNames.displaySettings(this.containerEl);
     this.plugin.figureTools.displaySettings(this.containerEl);
@@ -56,6 +58,7 @@ class WorkbenchPlugin extends Plugin {
     try {this.data=Core.loadState(await this.loadData());}
     catch(error){new Notice('工作台统计数据无法读取，已停止加载，原文件未改动。请先备份 data.json。',10000);throw error;}
     this.folderNotes=this.addChild(new FolderNotes(this));
+    this.markdownPaste=this.addChild(new MarkdownPaste(this));
     this.figures=this.addChild(new Figures(this));
     this.figureTools=this.addChild(new FigureTools(this));
     this.screenshotNames=this.addChild(new ScreenshotNames(this));
@@ -210,7 +213,7 @@ module.exports=WorkbenchPlugin;
 "core.js":(module,exports,__awRequire)=>{
 'use strict';
 const Library = __awRequire("features/library-data.js");
-const DEFAULT_SETTINGS = { nameScreenshots: true, folderNotes: true, openOnStartup: true, tracking: true, recentLimit: 8, range: 90, metric: 'score', captionSize: 'normal', figureTools: true, scrollRuler: true, rulerHeadings: true, decorImage: '', glass: true, glassFog: 'normal', annotFont: '', excludedFolders: ['Templates', 'templates'] };
+const DEFAULT_SETTINGS = { nameScreenshots: true, folderNotes: true, openOnStartup: true, tracking: true, recentLimit: 8, range: 90, metric: 'score', captionSize: 'normal', figureTools: true, scrollRuler: true, rulerHeadings: true, pasteSource: true, decorImage: '', glass: true, glassFog: 'normal', annotFont: '', excludedFolders: ['Templates', 'templates'] };
 const RANGES = [30, 90, 180, 365];
 // Figure and table caption sizes; body class aw-caption-<id>, defined in figures.css.
 const CAPTION_SIZES = [{id:'small', label:'小'}, {id:'normal', label:'标准'}, {id:'large', label:'大'}];
@@ -275,7 +278,7 @@ function loadState(raw, now = new Date()) {
   const d = emptyData(now); d.started = raw.started;
   if (raw.version === 2) d.activityStarted = raw.activityStarted;
   const s = raw.settings || {};
-  for (const name of ['openOnStartup', 'tracking', 'folderNotes', 'nameScreenshots', 'figureTools', 'scrollRuler', 'rulerHeadings', 'glass']) if (typeof s[name] === 'boolean') d.settings[name] = s[name];
+  for (const name of ['openOnStartup', 'tracking', 'folderNotes', 'nameScreenshots', 'figureTools', 'scrollRuler', 'rulerHeadings', 'glass', 'pasteSource']) if (typeof s[name] === 'boolean') d.settings[name] = s[name];
   if (RANGES.includes(s.range)) d.settings.range = s.range;
   if (METRICS.some(m => m.key === s.metric)) d.settings.metric = s.metric;
   if (CAPTION_SIZES.some(x => x.id === s.captionSize)) d.settings.captionSize = s.captionSize;
@@ -2915,6 +2918,51 @@ class TagsModal extends Modal{
 }
 
 module.exports={Library,LibraryView,TagsModal,cleanFilter,VIEW};
+
+},
+"features/markdown-paste.js":(module,exports,__awRequire)=>{
+'use strict';
+const {Component}=require('obsidian');
+
+// Pasting Markdown source. Code editors such as VS Code put the copied text on the clipboard
+// twice: as plain text and as HTML, one <div> per line. Obsidian prefers the HTML and converts
+// it to Markdown ("Auto convert HTML"), so every line becomes its own paragraph: a table falls
+// apart into rows separated by blank lines. When the clipboard is clearly source text, the
+// plain text is pasted as it is instead.
+
+// A Markdown table: a row with a pipe, then the delimiter row (| --- | :-: | ...).
+const TABLE=/^[ \t]*\|?[^\n]*\|[^\n]*\r?\n[ \t]*\|?[ \t]*:?-{3,}:?[ \t]*(?:\|[ \t]*:?-{3,}:?[ \t]*)*\|?[ \t]*$/m;
+// Code editors mark their HTML as preformatted on the outer element.
+const PREFORMATTED=/white-space:\s*pre\b/i;
+
+// The text to paste instead of Obsidian's HTML conversion, or null to leave the paste alone.
+function sourceText(html,text){
+  if(!html||!text)return null;
+  if(!PREFORMATTED.test(html)&&!TABLE.test(text))return null;
+  return text.replace(/\r\n?/g,'\n');
+}
+
+class MarkdownPaste extends Component{
+  constructor(plugin){super();this.plugin=plugin;this.app=plugin.app;}
+  onload(){this.registerEvent(this.app.workspace.on('editor-paste',(evt,editor)=>this.paste(evt,editor)));}
+  paste(evt,editor){
+    if(evt.defaultPrevented||!this.plugin.data?.settings?.pasteSource)return;
+    const data=evt.clipboardData;
+    // Files (pasted images) and Obsidian's own Markdown flavour keep their usual handling.
+    if(!data||data.files?.length||data.getData('text/markdown'))return;
+    const text=sourceText(data.getData('text/html'),data.getData('text/plain'));
+    if(text==null)return;
+    evt.preventDefault();
+    editor.replaceSelection(text);
+  }
+  displaySettings(container,Setting){
+    const s=this.plugin.data.settings;
+    new Setting(container).setName('粘贴 Markdown 源码保持原样')
+      .setDesc('从 VS Code 等代码编辑器复制的内容，或带 Markdown 表格的文字，粘贴时按原文插入，不经过 Obsidian 的「自动转换 HTML」，表格不会被拆成一行一段。其他粘贴不受影响；需要临时按原文粘贴任何内容时，可用 ⌘⇧V（Windows 为 Ctrl+Shift+V）。')
+      .addToggle(t=>t.setValue(!!s.pasteSource).onChange(v=>{s.pasteSource=v;this.plugin.changed();}));
+  }
+}
+module.exports={MarkdownPaste,sourceText};
 
 }};
 const __awCache=Object.create(null);

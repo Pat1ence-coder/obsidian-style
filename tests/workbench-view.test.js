@@ -272,3 +272,18 @@ test('small fixes stay: search text clears its buttons, one divider on glass, no
   // Newer Chromium ignores ::-webkit-scrollbar once scrollbar-color is set, so the standard property must be there.
   assert.match(plugin,/\.aw-has-ruler :is\(\.cm-scroller,\.markdown-preview-view\) \{scrollbar-width: none;\}/);
 });
+test('tables look the same in Live Preview and reading view: academia is excluded through ancestors, one cell spacing, full width',()=>{
+  const css=fs.readFileSync(path.join(path.resolve(__dirname,'..'),'dist/snippets/style.css'),'utf8');
+  // Live Preview's table widget is itself .markdown-rendered inside the note's .markdown-source-view.
+  const slab=css.match(/:is\(\.markdown-rendered,\.markdown-source-view\):not\([^)]*\) table/g);
+  assert.equal(slab.length,3);for(const s of slab)assert.match(s,/:not\(\.academia, \.academia \*\)/);
+  assert.doesNotMatch(css,/:not\(\.academia\) table/);
+  // One cell spacing variable: on the cell in reading view, on .table-cell-wrapper in Live Preview.
+  assert.match(css,/:is\(\.markdown-rendered,\.markdown-source-view\) table \{--aw-cell-pad:10px 14px;\}/);
+  assert.match(css,/\.experiment table \{--aw-cell-pad:8px 12px;\}/);
+  assert.match(css,/table :is\(th,td\) \{\n[^}]*padding:var\(--aw-cell-pad\);/);
+  assert.doesNotMatch(css,/:not\(\.academia, \.academia \*\) table :is\(th,td\) \{[^}]*padding/,'the slab sets the variable, not the padding');
+  assert.match(css,/body \.markdown-source-view\.mod-cm6 \.cm-table-widget :is\(th,td\) > \.table-cell-wrapper \{padding:var\(--aw-cell-pad\);\}/);
+  // Live Preview's .table-wrapper is fit-content; it spans the line wherever reading view is full width.
+  assert.match(css,/body \.markdown-source-view\.mod-cm6:is\(:not\(\.academia\),\.wideTable\) \.cm-table-widget \.table-wrapper \{width:100%;\}/);
+});

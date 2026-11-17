@@ -12,6 +12,7 @@ const {ScrollRuler}=require('./features/scroll-ruler');
 const {Decor}=require('./features/decor');
 const {WindowGlass}=require('./features/window-glass');
 const {Library}=require('./features/library');
+const {MarkdownPaste}=require('./features/markdown-paste');
 // aw-palette-* and aw-style-* are listed so classes left by earlier versions are cleaned up.
 const APPEARANCE=/^aw-(?:palette|style|caption|glass-fog)-|^aw-(?:figure-tools-off|glass)$/;
 
@@ -21,6 +22,7 @@ class WorkbenchSettings extends PluginSettingTab {
     this.containerEl.replaceChildren(); const s=this.plugin.data.settings;
     this.containerEl.createEl('h3',{text:'文件与新建'});
     this.plugin.folderNotes.displaySettings(this.containerEl);
+    this.plugin.markdownPaste.displaySettings(this.containerEl,Setting);
     this.containerEl.createEl('h3',{text:'图片与附件'});
     this.plugin.screenshotNames.displaySettings(this.containerEl);
     this.plugin.figureTools.displaySettings(this.containerEl);
@@ -54,6 +56,7 @@ class WorkbenchPlugin extends Plugin {
     try {this.data=Core.loadState(await this.loadData());}
     catch(error){new Notice('工作台统计数据无法读取，已停止加载，原文件未改动。请先备份 data.json。',10000);throw error;}
     this.folderNotes=this.addChild(new FolderNotes(this));
+    this.markdownPaste=this.addChild(new MarkdownPaste(this));
     this.figures=this.addChild(new Figures(this));
     this.figureTools=this.addChild(new FigureTools(this));
     this.screenshotNames=this.addChild(new ScreenshotNames(this));
