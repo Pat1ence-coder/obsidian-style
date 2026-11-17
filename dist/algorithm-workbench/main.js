@@ -2466,9 +2466,9 @@ class WindowGlass extends Component{
   }
   displaySettings(container,Setting){
     const s=this.plugin.data.settings,apply=()=>{this.plugin.applyAppearanceEverywhere();this.plugin.changed();};
-    new Setting(container).setName('窗口毛玻璃').setDesc('整个窗口铺一层类纸的磨砂玻璃：浅灰的纸面带极淡的粉杏与灰蓝云纹和细颗粒，侧栏和正文连成同一层玻璃，正文略亮，白色卡片浮在上面。不需要任何图片，也不需要打开 Obsidian 的「半透明窗口」（它在 macOS 上会产生重影）。关闭则保持纯白外观。')
+    new Setting(container).setName('窗口毛玻璃').setDesc('整个窗口铺一层类纸的磨砂玻璃：浅灰的纸面带柔和的明暗云纹和细颗粒，不带颜色，侧栏和正文连成同一层玻璃，正文略亮，白色卡片浮在上面。不需要任何图片，也不需要打开 Obsidian 的「半透明窗口」（它在 macOS 上会产生重影）。关闭则保持纯白外观。')
       .addToggle(t=>t.setValue(!!s.glass).onChange(v=>{s.glass=v;apply();}));
-    new Setting(container).setName('毛玻璃雾的浓度').setDesc('纸面上那层白雾（深色模式为暗雾）的厚度：越浓越亮越素净，越淡纸纹和颜色越明显。')
+    new Setting(container).setName('毛玻璃雾的浓度').setDesc('纸面上那层白雾（深色模式为暗雾）的厚度：越浓越亮越素净，越淡纸纹越明显。')
       .addDropdown(d=>{
         for(const f of Core.GLASS_FOGS)d.addOption(f.id,f.label);
         d.setValue(s.glassFog||'normal').onChange(v=>{s.glassFog=v;apply();});
