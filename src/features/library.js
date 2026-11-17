@@ -57,9 +57,9 @@ class Library extends Component{
   items(){
     if(!this.cache){
       this.links??=L.references(this.app.metadataCache.resolvedLinks);
-      // The window glass and the corner picture count as used too.
-      const used=new Set(this.links.used),s=this.plugin.data.settings;
-      for(const path of [s.glassImage,s.decorImage])if(path)used.add(path);
+      // The corner picture counts as used too.
+      const used=new Set(this.links.used),decor=this.plugin.data.settings.decorImage;
+      if(decor)used.add(decor);
       this.cache=L.makeItems(this.app.vault.getFiles(),{lib:this.plugin.data.library,used,dims:this.dims});
     }
     return this.cache;

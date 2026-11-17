@@ -229,18 +229,35 @@ test('the view icon is probed once',()=>{
   f.view.render();f.view.getIcon();f.view.getIcon();f.view.render();
   assert.equal(probes,1);
 });
-test('window glass: one colourless sheet of glass over the chosen picture, only when the plugin asks',()=>{
+test('window glass: frosted glass over a drawn sheet of paper, only when the plugin asks',()=>{
   const root=path.resolve(__dirname,'..'),css=fs.readFileSync(path.join(root,'dist/snippets/style.css'),'utf8');
   const src=fs.readFileSync(path.join(root,'src/styles/window-glass.css'),'utf8').replace(/\/\*[\s\S]*?\*\//g,'');
-  // The theme never tints the glass: every colour it lays over the picture is a neutral grey.
+  // The glass layers never tint: fog, wash, divider, field and hover are neutral greys.
   const colours=src.match(/rgba\([^)]*\)/g);
   assert.ok(colours.length>=12);
   for(const c of colours){const [r,g,b]=c.slice(5,-1).split(',').map(Number);assert.ok(r===g&&g===b,`${c} is neutral`);}
-  assert.doesNotMatch(src,/#[0-9a-f]{3,6}\b|gradient|url\(/i,'no tint, no built-in wallpaper: the picture comes from the user');
+  assert.doesNotMatch(src,/#[0-9a-f]{3,6}\b|gradient|base64|\.(png|jpe?g|webp|avif)\b/i,'no tint, no wallpaper, no picture file');
+  // The paper is fractal noise read as colour. Its colour matrix keeps it a pale grey whose
+  // chroma stays tiny: hue weights of the r-g difference and of alpha, against lightness.
+  const papers=[...src.matchAll(/--ds-glass-paper-texture: (url\("data:image\/svg\+xml;utf8,<svg [^\n]*<\/svg>"\));\n/g)].map(m=>m[1]);
+  assert.equal(papers.length,2,'a light and a dark paper, each one intact declaration');
+  for(const [i,paper] of papers.entries()){
+    assert.match(paper,/<feTurbulence type='fractalNoise'[^>]*stitchTiles='stitch'\/>/,'tiles without seams');
+    const m=paper.match(/<feColorMatrix values='([^']*)'/)[1].split(' ').map(Number);
+    const row=k=>m.slice(k*5,k*5+5),mid=k=>row(k)[2]*.5+row(k)[3]*.5+row(k)[4]+(row(k)[0]+row(k)[1])*.5;
+    assert.deepEqual(m.slice(15),[0,0,0,0,1],'opaque');
+    for(let k=0;k<3;k++)assert.ok(Math.abs(row(k)[0]+row(k)[1])<1e-9,'the hue axis is a difference: no channel drifts on average');
+    const means=[0,1,2].map(mid);
+    assert.ok(Math.max(...means)-Math.min(...means)<.01,`paper ${i} is neutral on average: ${means}`);
+    assert.ok(i===0?means[0]>.8&&means[0]<.86:means[0]>.1&&means[0]<.16,'a pale grey, or a deep one in dark mode');
+    const spread=Math.max(...[0,1,2].map(k=>Math.abs(row(k)[0])))-Math.min(...[0,1,2].map(k=>-Math.abs(row(k)[0])));
+    assert.ok(spread<=.25,'the faint hue stays faint');
+  }
+  assert.match(css,/body\.aw-glass \.app-container::before \{background: var\(--ds-glass-paper-texture\) 0 0 \/ var\(--ds-glass-paper-tile\) var\(--ds-glass-paper-tile\) repeat;\}/);
+  assert.match(css,/body\.aw-glass \.app-container::after \{background: var\(--ds-glass-grain\) 0 0 \/ 180px 180px repeat, var\(--ds-glass-fog\);\}/);
   // Every rule hangs off the plugin's body class, so without a picture the opaque white look stays.
   for(const rule of src.match(/^[^@{}\n][^{}]*\{/gm))assert.match(rule,/body(\.theme-dark)?\.aw-glass/,rule);
   assert.doesNotMatch(css,/is-translucent/,"Obsidian's own translucent window is left alone (it ghosts on macOS)");
-  assert.match(css,/body\.aw-glass \.app-container::before \{[^}]*background: var\(--aw-glass-image\) center \/ cover no-repeat;[^}]*filter: blur\(var\(--ds-glass-blur\)\)/);
   assert.match(css,/body\.aw-glass \.workspace-split\.mod-root \.workspace-leaf-content \{[^}]*background: var\(--ds-glass-wash\);[^}]*box-shadow: none;/);
   assert.match(css,/@media \(prefers-reduced-transparency: reduce\)/);
   assert.ok(css.indexOf('Source: src/styles/window-glass.css')<css.indexOf('Source: src/styles/print.css'),'print rules still load last');

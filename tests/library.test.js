@@ -99,14 +99,14 @@ function loadLibrary(){
   vm.runInNewContext(src,{module:mod,require:n=>n==='obsidian'?obsidian:n==='./library-data'?L:null,window:{setTimeout:fn=>{timers.push(fn);return timers.length;},clearTimeout(){}},console});
   const handlers={},on=(name,fn)=>{(handlers[name]??=[]).push(fn);return {};};
   const files=[new TFile('assets/a.png',{mtime:2}),new TFile('assets/b.jpg',{mtime:3}),new TFile('wall.jpg'),new TFile('note.md')];
-  const plugin={data:{settings:{glassImage:'wall.jpg',decorImage:''},library:L.loadLibrary({ratings:{'assets/a.png':3}})},
+  const plugin={data:{settings:{glass:true,decorImage:'wall.jpg'},library:L.loadLibrary({ratings:{'assets/a.png':3}})},
     saved:0,changed(){this.saved++;},registerView(){},addRibbonIcon(){},addCommand(){},
     app:{vault:{on,getFiles:()=>files,getAbstractFileByPath:p=>files.find(f=>f.path===p)||null,getResourcePath:f=>'app://'+f.path},
       metadataCache:{on,resolvedLinks:{'note.md':{'assets/a.png':1}}},workspace:{getLeavesOfType:()=>[]}}};
   const lib=new mod.exports.Library(plugin);lib.onload();
   return {lib,plugin,handlers,files,TFile,exports:mod.exports};
 }
-test('the index: images with ratings, which are used (the window glass picture counts), and their notes',()=>{
+test('the index: images with ratings, which are used (the corner picture counts), and their notes',()=>{
   const {lib,plugin,handlers,TFile}=loadLibrary();
   assert.deepEqual(lib.items().map(i=>[i.path,i.used,i.rating]),[['assets/a.png',true,3],['assets/b.jpg',false,0],['wall.jpg',true,0]]);
   assert.deepEqual(lib.refsOf('assets/a.png'),['note.md']);assert.deepEqual(Array.from(lib.refsOf('assets/b.jpg')),[]);

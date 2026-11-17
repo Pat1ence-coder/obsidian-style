@@ -126,17 +126,10 @@ if(/<script\b/i.test(html))throw Error('Static preview unexpectedly contains a s
 fs.mkdirSync(out,{recursive:true});
 fs.writeFileSync(path.join(out,'theme-static.html'),html);
 console.log('Script-free theme preview written:',path.join(out,'theme-static.html'));
-// Frosted window variants (窗口毛玻璃). The glass is drawn by the theme itself, so these pages
-// show it as Obsidian will; only the picture is a stand-in. PREVIEW ONLY: the gradients below
-// play the user's wallpaper and are not part of the theme. Two different pictures show that
-// the glass takes its colour from the picture.
-const PICTURES={
-  cool:'radial-gradient(60% 70% at 12% 92%,#2f8f45,transparent 70%),radial-gradient(55% 80% at 96% 40%,#0d5fd0,transparent 70%),linear-gradient(165deg,#a8d8f0 0%,#d9eef0 45%,#f1e7a6 70%,#62b46e 100%)',
-  warm:'radial-gradient(60% 70% at 10% 90%,#c2410c,transparent 70%),radial-gradient(55% 80% at 95% 35%,#7c3aed,transparent 70%),linear-gradient(165deg,#fde68a 0%,#fdba74 45%,#f472b6 75%,#7c2d12 100%)',
-  night:'radial-gradient(60% 70% at 12% 92%,#1e3a8a,transparent 70%),radial-gradient(55% 80% at 95% 35%,#6d28d9,transparent 70%),linear-gradient(165deg,#0f172a 0%,#1e293b 50%,#312e81 100%)',
-};
-for(const [file,picture,theme] of [['theme-glass.html','cool','theme-light'],['theme-glass-warm.html','warm','theme-light'],['theme-glass-dark.html','night','theme-dark']]){
-  const page=html.replace('<body class="theme-light">',`<body class="${theme} aw-glass aw-glass-fog-normal" style="--aw-glass-image:${PICTURES[picture]}">`);
+// Frosted paper window variants (窗口毛玻璃). The paper and the glass are drawn by the theme
+// itself, so these pages show exactly what Obsidian will: no stand-in picture.
+for(const [file,theme] of [['theme-glass.html','theme-light'],['theme-glass-dark.html','theme-dark']]){
+  const page=html.replace('<body class="theme-light">',`<body class="${theme} aw-glass aw-glass-fog-normal">`);
   fs.writeFileSync(checkedPath(root,path.join(out,file)),page);
 }
 console.log('Frosted window previews written.');

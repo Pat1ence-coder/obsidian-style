@@ -173,7 +173,7 @@ test('appearance is a body class: applied on load, stale palette and style class
   const {plugin,classes}=fixture();classes.add('aw-palette-sand');classes.add('aw-style-card');
   plugin.initialData={...Core.emptyData(),settings:{...Core.DEFAULT_SETTINGS,palette:'celadon'}};
   await plugin.onload();
-  assert.deepEqual([...classes].sort(),['aw-caption-normal','theme-light']);
+  assert.deepEqual([...classes].sort(),['aw-caption-normal','aw-glass','aw-glass-fog-normal','theme-light']);
   assert.equal(plugin.data.settings.palette,undefined,'the palette setting is gone');assert.equal(plugin.commands['cycle-palette'],undefined);
   assert.equal(plugin.commands['cycle-style'],undefined,'one interface style, no switch');assert.equal(plugin.setStyle,undefined);
   plugin.onunload();assert.deepEqual([...classes],['theme-light']);await plugin.saveQueue;
@@ -187,7 +187,7 @@ test('popout windows already open, or restored with the layout, follow the appea
   leaves.push({view:{containerEl:{ownerDocument:restored}}});workspace.ready();
   assert.ok(restored.classes.has('aw-caption-normal'),'popouts restored with the layout are covered');
   plugin.setCaptionSize('large');
-  for(const doc of [existing,restored])assert.deepEqual([...doc.classes].sort(),['aw-caption-large','theme-light']);
+  for(const doc of [existing,restored])assert.deepEqual([...doc.classes].sort(),['aw-caption-large','aw-glass','aw-glass-fog-normal','theme-light']);
   plugin.onunload();for(const doc of [existing,restored])assert.deepEqual([...doc.classes],['theme-light']);
   await plugin.saveQueue;
 });
@@ -213,44 +213,29 @@ test('ribbon and command use the 写作工作台 name and icon',async()=>{
   plugin.onunload();await plugin.saveQueue;
 });
 
-test('window glass: a vault picture becomes the window glass in every window, and leaves cleanly',async()=>{
-  const {plugin,classes,fakeDoc,leaves,workspace,handlers,TFile}=fixture();
+test('window glass: on by default without any picture, in every window, switchable, and leaves cleanly',async()=>{
+  const {plugin,classes,fakeDoc,leaves,workspace}=fixture();
   const main=workspace.containerEl.ownerDocument,popout=fakeDoc();leaves.push({view:{containerEl:{ownerDocument:popout}}});
-  const picture=new TFile('assets/wall paper "1".jpg');picture.extension='jpg';
-  const files=new Map([[picture.path,picture]]);
-  plugin.app.vault.getAbstractFileByPath=p=>files.get(p)??null;
-  plugin.app.vault.getResourcePath=f=>'app://local/vault/'+f.path+'?1';
   await plugin.onload();plugin.data.settings.openOnStartup=false;
-  assert.ok(!classes.has('aw-glass'),'no picture, no glass: the white look stays');
-  assert.equal(main.props.size,0);
-  plugin.data.settings.glassImage=picture.path;plugin.applyAppearanceEverywhere();
-  for(const doc of [main,popout]){
-    assert.ok(doc.classes.has('aw-glass')&&doc.classes.has('aw-glass-fog-normal'));
-    assert.equal(doc.props.get('--aw-glass-image'),'url("app://local/vault/assets/wall paper \\"1\\".jpg?1")','the path is quoted inside url()');
-  }
+  assert.equal(plugin.data.settings.glass,true);assert.equal('glassImage' in plugin.data.settings,false,'no picture setting any more');
+  plugin.applyAppearanceEverywhere();
+  for(const doc of [main,popout])assert.ok(doc.classes.has('aw-glass')&&doc.classes.has('aw-glass-fog-normal'));
+  assert.equal(main.props.size,0,'the paper is drawn by the theme: no picture is passed in');
   plugin.data.settings.glassFog='strong';plugin.applyAppearanceEverywhere();
   assert.ok(classes.has('aw-glass-fog-strong')&&!classes.has('aw-glass-fog-normal'));
-  // Renaming the picture keeps the glass; deleting it falls back to white.
-  const moved=new TFile('壁纸/desk.jpg');moved.extension='jpg';files.delete(picture.path);files.set(moved.path,moved);
-  for(const fn of handlers.rename)fn(moved,picture.path);
-  assert.equal(plugin.data.settings.glassImage,'壁纸/desk.jpg');assert.match(main.props.get('--aw-glass-image'),/壁纸\/desk\.jpg/);
-  files.delete(moved.path);for(const fn of handlers.delete)fn(moved);
-  assert.ok(!classes.has('aw-glass'));assert.equal(main.props.has('--aw-glass-image'),false);
-  // A note is not a picture.
-  const note=new TFile('a.md');files.set(note.path,note);plugin.data.settings.glassImage='a.md';plugin.applyAppearanceEverywhere();
-  assert.ok(!classes.has('aw-glass'));
-  files.set(moved.path,moved);plugin.data.settings.glassImage=moved.path;plugin.applyAppearanceEverywhere();assert.ok(popout.classes.has('aw-glass'));
+  plugin.data.settings.glassFog='bogus';plugin.applyAppearanceEverywhere();assert.ok(classes.has('aw-glass-fog-normal'));
+  // Switched off: the white look, in every window.
+  plugin.data.settings.glass=false;plugin.applyAppearanceEverywhere();
+  for(const doc of [main,popout])assert.ok(![...doc.classes].some(c=>c.startsWith('aw-glass')));
+  plugin.data.settings.glass=true;plugin.applyAppearanceEverywhere();assert.ok(popout.classes.has('aw-glass'));
   plugin.onunload();
   for(const doc of [main,popout]){assert.deepEqual([...doc.classes],['theme-light']);assert.equal(doc.props.size,0);}
   await plugin.saveQueue;
 });
 
 test('enabling the plugin in a running app (layout already ready) loads cleanly, glass included',async()=>{
-  const {plugin,classes,notices,TFile}=fixture({layoutReady:true});
-  const picture=new TFile('assets/wall.jpg');picture.extension='jpg';
-  plugin.app.vault.getAbstractFileByPath=p=>p===picture.path?picture:null;
-  plugin.app.vault.getResourcePath=f=>'app://local/'+f.path;
-  plugin.initialData={...Core.emptyData(),settings:{...Core.DEFAULT_SETTINGS,glassImage:picture.path,openOnStartup:false}};
+  const {plugin,classes,notices}=fixture({layoutReady:true});
+  plugin.initialData={...Core.emptyData(),settings:{...Core.DEFAULT_SETTINGS,openOnStartup:false}};
   await plugin.onload();
   assert.deepEqual(notices,[]);
   assert.ok(classes.has('aw-caption-normal')&&classes.has('aw-glass'));

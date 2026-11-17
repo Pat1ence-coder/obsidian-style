@@ -178,9 +178,6 @@ class WorkbenchPlugin extends Plugin {
     const body=doc.body,wanted=this.appearanceClasses();
     for(const name of [...body.classList])if(APPEARANCE.test(name)&&!wanted.includes(name))body.classList.remove(name);
     for(const name of wanted)body.classList.add(name);
-    // The window glass picture, read by the theme as var(--aw-glass-image).
-    const image=this.windowGlass?.image()||'';
-    if(image)body.style.setProperty('--aw-glass-image',image);else body.style.removeProperty('--aw-glass-image');
     // The handwriting face for annotations, when the user names one.
     const font=this.data?.settings?.annotFont||'';
     if(font)body.style.setProperty('--aw-annot-font',font);else body.style.removeProperty('--aw-annot-font');
@@ -201,7 +198,6 @@ class WorkbenchPlugin extends Plugin {
   onunload(){
     for(const doc of this.appearanceDocs??[]){
       for(const name of [...doc.body.classList])if(APPEARANCE.test(name))doc.body.classList.remove(name);
-      doc.body.style.removeProperty('--aw-glass-image');
       doc.body.style.removeProperty('--aw-annot-font');
     }
     this.stopped=true;clearTimeout(this.saveTimer);clearTimeout(this.refreshTimer);this.documentCounts=new WeakMap();if(this.data)void this.flush();this.app.workspace.detachLeavesOfType(VIEW);}

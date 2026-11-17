@@ -180,9 +180,6 @@ class WorkbenchPlugin extends Plugin {
     const body=doc.body,wanted=this.appearanceClasses();
     for(const name of [...body.classList])if(APPEARANCE.test(name)&&!wanted.includes(name))body.classList.remove(name);
     for(const name of wanted)body.classList.add(name);
-    // The window glass picture, read by the theme as var(--aw-glass-image).
-    const image=this.windowGlass?.image()||'';
-    if(image)body.style.setProperty('--aw-glass-image',image);else body.style.removeProperty('--aw-glass-image');
     // The handwriting face for annotations, when the user names one.
     const font=this.data?.settings?.annotFont||'';
     if(font)body.style.setProperty('--aw-annot-font',font);else body.style.removeProperty('--aw-annot-font');
@@ -203,7 +200,6 @@ class WorkbenchPlugin extends Plugin {
   onunload(){
     for(const doc of this.appearanceDocs??[]){
       for(const name of [...doc.body.classList])if(APPEARANCE.test(name))doc.body.classList.remove(name);
-      doc.body.style.removeProperty('--aw-glass-image');
       doc.body.style.removeProperty('--aw-annot-font');
     }
     this.stopped=true;clearTimeout(this.saveTimer);clearTimeout(this.refreshTimer);this.documentCounts=new WeakMap();if(this.data)void this.flush();this.app.workspace.detachLeavesOfType(VIEW);}
@@ -214,11 +210,11 @@ module.exports=WorkbenchPlugin;
 "core.js":(module,exports,__awRequire)=>{
 'use strict';
 const Library = __awRequire("features/library-data.js");
-const DEFAULT_SETTINGS = { nameScreenshots: true, folderNotes: true, openOnStartup: true, tracking: true, recentLimit: 8, range: 90, metric: 'score', captionSize: 'normal', figureTools: true, scrollRuler: true, rulerHeadings: true, decorImage: '', glassImage: '', glassFog: 'normal', annotFont: '', excludedFolders: ['Templates', 'templates'] };
+const DEFAULT_SETTINGS = { nameScreenshots: true, folderNotes: true, openOnStartup: true, tracking: true, recentLimit: 8, range: 90, metric: 'score', captionSize: 'normal', figureTools: true, scrollRuler: true, rulerHeadings: true, decorImage: '', glass: true, glassFog: 'normal', annotFont: '', excludedFolders: ['Templates', 'templates'] };
 const RANGES = [30, 90, 180, 365];
 // Figure and table caption sizes; body class aw-caption-<id>, defined in figures.css.
 const CAPTION_SIZES = [{id:'small', label:'小'}, {id:'normal', label:'标准'}, {id:'large', label:'大'}];
-// How much white fog lies over the blurred window picture.
+// How much fog lies over the paper behind the window glass.
 const GLASS_FOGS = [{id:'light', label:'淡'}, {id:'normal', label:'标准'}, {id:'strong', label:'浓'}];
 // Score weights are documented in the dashboard; values are derived, never stored.
 const METRICS = [
@@ -279,11 +275,11 @@ function loadState(raw, now = new Date()) {
   const d = emptyData(now); d.started = raw.started;
   if (raw.version === 2) d.activityStarted = raw.activityStarted;
   const s = raw.settings || {};
-  for (const name of ['openOnStartup', 'tracking', 'folderNotes', 'nameScreenshots', 'figureTools', 'scrollRuler', 'rulerHeadings']) if (typeof s[name] === 'boolean') d.settings[name] = s[name];
+  for (const name of ['openOnStartup', 'tracking', 'folderNotes', 'nameScreenshots', 'figureTools', 'scrollRuler', 'rulerHeadings', 'glass']) if (typeof s[name] === 'boolean') d.settings[name] = s[name];
   if (RANGES.includes(s.range)) d.settings.range = s.range;
   if (METRICS.some(m => m.key === s.metric)) d.settings.metric = s.metric;
   if (CAPTION_SIZES.some(x => x.id === s.captionSize)) d.settings.captionSize = s.captionSize;
-  for (const name of ['decorImage', 'glassImage']) if (typeof s[name] === 'string') d.settings[name] = s[name].trim().replace(/^\/+/, '').slice(0, 500);
+  if (typeof s.decorImage === 'string') d.settings.decorImage = s.decorImage.trim().replace(/^\/+/, '').slice(0, 500);
   if (GLASS_FOGS.some(x => x.id === s.glassFog)) d.settings.glassFog = s.glassFog;
   if (typeof s.annotFont === 'string') d.settings.annotFont = s.annotFont.replace(/[;{}<>\\]/g, '').trim().slice(0, 200);
   if (Number.isInteger(s.recentLimit)) d.settings.recentLimit = Math.min(30, Math.max(3,s.recentLimit));
@@ -2451,52 +2447,31 @@ module.exports={Decor};
 },
 "features/window-glass.js":(module,exports,__awRequire)=>{
 'use strict';
-const {Component,TFile}=require('obsidian');
+const {Component}=require('obsidian');
 const Core=__awRequire("core.js");
-const IMAGE=/^(png|jpe?g|gif|webp|avif)$/i;
 
-// Frosted window: a picture from the vault (typically the desktop wallpaper) becomes the
-// window's glass. The plugin only says which picture; the theme blurs it, lays a neutral fog
-// on top and lets the sidebar, tabs and note sit on that one sheet of glass.
+// Frosted paper window: the theme lays a sheet of paper (drawn in CSS from fractal noise, no
+// picture) behind the whole window with frosted glass over it, and the sidebar, tabs and note
+// sit on that one sheet. The plugin only switches it on and says how thick the fog is.
 //
 // This replaces Obsidian's own "Translucent window" on macOS, which shows no desktop since
 // 1.8.9 and leaves ghosted text behind (an Electron compositing bug CSS can't fix). The window
 // stays opaque here, so nothing ghosts.
 class WindowGlass extends Component{
-  constructor(plugin){super();this.plugin=plugin;this.app=plugin.app;}
-  onload(){
-    // The plugin applies the appearance itself once the layout (and the vault index) is ready.
-    this.registerEvent(this.app.vault.on('rename',(file,oldPath)=>{
-      if(oldPath!==this.plugin.data.settings.glassImage)return;
-      this.plugin.data.settings.glassImage=file.path;this.plugin.changed();this.plugin.applyAppearanceEverywhere();
-    }));
-    this.registerEvent(this.app.vault.on('delete',file=>{if(file.path===this.plugin.data.settings.glassImage)this.plugin.applyAppearanceEverywhere();}));
-    this.registerEvent(this.app.vault.on('modify',file=>{if(file.path===this.plugin.data.settings.glassImage)this.plugin.applyAppearanceEverywhere();}));
-  }
-  file(){
-    const file=this.app.vault.getAbstractFileByPath(this.plugin.data.settings.glassImage||'');
-    return file instanceof TFile&&IMAGE.test(file.extension)?file:null;
-  }
-  // Body classes for the glass, or none when no usable picture is set.
+  constructor(plugin){super();this.plugin=plugin;}
+  // Body classes for the glass, or none when it is switched off.
   classes(){
-    const fog=this.plugin.data.settings.glassFog;
-    return this.file()?['aw-glass','aw-glass-fog-'+(Core.GLASS_FOGS.some(f=>f.id===fog)?fog:'normal')]:[];
-  }
-  // The picture as a CSS image value, quoted so any path is safe inside url().
-  image(){
-    const file=this.file();
-    return file?`url(${JSON.stringify(this.app.vault.getResourcePath(file))})`:'';
+    const {glass,glassFog}=this.plugin.data.settings;
+    return glass?['aw-glass','aw-glass-fog-'+(Core.GLASS_FOGS.some(f=>f.id===glassFog)?glassFog:'normal')]:[];
   }
   displaySettings(container,Setting){
-    const s=this.plugin.data.settings;
-    new Setting(container).setName('窗口毛玻璃').setDesc('选一张笔记库内的图片（建议用你的桌面壁纸，例如 assets/wallpaper.jpg），主题会把它模糊后铺满窗口，侧栏和正文成为同一层玻璃，白色卡片浮在上面。玻璃本身无色，颜色来自这张图。留空则保持白色外观。不需要打开 Obsidian 的「半透明窗口」，打开它反而会在 macOS 上产生重影。')
-      .addText(t=>t.setPlaceholder('assets/wallpaper.jpg').setValue(s.glassImage||'').onChange(v=>{
-        s.glassImage=v.trim().replace(/^\/+/,'');this.plugin.applyAppearanceEverywhere();this.plugin.changed();
-      }));
-    new Setting(container).setName('毛玻璃雾的浓度').setDesc('图片上那层白雾（深色模式为暗雾）的厚度：越浓越素净，越淡图片颜色越明显。')
+    const s=this.plugin.data.settings,apply=()=>{this.plugin.applyAppearanceEverywhere();this.plugin.changed();};
+    new Setting(container).setName('窗口毛玻璃').setDesc('整个窗口铺一层类纸的磨砂玻璃：浅灰的纸面带极淡的粉杏与灰蓝云纹和细颗粒，侧栏和正文连成同一层玻璃，正文略亮，白色卡片浮在上面。不需要任何图片，也不需要打开 Obsidian 的「半透明窗口」（它在 macOS 上会产生重影）。关闭则保持纯白外观。')
+      .addToggle(t=>t.setValue(!!s.glass).onChange(v=>{s.glass=v;apply();}));
+    new Setting(container).setName('毛玻璃雾的浓度').setDesc('纸面上那层白雾（深色模式为暗雾）的厚度：越浓越亮越素净，越淡纸纹和颜色越明显。')
       .addDropdown(d=>{
         for(const f of Core.GLASS_FOGS)d.addOption(f.id,f.label);
-        d.setValue(s.glassFog||'normal').onChange(v=>{s.glassFog=v;this.plugin.applyAppearanceEverywhere();this.plugin.changed();});
+        d.setValue(s.glassFog||'normal').onChange(v=>{s.glassFog=v;apply();});
       });
   }
 }
@@ -2563,9 +2538,9 @@ class Library extends Component{
   items(){
     if(!this.cache){
       this.links??=L.references(this.app.metadataCache.resolvedLinks);
-      // The window glass and the corner picture count as used too.
-      const used=new Set(this.links.used),s=this.plugin.data.settings;
-      for(const path of [s.glassImage,s.decorImage])if(path)used.add(path);
+      // The corner picture counts as used too.
+      const used=new Set(this.links.used),decor=this.plugin.data.settings.decorImage;
+      if(decor)used.add(decor);
       this.cache=L.makeItems(this.app.vault.getFiles(),{lib:this.plugin.data.library,used,dims:this.dims});
     }
     return this.cache;
