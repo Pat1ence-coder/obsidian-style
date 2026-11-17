@@ -100,7 +100,7 @@ test('reading view: an annotation tints its target and pins the note to it; 右 
   const custom=readingView('==d=={粉|#d0428a}');const [cm]=custom.querySelectorAll('mark');
   assert.equal(cm.props['--aw-annot-color'],'#d0428a');assert.equal(cm.children.at(-1).props['--aw-annot-color'],'#d0428a');
 });
-test('Live Preview: pinned notes are drawn inside a mark over target and braces; the source shows while the cursor is on it',()=>{
+test('Live Preview: a pinned annotation is one widget, target with the note inside; flow notes keep a mark; the source shows while the cursor is on it',()=>{
   const made=[];
   const Decoration={none:'none',set:(list,sort)=>({list,sort}),
     mark:spec=>({range:(from,to)=>({kind:'mark',spec,from,to})}),
@@ -115,11 +115,17 @@ test('Live Preview: pinned notes are drawn inside a mark over target and braces;
   const {list,sort}=new made[0].cls(view(0)).decorations;
   assert.equal(sort,true);
   const at=s=>source.indexOf(s);
-  assert.deepEqual(Array.from(list.slice(0,2),d=>[d.kind,d.from,d.to]),[['mark',at('ab'),at('{标注}')+4],['replace',at('{标注}'),at('{标注}')+4]]);
-  assert.match(list[0].spec.class,/aw-annot-holds/);
-  assert.deepEqual(Array.from(list.slice(2,5),d=>[d.kind,d.from]),[['mark',at('cd')],['widget',at('==cd')],['replace',at('{左边')]]);
-  assert.equal(list[2].to,at('cd')+2,'a flow note does not widen the target mark');
-  assert.equal(list[5].spec.attributes.style,'--aw-annot-color:#d0428a');
+  // ==ab=={标注}: one replacement from the opening == to the closing brace, drawing the target and its note.
+  assert.deepEqual(Array.from(list.slice(0,1),d=>[d.kind,d.from,d.to]),[['replace',at('==ab'),at('{标注}')+4]]);
+  const pinned=list[0].spec.widget;assert.equal(pinned.target,'ab');assert.equal(pinned.spec.dir,'se');
+  // The widget is the target span (the classes that place the note) with the note inside it.
+  const doc=fakeDocument(),drawn=pinned.toDOM({dom:{ownerDocument:doc}});
+  assert.match(drawn.className,/aw-annot-target .*aw-annot-holds/);assert.equal(drawn.children[0].textContent,'ab','the target words come first');
+  assert.equal(drawn.children.at(-1).className.split(' ')[0],'aw-annot','the note is inside the target');
+  assert.ok(pinned.eq({target:'ab',spec:{...pinned.spec}}));assert.ok(!pinned.eq({target:'abc',spec:{...pinned.spec}}),'a changed target redraws');
+  assert.deepEqual(Array.from(list.slice(1,4),d=>[d.kind,d.from]),[['mark',at('cd')],['widget',at('==cd')],['replace',at('{左边')]]);
+  assert.equal(list[1].to,at('cd')+2,'a flow note does not widen the target mark');
+  assert.equal(list[4].spec.attributes.style,'--aw-annot-color:#d0428a');
   const editing=new made[0].cls(view(at('ab')+1)).decorations.list;
   assert.equal(editing[0].kind,'mark');assert.equal(editing[0].spec.class,'aw-annot-source');assert.equal(editing[0].from,at('{标注}'));
 });

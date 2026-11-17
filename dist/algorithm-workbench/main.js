@@ -1916,14 +1916,29 @@ const livePreview=state=>!editorLivePreviewField||state.field(editorLivePreviewF
 const KEYS=['note','dir','color','custom','line','highlight'];
 const sameSpec=(a,b)=>KEYS.every(k=>a[k]===b[k]);
 
-// Live Preview: the braces become the note unless the cursor is on the annotation, in which
-// case the source stays editable (as Obsidian does for its own formatting). A pinned note is
-// drawn inside a mark over target and braces, so it is placed against the target's box.
+// Live Preview: the annotation is drawn unless the cursor is on it, in which case the source
+// stays editable (as Obsidian does for its own formatting).
 function editorExtension(){
   class NoteWidget extends WidgetType{
     constructor(spec){super();this.spec=spec;}
     eq(other){return sameSpec(other.spec,this.spec);}
     toDOM(view){return noteNode(view.dom.ownerDocument,this.spec);}
+    ignoreEvent(){return false;}
+  }
+  // A pinned note is laid out against its target's box, so the whole ==target=={note} is one
+  // widget: the target words with the note inside them, built as in reading view. Placing the
+  // note inside a mark instead depends on how CodeMirror nests this plugin's decorations with
+  // Obsidian's own (which hide the == and tint the highlight); in one order the note ends up
+  // outside the target and is placed against the whole line.
+  class PinnedWidget extends WidgetType{
+    constructor(spec,target){super();this.spec=spec;this.target=target;}
+    eq(other){return other.target===this.target&&sameSpec(other.spec,this.spec);}
+    toDOM(view){
+      const doc=view.dom.ownerDocument,el=doc.createElement('span');
+      el.className=targetClasses(this.spec).join(' ');tint(el,this.spec);
+      el.appendChild(doc.createTextNode(this.target));el.appendChild(noteNode(doc,this.spec));
+      return el;
+    }
     ignoreEvent(){return false;}
   }
   const build=view=>{
@@ -1938,7 +1953,8 @@ function editorExtension(){
     for(const a of [...seen.values()].sort((x,y)=>x.markFrom-y.markFrom)){
       if(ranges.some(r=>r.from<=a.to&&r.to>=a.markFrom)){out.push(Decoration.mark({class:'aw-annot-source'}).range(a.from,a.to));continue;}
       const where=placement(a),attributes=a.color==='custom'?{style:`--aw-annot-color:${a.custom}`}:undefined;
-      out.push(Decoration.mark({class:targetClasses(a).join(' '),attributes}).range(a.targetFrom,where==='pin'?a.to:a.targetTo));
+      if(where==='pin'){out.push(Decoration.replace({widget:new PinnedWidget(a,view.state.sliceDoc(a.targetFrom,a.targetTo))}).range(a.markFrom,a.to));continue;}
+      out.push(Decoration.mark({class:targetClasses(a).join(' '),attributes}).range(a.targetFrom,a.targetTo));
       if(where==='before'){
         out.push(Decoration.widget({widget:new NoteWidget(a),side:-1}).range(a.markFrom));
         out.push(Decoration.replace({}).range(a.from,a.to));
