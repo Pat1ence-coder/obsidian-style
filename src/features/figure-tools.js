@@ -10,6 +10,11 @@ const MIN_WIDTH=40;
 const SNAP_FRACTIONS=[1/4,1/3,1/2,2/3,3/4,1],SNAP=10;
 // A drag only targets a slot while the pointer stays this close to the figure.
 const REACH=96;
+// Edits that name an image by its number need the rendered images and the source to agree.
+const numbered=(figure,change)=>(lines,block)=>{
+  if(block.images.length!==figure.querySelectorAll('.image-embed').length)throw Error('图片与源码对不上（例如含网络图片），请在源码中修改这组插图。');
+  return change(lines,block);
+};
 const rectIn=(rect,origin)=>({left:rect.left-origin.left,top:rect.top-origin.top,width:rect.width,height:rect.height});
 const centre=r=>({x:r.left+r.width/2,y:r.top+r.height/2});
 // Nearest slot to a point, or -1 when the point is farther than REACH from every slot edge.
@@ -50,7 +55,7 @@ function markLabel(title) {
 // slot it would land in; dragging a single image outlines the left / centre / right
 // positions. Every change is written back to the note's Markdown, so print follows.
 class FigureTools extends Component {
-  constructor(plugin){super();this.plugin=plugin;this.app=plugin.app;this.documents=new Map();this.decorated=new WeakSet();this.gesture=null;}
+  constructor(plugin){super();this.plugin=plugin;this.app=plugin.app;this.documents=new Map();this.decorated=new WeakSet();this.contexts=new WeakMap();this.gesture=null;}
   onload(){
     this.attachDocument(this.app.workspace.containerEl?.ownerDocument);
     this.registerEvent(this.app.workspace.on('window-open',(_leaf,win)=>this.attachDocument(win.document)));
@@ -68,22 +73,27 @@ class FigureTools extends Component {
     owner.registerDomEvent(doc,'mouseover',event=>this.hover(event));
     owner.registerDomEvent(doc,'pointerdown',event=>this.pointerDown(event),true);
   }
-  // Reading view (and rendered callouts in Live Preview): label captions and remember
-  // which source line each figure starts on.
+  // Reading view (and rendered callouts in Live Preview): label captions and keep each
+  // figure's context, which tells where its section is in the note at edit time.
   process(el,ctx){
     const titles=[...el.querySelectorAll(CAPTIONED)];
     if(el.matches?.(CAPTIONED))titles.push(el);
     titles.forEach(markLabel);
-    const info=ctx?.getSectionInfo?.(el);
-    if(!info)return;
+    if(!ctx?.getSectionInfo?.(el))return;
     const figures=[...el.querySelectorAll(FIGURE)];
     if(el.matches?.(FIGURE))figures.push(el);
-    for(const figure of figures){figure.dataset.awLine=String(info.lineStart);figure.dataset.awSource=ctx.sourcePath;}
+    for(const figure of figures)this.contexts.set(figure,ctx);
+  }
+  // The Markdown view a figure belongs to; null for figures in embedded notes, hover previews
+  // and other views, which are not edited in place.
+  viewOf(figure){
+    if(figure.closest('.markdown-embed,.hover-popover'))return null;
+    return this.app.workspace.getLeavesOfType('markdown').map(leaf=>leaf.view).find(v=>v?.containerEl?.contains(figure))??null;
   }
   hover(event){
     if(!this.enabled()||this.gesture)return;
     const figure=event.target?.closest?.(FIGURE);
-    if(!figure||this.decorated.has(figure)||!figure.closest('.markdown-preview-view,.markdown-source-view'))return;
+    if(!figure||this.decorated.has(figure)||!figure.closest('.markdown-preview-view,.markdown-source-view')||!this.viewOf(figure))return;
     this.decorate(figure);
   }
   decorate(figure){
@@ -184,7 +194,7 @@ class FigureTools extends Component {
       const shown=img.getBoundingClientRect().width||width;
       if(Math.abs(shown-start.width)<3){preview();return;}
       const final=Math.min(4096,Math.max(MIN_WIDTH,fraction?Math.round(shown):Math.round(shown/10)*10));
-      if(!await this.edit(figure,(lines,block)=>Edit.setWidth(lines,block,index,final)))preview();
+      if(!await this.edit(figure,numbered(figure,(lines,block)=>Edit.setWidth(lines,block,index,final))))preview();
     };
   }
   // Grid / mosaic: a small copy of the image follows the pointer; the nearest slot is outlined.
@@ -202,7 +212,7 @@ class FigureTools extends Component {
       to=nearestSlot(slots,at.x,at.y);
       this.place(slot,to<0||to===from?null:slots[to]);
     };
-    this.gesture.onEnd=()=>{if(to>=0&&to!==from)void this.edit(figure,(lines,block)=>Edit.moveImage(lines,block,from,to));};
+    this.gesture.onEnd=()=>{if(to>=0&&to!==from)void this.edit(figure,numbered(figure,(lines,block)=>Edit.moveImage(lines,block,from,to)));};
   }
   // Single image: three outlines (left / centre / right) of the image's size; drop on one to align.
   startAlign(event,figure,embed){
@@ -273,36 +283,55 @@ class FigureTools extends Component {
     g.cleanup?.();
     if(cancelled)g.revert?.();
   }
-  // Live Preview edits go through the editor (undoable); reading view edits rewrite
-  // the file after checking the recorded block is still where it was rendered.
+  // Live Preview edits go through the editor (undoable); reading view edits rewrite the file
+  // after checking the block is still what the view shows. apply() resolves to whether the
+  // note changed.
   locate(figure){
+    const view=this.viewOf(figure);
+    if(!view)return null;
     if(figure.closest('.markdown-source-view')){
-      const view=this.app.workspace.getLeavesOfType('markdown').map(leaf=>leaf.view).find(v=>v?.containerEl?.contains(figure));
-      const editor=view?.editor,cm=editor?.cm;
-      if(!editor||typeof cm?.posAtDOM!=='function')return null;
+      const editor=view.editor,cm=editor?.cm;
+      if(!editor||typeof cm?.posAtDOM!=='function'||typeof cm.dispatch!=='function')return null;
       const line=cm.state.doc.lineAt(cm.posAtDOM(figure)).number-1;
       return {apply:change=>{
         const lines=editor.getValue().split('\n'),block=Edit.findBlock(lines,line);
         if(!block)throw Error('这里不是插图块。');
-        const next=change(lines,block);
-        editor.replaceRange(next.slice(block.start,block.end+1).join('\n'),{line:block.start,ch:0},{line:block.end,ch:lines[block.end].length});
+        const doc=cm.state.doc,insert=change(lines,block).slice(block.start,block.end+1).join('\n');
+        if(insert===lines.slice(block.start,block.end+1).join('\n'))return false;
+        // Straight to CodeMirror, still one undoable step. Editor.replaceRange would also scroll
+        // the cursor into view, and the cursor is wherever it was before the click (the toolbar
+        // keeps it out of the callout), often the top of the note: the page would jump there.
+        // Not an "input." event: a layout change is not writing, and is never merged into the
+        // typing before it in the undo history.
+        cm.dispatch({changes:{from:doc.line(block.start+1).from,to:doc.line(block.end+1).to,insert},userEvent:'set.figure'});
+        return true;
       }};
     }
-    const line=Number(figure.dataset.awLine),file=this.app.vault.getAbstractFileByPath(figure.dataset.awSource||'');
-    if(!Number.isInteger(line)||!(file instanceof TFile))return null;
-    return {apply:change=>this.app.vault.process(file,data=>{
-      const eol=data.includes('\r\n')?'\r\n':'\n',lines=data.split(eol),block=Edit.findBlock(lines,line);
-      if(!block||block.start!==line)throw Error('笔记内容已变化，请刷新后重试。');
-      return change(lines,block).join(eol);
-    })};
+    // Reading view: where the figure's section is now (Obsidian moves unchanged sections without
+    // running post-processors again), in the file the view shows now (it may have been renamed).
+    const info=this.contexts.get(figure)?.getSectionInfo?.(figure),file=view.file;
+    if(!info||!(file instanceof TFile))return null;
+    const line=info.lineStart,shown=String(info.text??'').split(/\r?\n/);
+    return {apply:async change=>{
+      let changed=false;
+      await this.app.vault.process(file,data=>{
+        const eol=data.includes('\r\n')?'\r\n':'\n',lines=data.split(eol),block=Edit.findBlock(lines,line);
+        const same=block&&block.start===line&&lines.slice(block.start,block.end+1).join('\n')===shown.slice(block.start,block.end+1).join('\n');
+        if(!same)throw Error('笔记内容已变化，请稍后重试。');
+        const next=change(lines,block);
+        changed=next.length!==lines.length||next.some((l,i)=>l!==lines[i]);
+        return changed?next.join(eol):data;
+      });
+      return changed;
+    }};
   }
-  // Resolves true once the change is written, false after showing why it wasn't.
+  // Resolves true once the change is written; false when there was nothing to change, or after
+  // showing why it wasn't written.
   async edit(figure,change){
     try{
       const located=this.locate(figure);
       if(!located){new Notice('无法定位这张插图的源码，请在编辑或阅读视图中重试。');return false;}
-      await located.apply(change);
-      return true;
+      return await located.apply(change)!==false;
     }catch(error){new Notice(error?.message||'修改插图失败。');return false;}
   }
   displaySettings(container){
@@ -310,4 +339,4 @@ class FigureTools extends Component {
       .addToggle(t=>t.setValue(this.enabled()).onChange(v=>{this.plugin.data.settings.figureTools=v;this.plugin.applyAppearanceEverywhere();this.plugin.changed();}));
   }
 }
-module.exports={FigureTools,markLabel,nearestSlot,snapWidth};
+module.exports={FigureTools,markLabel,nearestSlot,snapWidth,numbered};

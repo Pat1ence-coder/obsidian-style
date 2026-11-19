@@ -138,3 +138,15 @@ test('library styles ship with the plugin: tokens reach the pane, the side list 
   assert.match(css,/@container \(max-width: 559px\) \{\s*\.aw-lib-side \{display: none;\}/);
   assert.match(css,/\.aw-lib-card:is\(:hover,:focus-within,\.is-rated\) \.aw-lib-stars \{opacity: 1;\}/,'stars show once rated or on hover');
 });
+test('a hidden library pane skips refreshing and catches up when shown',()=>{
+  const {lib,plugin,handlers,exports}=loadLibrary();
+  const view=Object.create(exports.LibraryView.prototype);
+  let refreshed=0;view.refresh=function(){this.stale=false;refreshed++;};
+  view.mainEl={offsetParent:null};// another sidebar tab, or the sidebar collapsed
+  plugin.app.workspace.getLeavesOfType=()=>[{view}];
+  handlers.resolved.forEach(fn=>fn());lib.timer=0;
+  view.refreshWhenShown();
+  assert.equal(refreshed,0);assert.equal(view.stale,true);
+  view.mainEl={offsetParent:{}};view.refreshWhenShown();
+  assert.equal(refreshed,1,'shown: refreshed at once');assert.equal(view.stale,false);
+});

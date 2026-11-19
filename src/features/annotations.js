@@ -1,6 +1,7 @@
 'use strict';
 const {Component,Modal,Notice,Setting,editorLivePreviewField}=require('obsidian');
 const {ViewPlugin,Decoration,WidgetType}=require('@codemirror/view');
+const {syntaxTree}=require('@codemirror/language');
 const Format=require('./annotation-format');
 const {parseAnnotation,findAnnotations,formatAnnotation,placement,targetClasses,noteTree,DIRECTIONS,COLORS,LINES}=Format;
 const SVG='http://www.w3.org/2000/svg';
@@ -21,6 +22,10 @@ function build(doc,node){
 }
 const noteNode=(doc,spec)=>build(doc,noteTree(spec));
 const livePreview=state=>!editorLivePreviewField||state.field(editorLivePreviewField,false)===true;
+// Code, math, comments and front matter keep their text as written (reading view makes no
+// highlight there either). Obsidian names a token's syntax node after its classes, joined by _.
+const VERBATIM=/(?:^|_)(?:inline-code|hmd-codeblock|math|comment|hmd-frontmatter)(?:_|$)/;
+const verbatim=(state,pos)=>VERBATIM.test(syntaxTree(state).resolveInner(pos,1).type.name);
 const KEYS=['note','dir','color','custom','line','highlight'];
 const sameSpec=(a,b)=>KEYS.every(k=>a[k]===b[k]);
 
@@ -59,6 +64,7 @@ function editorExtension(){
     }
     const out=[];
     for(const a of [...seen.values()].sort((x,y)=>x.markFrom-y.markFrom)){
+      if(verbatim(view.state,a.markFrom)||verbatim(view.state,a.from))continue;
       if(ranges.some(r=>r.from<=a.to&&r.to>=a.markFrom)){out.push(Decoration.mark({class:'aw-annot-source'}).range(a.from,a.to));continue;}
       const where=placement(a),attributes=a.color==='custom'?{style:`--aw-annot-color:${a.custom}`}:undefined;
       if(where==='pin'){out.push(Decoration.replace({widget:new PinnedWidget(a,view.state.sliceDoc(a.targetFrom,a.targetTo))}).range(a.markFrom,a.to));continue;}
@@ -73,7 +79,9 @@ function editorExtension(){
   return ViewPlugin.fromClass(class{
     constructor(view){this.decorations=build(view);}
     update(update){
-      if(update.docChanged||update.viewportChanged||update.selectionSet||livePreview(update.startState)!==livePreview(update.state))
+      // The syntax tree also arrives in steps after a change: code found later is left alone then.
+      if(update.docChanged||update.viewportChanged||update.selectionSet||livePreview(update.startState)!==livePreview(update.state)
+        ||syntaxTree(update.startState)!==syntaxTree(update.state))
         this.decorations=build(update.view);
     }
   },{decorations:plugin=>plugin.decorations});
@@ -152,22 +160,23 @@ class Annotations extends Component{
       else mark.parentNode.insertBefore(note,where==='before'?mark:next);
     }
   }
-  // The annotation the cursor is on, with its line, or null.
+  // The annotation under the cursor, or overlapping the selection, with its line; or null.
   annotationAt(editor){
-    const cursor=editor.getCursor(),text=editor.getLine(cursor.line);
-    const found=findAnnotations(text,0).find(a=>a.markFrom<=cursor.ch&&cursor.ch<=a.to);
-    return found?{...found,line:cursor.line}:null;
+    const from=editor.getCursor('from'),to=editor.getCursor('to');
+    if(from.line!==to.line)return null;
+    const empty=from.ch===to.ch;
+    const found=findAnnotations(editor.getLine(from.line),0).find(a=>empty?a.markFrom<=from.ch&&from.ch<=a.to:a.markFrom<to.ch&&from.ch<a.to);
+    return found?{...found,line:from.line}:null;
   }
-  // Right-click: add an annotation to selected text, or edit / remove the one under the cursor.
+  // Right-click: edit / remove the annotation under the cursor or selection (a selection inside
+  // one would otherwise nest a second annotation in it), or add one to selected text.
   menu(menu,editor){
     if(!this.plugin.data?.settings)return;
-    const selected=editor.getSelection();
-    if(selected.trim()&&!/[\r\n]/.test(selected)){
-      menu.addItem(item=>item.setTitle('添加标注').setIcon('message-square-plus').onClick(()=>this.add(editor)));
+    const selected=editor.getSelection(),at=this.annotationAt(editor);
+    if(!at){
+      if(selected.trim()&&!/[\r\n]/.test(selected))menu.addItem(item=>item.setTitle('添加标注').setIcon('message-square-plus').onClick(()=>this.add(editor)));
       return;
     }
-    const at=this.annotationAt(editor);
-    if(!at)return;
     menu.addItem(item=>item.setTitle('编辑标注').setIcon('message-square-text').onClick(()=>this.edit(editor,at)));
     menu.addItem(item=>item.setTitle('删除标注').setIcon('message-square-x').onClick(()=>
       editor.replaceRange('',{line:at.line,ch:at.from},{line:at.line,ch:at.to})));

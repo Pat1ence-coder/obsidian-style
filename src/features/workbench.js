@@ -145,7 +145,7 @@ class WorkbenchView extends ItemView{
     const footer=el(root,'footer','aw-footer');
     const local=el(footer,'span','aw-local');icon(local,'hard-drive');el(local,'span','',settings.tracking?'仅保存在本地':'本地记录 · 已暂停');
     const help=el(footer,'details','aw-help');help.open=helpOpen;el(help,'summary','','如何统计？');
-    el(help,'p','','新增字数：本机编辑器内新增的非空白字符，含公式、代码和粘贴内容，删除后恢复不重复计数。编辑时长：有输入的分钟，以及其间不超过 5 分钟的停顿。深度专注：连续编辑达到 25 分钟的时段。新建笔记：Obsidian 中新建的 Markdown 文件。完成任务：编辑器里新勾选的任务，反复勾选只算一次。');
+    el(help,'p','','新增字数：本机编辑器内新增的非空白字符，含公式、代码和粘贴内容，删除后恢复不重复计数。编辑时长：有输入的分钟，以及其间不超过 5 分钟的停顿。深度专注：连续编辑达到 25 分钟的时段。新建笔记：在本机 Obsidian 中新建并随即打开的 Markdown 文件，经同步、git 或文件管理器加入的不计。完成任务：编辑器里新勾选的任务，反复勾选只算一次。');
     el(help,'p','','贡献分 = 新增字数 ÷ 100 + 编辑分钟 ÷ 10 + 专注分钟 ÷ 10 + 新建笔记 × 2 + 完成任务。热力图强度按所选时间范围内活跃日的四分位数分级。');
     this.renderStamp=this.stamp();this.contentEl.scrollTop=scrollTop;
     if(heatWrap)heatWrap.scrollLeft=heatScroll??heatWrap.scrollWidth;

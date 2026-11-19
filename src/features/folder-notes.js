@@ -117,7 +117,8 @@ class FolderNotes extends Component {
           if(!this.stopped)await this.app.workspace.revealLeaf(explorer);
         }
         this.plugin.scheduleRefresh();
-      }else await this.app.workspace.getLeaf('tab').openFile(created);
+      // As Obsidian's own new note: focused, in the editor, with the title selected for renaming.
+      }else await this.app.workspace.getLeaf('tab').openFile(created,{active:true,state:{mode:'source'},eState:{rename:'all'}});
     } catch(error) {new Notice(`新建${label}失败，请检查目标目录或写入权限。`);console.error('Workbench folder creation:',error);}
     finally {this.creating=false;}
   }

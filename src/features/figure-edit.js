@@ -18,11 +18,9 @@ function findBlock(lines, line) {
   if(!header||header[2].toLowerCase()!=='figure')return null;
   let end=start;
   while(end+1<lines.length&&QUOTED.test(lines[end+1])&&!HEADER.test(lines[end+1]))end++;
+  // Every image, in the order they render: its line and its place on that line.
   const images=[];
-  for(let i=start+1;i<=end;i++){
-    const found=imagesIn(lines[i]);
-    if(found.length===1)images.push({line:i,width:found[0].width});
-  }
+  for(let i=start+1;i<=end;i++)imagesIn(lines[i]).forEach((found,at)=>images.push({line:i,at,width:found.width}));
   return {start,end,prefix:header[1],meta:(header[3]||'').trim(),fold:header[4],caption:header[5],images};
 }
 function replaceWidth(embed, width) {
@@ -34,9 +32,15 @@ function setWidth(lines, block, imageIndex, width) {
   const image=block.images[imageIndex];
   if(!image)throw Error('找不到这张图片。');
   if(width!==null&&(!Number.isInteger(width)||width<1||width>4096))throw Error('宽度需为 1–4096 的整数。');
-  const text=lines[image.line],[found]=imagesIn(text),next=lines.slice();
-  next[image.line]=text.slice(0,found.index)+replaceWidth(found.text,width)+text.slice(found.index+found.text.length);
+  const next=lines.slice();
+  next[image.line]=replaceImage(lines[image.line],image.at,found=>replaceWidth(found.text,width));
   return next;
+}
+// The line with its at-th image rewritten.
+function replaceImage(text,at,rewrite){
+  const found=imagesIn(text)[at];
+  if(!found)throw Error('找不到这张图片。');
+  return text.slice(0,found.index)+rewrite(found)+text.slice(found.index+found.text.length);
 }
 function setMeta(lines, block, meta) {
   if(!LAYOUT.test(meta))throw Error('不支持的布局。');
@@ -46,14 +50,21 @@ function setMeta(lines, block, meta) {
   next[block.start]=`${block.prefix}[!figure|${meta}]${block.fold}${block.caption}`;
   return next;
 }
-// Reorder image lines only; captions, blank quoted lines and other content stay put.
+// Reorder images; captions, blank quoted lines and other content stay put. With one image per
+// line the image lines move; when images share a line, the embeds trade places instead.
 function moveImage(lines, block, from, to) {
-  const slots=block.images.map(image=>image.line);
-  const valid=i=>Number.isInteger(i)&&i>=0&&i<slots.length;
+  const images=block.images;
+  const valid=i=>Number.isInteger(i)&&i>=0&&i<images.length;
   if(!valid(from)||!valid(to))throw Error('找不到要移动的图片。');
-  const order=slots.map(line=>lines[line]),[moved]=order.splice(from,1);order.splice(to,0,moved);
+  const shared=new Set(images.map(image=>image.line)).size<images.length;
+  const order=images.map(image=>shared?imagesIn(lines[image.line])[image.at].text:lines[image.line]);
+  const [moved]=order.splice(from,1);order.splice(to,0,moved);
   const next=lines.slice();
-  slots.forEach((line,i)=>{next[line]=order[i];});
+  // From the last image back, so the positions of earlier images on a line stay valid.
+  for(let i=images.length-1;i>=0;i--){
+    const {line,at}=images[i];
+    next[line]=shared?replaceImage(next[line],at,()=>order[i]):order[i];
+  }
   return next;
 }
 // "图 1"、"表 2-3"、"Figure 4"、"Fig. 5"、"Table 6": the label part of a caption.

@@ -16,7 +16,7 @@ const note=`正文
 test('finds a figure block from any line inside it and lists one image per line',()=>{
   const single=E.findBlock(note,3);
   assert.deepEqual([single.start,single.end,single.meta,single.caption],[2,3,'center',' 图 1 · 训练损失']);
-  assert.deepEqual(single.images,[{line:3,width:640}]);
+  assert.deepEqual(single.images,[{line:3,at:0,width:640}]);
   const grid=E.findBlock(note,9);
   assert.deepEqual([grid.start,grid.end,grid.meta],[5,9,'grid-2']);
   assert.deepEqual(grid.images.map(i=>i.line),[6,7,9]);
@@ -79,17 +79,52 @@ test('caption labels are split into a bold span once, and plain captions are lef
   assert.equal(t.children[0].textContent,'图 3-2');assert.equal(t.children[1].textContent,' 训练曲线');
   const plain=titleEl('训练曲线');markLabel(plain);assert.equal(plain.children.length,1);
 });
-test('reading-view edits rewrite the file only when the figure is still on its rendered line',async()=>{
+test('reading-view edits find the figure where its section is now, in the file the view shows now',async()=>{
   const {FigureTools,TFile,notices}=loadTools();
-  let data='前文\r\n> [!figure|center] 图 1 结果\r\n> ![[a.png]]\r\n后文';const file=new TFile('n.md');
-  const vault={getAbstractFileByPath:p=>p==='n.md'?file:null,process:async(f,fn)=>{data=fn(data);}};
-  const tools=new FigureTools({app:{workspace:{},vault},data:{settings:{}}});
-  const figure={dataset:{awLine:'1',awSource:'n.md'},closest:()=>null};
-  await tools.edit(figure,(lines,block)=>Edit.setWidth(lines,block,0,480));
+  let data='前文\r\n> [!figure|center] 图 1 结果\r\n> ![[a.png]]\r\n后文',writes=0;
+  const file=new TFile('改过名字.md');
+  const vault={process:async(f,fn)=>{assert.equal(f,file,'the file of the view, not a path kept from rendering');const next=fn(data);if(next!==data)writes++;data=next;}};
+  const figure={closest:()=>null},view={file,containerEl:{contains:el=>el===figure}};
+  const tools=new FigureTools({app:{workspace:{getLeavesOfType:()=>[{view}]},vault},data:{settings:{}}});
+  // Obsidian's renderer: where the section starts now, and the text the view shows.
+  let start=1,shown=null;
+  const ctx={getSectionInfo:()=>({text:shown??data,lineStart:start,lineEnd:start+1})};
+  tools.process({querySelectorAll:sel=>sel.endsWith('-inner')?[]:[figure],matches:()=>false},ctx);
+  assert.equal(await tools.edit(figure,(lines,block)=>Edit.setWidth(lines,block,0,480)),true);
   assert.equal(data,'前文\r\n> [!figure|center] 图 1 结果\r\n> ![[a.png|480]]\r\n后文','CRLF line endings survive');
-  figure.dataset.awLine='0';await tools.edit(figure,(lines,block)=>Edit.setMeta(lines,block,'left'));
-  assert.match(notices.at(-1),/笔记内容已变化|插图块/);assert.match(data,/\[!figure\|center\]/);
-  figure.dataset.awSource='missing.md';await tools.edit(figure,lines=>lines);assert.match(notices.at(-1),/无法定位/);
+  // A paragraph added above: Obsidian moves the section without running post-processors again.
+  data='新段落\r\n\r\n'+data;start=3;
+  assert.equal(await tools.edit(figure,(lines,block)=>Edit.setMeta(lines,block,'left')),true,notices.join());
+  assert.match(data.split('\r\n')[3],/^> \[!figure\|left\] 图 1 结果$/);
+  // Nothing to change: nothing written, and the caller learns so (a resize preview is undone).
+  assert.equal(await tools.edit(figure,lines=>lines),false);assert.equal(writes,2);
+  // The file changed and the view has not caught up yet: refused rather than guessed.
+  shown=data;data=data.replace('![[a.png|480]]','![[b.png|480]]');
+  assert.equal(await tools.edit(figure,(lines,block)=>Edit.setWidth(lines,block,0,300)),false);
+  assert.match(notices.at(-1),/笔记内容已变化/);assert.match(data,/b\.png\|480/);
+  // A figure the plugin never saw rendered.
+  assert.equal(await tools.edit({closest:()=>null},lines=>lines),false);assert.match(notices.at(-1),/无法定位/);
+});
+test('figures in embedded notes and hover previews get no toolbar: their lines are not the host note\'s',async()=>{
+  const {FigureTools,notices}=loadTools();
+  const embedded={closest:sel=>sel==='.markdown-embed,.hover-popover'||sel==='.markdown-source-view'||sel.includes('markdown-preview-view')?{}:null};
+  const tools=new FigureTools({app:{workspace:{getLeavesOfType:()=>[{view:{editor:{},containerEl:{contains:()=>true}}}]}},data:{settings:{figureTools:true}}});
+  tools.hover({target:{closest:()=>embedded}});
+  assert.equal(tools.decorated.has(embedded),false);
+  assert.equal(await tools.edit(embedded,lines=>lines),false);assert.match(notices.at(-1),/无法定位/);
+});
+test('several images on one line: each is found by its place, and edits by number check the count',()=>{
+  const lines=['> [!figure|grid-3] 图 5','> ![[a.png]] ![[b.png|200]]','> ![[c.png|300]]'];
+  const block=E.findBlock(lines,0);
+  assert.deepEqual(block.images,[{line:1,at:0,width:null},{line:1,at:1,width:200},{line:2,at:0,width:300}]);
+  assert.equal(E.setWidth(lines,block,0,150)[1],'> ![[a.png|150]] ![[b.png|200]]','the first image, not c.png');
+  assert.equal(E.setWidth(lines,block,1,null)[1],'> ![[a.png]] ![[b.png]]');
+  assert.deepEqual(E.moveImage(lines,block,2,0).slice(1),['> ![[c.png|300]] ![[a.png]]','> ![[b.png|200]]'],'embeds trade places');
+  assert.deepEqual(E.moveImage(lines,block,0,1).slice(1),['> ![[b.png|200]] ![[a.png]]','> ![[c.png|300]]']);
+  const {numbered}=loadTools();
+  const figure=n=>({querySelectorAll:()=>Array(n).fill({})});
+  assert.equal(numbered(figure(3),(l,b)=>E.setWidth(l,b,2,100))(lines,block)[2],'> ![[c.png|100]]');
+  assert.throws(()=>numbered(figure(2),(l,b)=>E.setWidth(l,b,0,100))(lines,block),/对不上/,'a web image the toolbar does not number');
 });
 test('mosaic layouts belong to the multi-image family',()=>{
   const grid=E.findBlock(note,5),single=E.findBlock(note,2);
@@ -151,12 +186,12 @@ function gestureDom() {
 }
 function resizeSetup() {
   const {FigureTools,notices}=loadTools(),{doc,node}=gestureDom();
-  const tools=new FigureTools({app:{workspace:{},vault:{getAbstractFileByPath:()=>null}},data:{settings:{}}});
+  const tools=new FigureTools({app:{workspace:{getLeavesOfType:()=>[]},vault:{}},data:{settings:{}}});
   const figure=node({left:0,top:0,width:900,height:500}),content=node({left:0,top:0,width:900,height:460});
   const embed=node(),img=node({left:90,top:0,width:720,height:400});
   // The rendered width follows the inline width, capped at 720px unless the cap is lifted.
   img.getBoundingClientRect=()=>{const w=img.style.width?parseFloat(img.style.width):720,cap=img.style.maxWidth?Infinity:720;return {left:90,top:0,width:Math.min(w,cap),height:400};};
-  figure.dataset.calloutMetadata='center';figure.q={':scope > .callout-content':content};embed.q={img};
+  figure.dataset.calloutMetadata='center';figure.q={':scope > .callout-content':content};figure.qa={'.image-embed':[embed]};embed.q={img};
   return {tools,doc,figure,embed,img,notices};
 }
 test('a resize whose write-back fails puts the image back and clears the size label',async()=>{
@@ -166,7 +201,7 @@ test('a resize whose write-back fails puts the image back and clears the size la
   doc.fire('pointermove',{clientX:542});
   assert.equal(img.style.width,'450px');assert.match(embed.dataset.awWidth,/450px · 50%/);
   doc.fire('pointerup');await new Promise(r=>setImmediate(r));
-  assert.match(notices.at(-1),/无法定位/,'the write fails: the figure has no recorded source');
+  assert.match(notices.at(-1),/无法定位/,'the write fails: the figure is in no Markdown view');
   assert.equal(img.style.width,'');assert.equal(embed.style.width,'');assert.equal(img.style.maxWidth,'');
   assert.equal(embed.dataset.awWidth,undefined);assert.ok(!figure.classList.contains('aw-figure-resizing'));
   assert.equal(doc.count(),0,'all gesture listeners are gone');
@@ -214,4 +249,30 @@ test('reordering targets stay right when the page scrolls during the drag',async
   doc.fire('pointerup');await new Promise(r=>setImmediate(r));
   const lines=['> [!figure|grid-2] 图','> ![[a.png]]','> ![[b.png]]','> ![[c.png]]','> ![[d.png]]'];
   assert.deepEqual(written(lines,Edit.findBlock(lines,0)).slice(1),['> ![[b.png]]','> ![[c.png]]','> ![[a.png]]','> ![[d.png]]']);
+});
+
+test('Live Preview figure edits go straight to CodeMirror without scrolling to the cursor',async()=>{
+  const fs=require('node:fs'),vm=require('node:vm'),path=require('node:path');
+  const Edit=require('../src/features/figure-edit');
+  const mod={exports:{}},notices=[];
+  const obsidian={Component:class{},Notice:class{constructor(m){notices.push(m);}},Setting:class{},TFile:class{},setIcon(){}};
+  vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../src/features/figure-tools.js'),'utf8'),{module:mod,require:n=>n==='obsidian'?obsidian:n==='./figure-edit'?Edit:null});
+  // A note with the figure on lines 3-4 (0-based 2-3); the cursor sits at the top.
+  let text=['# 标题','正文','> [!figure|center] 图 1','> ![[a.png|400]]','后文'].join('\n');
+  const lineStarts=()=>{const s=[0];for(let i=0;i<text.length;i++)if(text[i]==='\n')s.push(i+1);return s;};
+  const doc={line:n=>{const s=lineStarts(),from=s[n-1],to=(n<s.length?s[n]-1:text.length);return {number:n,from,to};},
+    lineAt:pos=>{const s=lineStarts();let n=s.length;while(s[n-1]>pos)n--;return {number:n};}};
+  const dispatched=[];
+  const cm={state:{doc},posAtDOM:()=>lineStarts()[2],dispatch:tr=>{dispatched.push(tr);const c=tr.changes;text=text.slice(0,c.from)+c.insert+text.slice(c.to);}};
+  const editor={cm,getValue:()=>text,replaceRange(){throw Error('replaceRange scrolls the cursor into view');}};
+  const app={workspace:{getLeavesOfType:()=>[{view:{editor,containerEl:{contains:()=>true}}}]},vault:{getAbstractFileByPath:()=>null}};
+  const tools=new mod.exports.FigureTools({app,data:{settings:{figureTools:true}}});
+  const figure={closest:sel=>sel==='.markdown-source-view'?{}:null,dataset:{}};
+  assert.equal(await tools.edit(figure,(lines,block)=>Edit.setMeta(lines,block,'right')),true,notices.join());
+  assert.equal(dispatched.length,1);
+  assert.equal(dispatched[0].scrollIntoView,undefined,'no scrolling to the cursor (it was at the top)');
+  assert.equal(dispatched[0].userEvent,'set.figure','not counted as writing, and its own undo step');
+  assert.equal(text,['# 标题','正文','> [!figure|right] 图 1','> ![[a.png|400]]','后文'].join('\n'),'only the figure block changed');
+  assert.equal(await tools.edit(figure,(lines,block)=>Edit.setMeta(lines,block,'right')),false,'no change: nothing dispatched');
+  assert.equal(dispatched.length,1);
 });

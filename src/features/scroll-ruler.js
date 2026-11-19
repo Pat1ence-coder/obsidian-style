@@ -57,7 +57,10 @@ class ScrollRuler extends Component{
     const knob=doc.createElement('div');knob.className='aw-ruler-knob';
     const label=doc.createElement('span');label.className='aw-ruler-label';
     knob.appendChild(label);el.appendChild(heads);el.appendChild(knob);host.appendChild(el);host.classList.add('aw-has-ruler');
-    const entry={owner,el,heads,knob,label,marks:[],frame:0};this.entries.set(view,entry);
+    // Frames come from the ruler's own window: a popout keeps updating while the main window
+    // is minimised or covered (its frames would pause).
+    const win=doc.defaultView||window;
+    const entry={owner,el,heads,knob,label,marks:[],frame:0,win};this.entries.set(view,entry);
     // scroll does not bubble; capture it from whichever scroller the current mode uses.
     owner.registerDomEvent(host,'scroll',()=>this.schedule(view),{capture:true});
     owner.registerDomEvent(el,'pointerdown',event=>this.drag(view,event));
@@ -69,7 +72,7 @@ class ScrollRuler extends Component{
   }
   detach(view){
     const entry=this.entries.get(view);if(!entry)return;
-    cancelAnimationFrame(entry.frame);entry.el.remove();view.contentEl?.classList.remove('aw-has-ruler');
+    entry.win.cancelAnimationFrame(entry.frame);entry.el.remove();view.contentEl?.classList.remove('aw-has-ruler');
     this.removeChild(entry.owner);this.entries.delete(view);
   }
   scroller(view){
@@ -78,7 +81,7 @@ class ScrollRuler extends Component{
   }
   schedule(view){
     const entry=this.entries.get(view);
-    if(entry&&!entry.frame)entry.frame=requestAnimationFrame(()=>{entry.frame=0;this.update(view);});
+    if(entry&&!entry.frame)entry.frame=entry.win.requestAnimationFrame(()=>{entry.frame=0;this.update(view);});
   }
   update(view){
     const entry=this.entries.get(view),s=entry&&this.scroller(view);
@@ -107,8 +110,13 @@ class ScrollRuler extends Component{
       const lines=cm.state.doc.lines,base=cm.documentTop-top;
       return headings.map(h=>clamp01((base+cm.lineBlockAt(cm.state.doc.line(Math.min(h.line+1,lines)).from).top)/height));
     }
-    const sections=view.previewMode?.renderer?.sections;
-    if(height>0&&Array.isArray(sections)&&sections.length&&sections.every(x=>Number.isFinite(x?.height)&&Number.isInteger(x.lineStart)&&Number.isInteger(x.lineEnd))){
+    // Obsidian's sections carry start/end positions ({line,col,offset}); the page header (title,
+    // properties) and footer (backlinks) are sections too, with no lines of their own: their
+    // heights count, but no heading is paired with them.
+    const renderer=view.previewMode?.renderer,sections=renderer?.sections;
+    const ui=x=>x===renderer?.header||x===renderer?.footer;
+    const text=Array.isArray(sections)?sections.map((x,i)=>i).filter(i=>!ui(sections[i])):[];
+    if(height>0&&text.length&&sections.every(x=>Number.isFinite(x?.height))&&text.every(i=>Number.isInteger(sections[i].start?.line)&&Number.isInteger(sections[i].end?.line))){
       const sizer=s.querySelector('.markdown-preview-sizer');
       let y=sizer?sizer.getBoundingClientRect().top-top:0;
       const starts=sections.map(x=>{
@@ -116,11 +124,11 @@ class ScrollRuler extends Component{
         const at=y;y+=x.height;return at;
       });
       // Headings and sections both run down the note: one pass pairs them.
-      let j=0;
+      let j=0;const last=sections[text.at(-1)].end.line;
       return headings.map(h=>{
-        while(j<sections.length-1&&sections[j].lineEnd<h.line)j++;
-        const x=sections[j],inside=x.lineStart<=h.line&&h.line<=x.lineEnd;
-        return clamp01(inside?starts[j]/height:h.line/Math.max(1,sections.at(-1).lineEnd+1));
+        while(j<text.length-1&&sections[text[j]].end.line<h.line)j++;
+        const x=sections[text[j]],inside=x.start.line<=h.line&&h.line<=x.end.line;
+        return clamp01(inside?starts[text[j]]/height:h.line/Math.max(1,last+1));
       });
     }
     const lines=Math.max(1,view.editor?.lineCount?.()||String(view.data||'').split('\n').length);

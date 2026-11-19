@@ -51,7 +51,7 @@ class Library extends Component{
   changed(){
     this.cache=null;
     if(this.timer||!this.views().length)return;
-    this.timer=window.setTimeout(()=>{this.timer=0;for(const v of this.views())v.refresh();},300);
+    this.timer=window.setTimeout(()=>{this.timer=0;for(const v of this.views())v.refreshWhenShown();},300);
   }
   refreshNow(){this.cache=null;for(const v of this.views())v.refresh();}
   items(){
@@ -158,8 +158,11 @@ class LibraryView extends ItemView{
       if(entries.some(e=>e.isIntersecting)&&this.shown<this.list.length){this.loadMore();this.more.unobserve(this.moreEl);this.more.observe(this.moreEl);}
     },{root:this.mainEl,rootMargin:'800px 0px'});
     this.more.observe(this.moreEl);
-    // A wider or narrower pane changes the number of columns.
-    this.resize=new win.ResizeObserver(()=>{if(this.columns()!==this.cols.length)this.relayout();});
+    // A wider or narrower pane changes the number of columns; a pane shown again catches up.
+    this.resize=new win.ResizeObserver(()=>{
+      if(this.stale&&this.mainEl.offsetParent!==null){this.stale=false;this.refresh();return;}
+      if(this.columns()!==this.cols.length)this.relayout();
+    });
     this.resize.observe(this.mainEl);
     this.syncControls();
     this.refresh(true);
@@ -173,8 +176,15 @@ class LibraryView extends ItemView{
     if(this.searchEl&&this.searchEl.value!==this.filter.text)this.searchEl.value=this.filter.text;
   }
   setScope(kind,value=''){this.filter.scope={kind,value};this.saveState();this.refresh();}
+  // Links are resolved again after every save while typing. A hidden pane (another sidebar tab,
+  // a collapsed sidebar) skips that work and catches up when it is shown.
+  refreshWhenShown(){
+    if(this.mainEl&&this.mainEl.offsetParent===null){this.stale=true;return;}
+    this.refresh();
+  }
   refresh(force=false){
     if(!this.gridEl)return;
+    this.stale=false;
     const all=this.library.items(),list=L.filterItems(all,this.filter);
     this.renderSide(all);
     const waiting=this.filter.shape!=='all'?all.filter(i=>!i.w&&!this.library.failed.has(i.path)):[];

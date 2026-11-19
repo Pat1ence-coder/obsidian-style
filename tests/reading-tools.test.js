@@ -68,7 +68,7 @@ function loadModule(file,extra={}){
 }
 const obsidianStub={Component:class{registerEvent(){}},Modal:class{},Notice:class{},Setting:class{}};
 function readingView(source){
-  const {Annotations}=loadModule('annotations.js',{obsidian:obsidianStub,'@codemirror/view':{}});
+  const {Annotations}=loadModule('annotations.js',{obsidian:obsidianStub,'@codemirror/view':{},'@codemirror/language':{}});
   const doc=fakeDocument(),p=doc.createElement('p');
   // "<mark>target</mark>{...}rest" for each "==target=={...}"; other text stays text.
   for(const part of source.split(/(==[^=]+==)/).filter(Boolean)){
@@ -110,8 +110,12 @@ test('Live Preview: a pinned annotation is one widget, target with the note insi
     mark:spec=>({range:(from,to)=>({kind:'mark',spec,from,to})}),
     replace:spec=>({range:(from,to)=>({kind:'replace',spec,from,to})}),
     widget:spec=>({range:at=>({kind:'widget',spec,from:at,to:at})})};
+  // Obsidian's syntax tree: tokens named by their classes joined with _; here one inline code span.
+  let code=null;
+  const tree={resolveInner:pos=>({type:{name:code&&code[0]<=pos&&pos<code[1]?'formatting_formatting-code_inline-code':'Document'}})};
   const {Annotations}=loadModule('annotations.js',{obsidian:{...obsidianStub,editorLivePreviewField:null},
-    '@codemirror/view':{Decoration,WidgetType:class{},ViewPlugin:{fromClass:(cls,spec)=>{made.push({cls,spec});return 'plugin';}}}});
+    '@codemirror/view':{Decoration,WidgetType:class{},ViewPlugin:{fromClass:(cls,spec)=>{made.push({cls,spec});return 'plugin';}}},
+    '@codemirror/language':{syntaxTree:()=>tree}});
   const plugin={registerMarkdownPostProcessor(){},registerEditorExtension(){},app:{workspace:{on(){}}}};
   const a=new Annotations(plugin);a.registerEvent=()=>{};a.onload();
   const source='x ==ab=={标注} y ==cd=={左边|左} ==ef=={粉|#d0428a 右}';
@@ -132,12 +136,18 @@ test('Live Preview: a pinned annotation is one widget, target with the note insi
   assert.equal(list[4].spec.attributes.style,'--aw-annot-color:#d0428a');
   const editing=new made[0].cls(view(at('ab')+1)).decorations.list;
   assert.equal(editing[0].kind,'mark');assert.equal(editing[0].spec.class,'aw-annot-source');assert.equal(editing[0].from,at('{标注}'));
+  // Written inside inline code (or a code block, math, a comment): left as source, as in reading view.
+  code=[at('==ab')-1,at('{标注}')+5];
+  const kept=new made[0].cls(view(0)).decorations.list;
+  assert.ok(kept.every(d=>d.from>=code[1]),'nothing drawn inside the code span');
+  assert.equal(kept.length,list.length-1,'the annotations outside it are still drawn');
 });
 test('right-click: add an annotation to selected text, edit or remove the one under the cursor',()=>{
-  const {Annotations}=loadModule('annotations.js',{obsidian:obsidianStub,'@codemirror/view':{}});
+  const {Annotations}=loadModule('annotations.js',{obsidian:obsidianStub,'@codemirror/view':{},'@codemirror/language':{}});
   const a=new Annotations({app:{workspace:{on(){}}},data:{settings:{}}});
   let line='Keys can never be reused here.',sel={from:9,to:24},cursor={line:0,ch:0};
-  const editor={getSelection:()=>line.slice(sel.from,sel.to),getCursor:()=>cursor,getLine:()=>line,
+  const editor={getSelection:()=>line.slice(sel.from,sel.to),getLine:()=>line,
+    getCursor:which=>sel.from===sel.to?cursor:{line:0,ch:which==='to'?sel.to:sel.from},
     replaceSelection(t){line=line.slice(0,sel.from)+t+line.slice(sel.to);},replaceRange(t,f,to){line=line.slice(0,f.ch)+t+line.slice(to.ch);}};
   const items=()=>{const out=[];a.menu({addItem(fn){const item={setTitle(t){this.title=t;return this;},setIcon(){return this;},onClick(f){this.run=f;return this;}};fn(item);out.push(item);}},editor);return out;};
   let opened=null;a.openModal=(spec,labels,submit)=>{opened={spec,labels};submit({...spec,note:'这是标注',dir:'sw'});};
@@ -146,6 +156,12 @@ test('right-click: add an annotation to selected text, edit or remove the one un
   add[0].run();
   assert.equal(line,'Keys can ==never be reused=={这是标注|左下} here.');
   assert.equal(opened.labels.title,'添加标注');
+  // A selection inside the annotation (macOS selects the word under a right-click) edits it
+  // instead of nesting a second one: ====reused=={…}=={…}.
+  sel={from:line.indexOf('reused'),to:line.indexOf('reused')+6};
+  assert.deepEqual(items().map(i=>i.title),['编辑标注','删除标注']);
+  sel={from:0,to:line.indexOf('==')};
+  assert.deepEqual(items().map(i=>i.title),['添加标注'],'a selection that only touches it adds');
   sel={from:0,to:0};cursor={line:0,ch:line.indexOf('reused')};
   const menu=items();assert.deepEqual(menu.map(i=>i.title),['编辑标注','删除标注']);
   a.openModal=(spec,labels,submit)=>{opened={spec,labels};submit({...spec,note:'别再用',color:'red'});};
@@ -235,15 +251,20 @@ test('ruler headings sit at their place in the note, the one being read darker; 
 test('ruler headings can be turned off, and follow the reading view or the line count when there is no editor',()=>{
   const off=rulerFixture({settings:{rulerHeadings:false}});off.ruler.update(off.view);
   assert.deepEqual(off.marks(),[]);assert.equal(off.entry.el['is-compact'],false);
-  // Reading view: Obsidian's sections (heights), from the top of the sizer (30px into the note).
-  const sections=[{lineStart:0,lineEnd:0,height:70},{lineStart:1,lineEnd:39,height:900},{lineStart:40,lineEnd:40,height:40},{lineStart:41,lineEnd:41,height:40},{lineStart:42,lineEnd:100,height:900}];
+  // Reading view: Obsidian's sections (heights; positions as start/end {line,col,offset}, as in
+  // 1.15.1), from the top of the sizer (30px into the note). The page header (title, 20px) and
+  // footer are sections too, both at line 0.
+  const at=(a,b)=>({start:{line:a,col:0,offset:0},end:{line:b,col:0,offset:0}});
+  const header={...at(0,0),height:20},footer={...at(0,0),height:300};
+  const sections=[header,{...at(0,0),height:50},{...at(1,39),height:900},{...at(40,40),height:40},{...at(41,41),height:40},{...at(42,100),height:900},footer];
   const read=rulerFixture({mode:'preview',sections});
+  read.view.previewMode.renderer.header=header;read.view.previewMode.renderer.footer=footer;
   const hs=read.ruler.headings(read.view);
   assert.deepEqual(hs.map(h=>h.text),['Intro','XOR','Close','End'],'levels 1–3 with a name');
-  assert.deepEqual(Array.from(read.ruler.fractions(read.view,read.scroller,hs)),[30/2000,1000/2000,1040/2000,1080/2000]);
+  assert.deepEqual(Array.from(read.ruler.fractions(read.view,read.scroller,hs)),[50/2000,1000/2000,1040/2000,1080/2000]);
   // A section on screen corrects the estimate.
-  sections[2].el={isConnected:true,offsetParent:{},getBoundingClientRect:()=>({top:50-1000+990})};
-  assert.deepEqual(Array.from(read.ruler.fractions(read.view,read.scroller,hs)),[30/2000,990/2000,1030/2000,1070/2000]);
+  sections[3].el={isConnected:true,offsetParent:{},getBoundingClientRect:()=>({top:50-1000+990})};
+  assert.deepEqual(Array.from(read.ruler.fractions(read.view,read.scroller,hs)),[50/2000,990/2000,1030/2000,1070/2000]);
   // No sections and no CodeMirror: the share of lines above.
   const plain=rulerFixture({mode:'preview'});
   assert.deepEqual(Array.from(plain.ruler.fractions(plain.view,plain.scroller,hs)),[0,.4,.41,.9]);
@@ -289,4 +310,25 @@ test('pinned notes stay with their target when lines wrap: short targets are kep
   assert.equal(F.noteTree(pin).text,'\u2060');assert.equal(F.noteTree(flow).text,null);
   const css=fs.readFileSync(path.join(__dirname,'../dist/algorithm-workbench/styles.css'),'utf8');
   assert.match(css,/\.aw-annot-target\.aw-annot-keep \{white-space: nowrap;\}/);
+});
+test('diagram cards: Chinese breaks between words, and four cards go two by two rather than three and one',()=>{
+  const blocks=fs.readFileSync(path.join(root,'src/styles/blocks.css'),'utf8');
+  const card=/\.callout\[data-callout="diagram"\] > \.callout-content > ul > li \{([^}]*)\}/.exec(blocks)[1];
+  assert.match(card,/word-break: keep-all;/,'no "记 / 录" split inside a word');
+  assert.match(card,/overflow-wrap: anywhere;/,'a run too long for the card still wraps');
+  assert.match(blocks,/\.callout\[data-callout="diagram"\] > \.callout-content \{container-type: inline-size;\}/);
+  const q=/@container \(min-width: 280px\) and \(max-width: (\d+)px\) \{\s*([^{]+)\{flex-basis: 40%;\}/.exec(blocks);
+  assert.ok(q,'two-by-two query');
+  // Below this width four 130px cards with 18px gaps no longer fit in one row.
+  assert.equal(Number(q[1]),4*130+3*18-1);
+  assert.match(q[2],/:not\(\[data-callout-metadata="rows"\]\)/,'rows layout untouched');
+  assert.match(q[2],/ul:has\(> li:nth-child\(4\):last-child\) > li/,'only exactly four cards');
+});
+test('the ruler schedules its frames in its own window, so a popout keeps updating',()=>{
+  const f=rulerFixture(),calls=[];
+  f.entry.win.requestAnimationFrame=fn=>{calls.push('frame');return 7;};
+  f.entry.win.cancelAnimationFrame=id=>calls.push(id);
+  f.ruler.schedule(f.view);f.ruler.schedule(f.view);
+  assert.deepEqual(calls,['frame'],'one frame at a time, from the ruler\'s window');
+  f.ruler.detach(f.view);assert.deepEqual(calls,['frame',7],'cancelled in the same window');
 });

@@ -26,7 +26,7 @@ body.theme-dark :is(.markdown-rendered,.markdown-source-view) .callout[data-call
   flex: 1 1 130px;
   max-width: 200px;
   margin: 0;
-  padding: 14px 16px 12px;
+  padding: 14px 14px 12px;
   border: 1px solid rgba(var(--aw-c),.24);
   border-radius: 10px;
   background: color-mix(in srgb, rgb(var(--aw-c)) 9%, var(--ds-paper));
@@ -34,8 +34,17 @@ body.theme-dark :is(.markdown-rendered,.markdown-source-view) .callout[data-call
   color: var(--ds-muted);
   font-size: 12px;
   line-height: 1.55;
+  /* Narrow cards: break Chinese at spaces and punctuation, not inside a word ("记 / 录"); a run
+     too long for the card still breaks anywhere. */
+  word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 body.theme-dark .callout[data-callout="diagram"] > .callout-content > ul > li {box-shadow: inset 0 1px 0 rgba(255,255,255,.05), 0 8px 16px -12px rgba(var(--aw-c),.5);}
+/* Four cards that no longer fit in one row go two by two instead of three and a lone one. */
+.callout[data-callout="diagram"] > .callout-content {container-type: inline-size;}
+@container (min-width: 280px) and (max-width: 573px) {
+  .callout[data-callout="diagram"]:not([data-callout-metadata="rows"]) > .callout-content > ul:has(> li:nth-child(4):last-child) > li {flex-basis: 40%;}
+}
 .callout[data-callout="diagram"] > .callout-content > ul > li:nth-child(4n+2) {--aw-c: var(--ds-tone-1);}
 .callout[data-callout="diagram"] > .callout-content > ul > li:nth-child(4n+3) {--aw-c: var(--ds-tone-4);}
 .callout[data-callout="diagram"] > .callout-content > ul > li:nth-child(4n+4) {--aw-c: var(--ds-tone-2);}

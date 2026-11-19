@@ -15,6 +15,11 @@ const {Library}=require('./features/library');
 const {MarkdownPaste}=require('./features/markdown-paste');
 // aw-palette-* and aw-style-* are listed so classes left by earlier versions are cleaned up.
 const APPEARANCE=/^aw-(?:palette|style|caption|glass-fog)-|^aw-(?:figure-tools-off|glass)$/;
+// A created note counts as new when it is opened within this time.
+const NEW_NOTE_OPEN_MS=10000;
+// Settings are saved soon after a change; statistics gathered while typing wait longer, so
+// data.json (and any sync of it) is not rewritten several times a second.
+const SAVE_MS=750,TYPING_SAVE_MS=10000;
 
 class WorkbenchSettings extends PluginSettingTab {
   constructor(app,plugin){super(app,plugin);this.plugin=plugin;}
@@ -77,6 +82,8 @@ class WorkbenchPlugin extends Plugin {
     this.registerEvent(this.app.workspace.on('window-close',(_leaf,win)=>this.appearanceDocs.delete(win.document)));
     this.addSettingTab(new WorkbenchSettings(this.app,this));
     this.registerEditorExtension(EditorView.updateListener.of(update=>this.trackUpdate(update)));
+    // Quitting closes the window without unloading plugins: save what is still waiting.
+    this.registerEvent(this.app.workspace.on('quit',tasks=>{if(this.saveTimer||this.saving)tasks.add(()=>this.flush());}));
     for(const event of ['create','modify','delete']) this.registerEvent(this.app.vault.on(event,file=>{
       if(event==='delete'&&file instanceof TFile){delete this.data.records[file.path];this.scheduleSave();}
       this.scheduleRefresh();
@@ -89,8 +96,11 @@ class WorkbenchPlugin extends Plugin {
     this.registerEvent(this.app.workspace.on('active-leaf-change',()=>this.scheduleRefresh()));
     this.app.workspace.onLayoutReady(()=>{
       if(this.stopped)return;
-      // Vault emits create for every existing file while indexing; count only later ones.
-      this.registerEvent(this.app.vault.on('create',file=>this.trackCreate(file)));
+      // Vault emits create for every existing file while indexing; count only later ones. A new
+      // note counts when this Obsidian opens it right after creating it (new note, a link to a
+      // missing note, a daily note); files arriving by Sync, git or the file manager are not opened.
+      this.registerEvent(this.app.vault.on('create',file=>this.noteCreated(file)));
+      this.registerEvent(this.app.workspace.on('file-open',file=>this.trackCreate(file)));
       if(this.data.settings.openOnStartup)void this.openWorkbench();
     });
     this.scheduleSave();
@@ -110,7 +120,7 @@ class WorkbenchPlugin extends Plugin {
       active||=user;
     }
     if(active)Core.recordActivity(this.data,this.session);
-    this.changed();
+    this.scheduleSave(TYPING_SAVE_MS);this.scheduleRefresh();
   }
   // Pasted or dragged lists are not newly completed work. A checkbox toggle may carry
   // no user-event annotation, so tiny unannotated replacements are accepted as well.
@@ -119,7 +129,18 @@ class WorkbenchPlugin extends Plugin {
     let size=0;tr.changes.iterChanges((fromA,toA,fromB,toB)=>{size+=(toA-fromA)+(toB-fromB);});
     return size<=2;
   }
+  noteCreated(file){
+    if(this.stopped||!(file instanceof TFile)||file.extension!=='md')return;
+    const now=Date.now(),fresh=this.freshNotes??=new Map();
+    // Oldest first: files that were never opened (a sync of many) are dropped as time passes.
+    for(const [p,at] of fresh){if(now-at<=NEW_NOTE_OPEN_MS)break;fresh.delete(p);}
+    fresh.delete(file.path);fresh.set(file.path,now);
+  }
   trackCreate(file){
+    const at=file?this.freshNotes?.get(file.path):undefined;
+    if(at===undefined)return;
+    this.freshNotes.delete(file.path);
+    if(Date.now()-at>NEW_NOTE_OPEN_MS)return;
     if(this.stopped||!this.data.settings.tracking||!(file instanceof TFile)||file.extension!=='md'||Core.isExcluded(file.path,this.data.settings.excludedFolders))return;
     Core.recordNote(this.data,Core.dayKey());this.changed();
   }
@@ -128,10 +149,14 @@ class WorkbenchPlugin extends Plugin {
     this.recordDay=date;
     if(Core.pruneRecords(this.data,date))this.scheduleSave();
   }
-  scheduleSave(){
+  scheduleSave(delay=SAVE_MS){
     if(this.stopped)return;
     if(this.saving){this.saveRequested=true;return;}
-    if(!this.saveTimer)this.saveTimer=setTimeout(()=>{this.saveTimer=null;void this.flush();},750);
+    // A sooner save replaces a later one already waiting.
+    const due=Date.now()+delay;
+    if(this.saveTimer&&this.saveDue<=due)return;
+    clearTimeout(this.saveTimer);this.saveDue=due;
+    this.saveTimer=setTimeout(()=>{this.saveTimer=null;void this.flush();},delay);
   }
   flush(){
     this.saveRequested=true;
@@ -203,6 +228,9 @@ class WorkbenchPlugin extends Plugin {
       for(const name of [...doc.body.classList])if(APPEARANCE.test(name))doc.body.classList.remove(name);
       doc.body.style.removeProperty('--aw-annot-font');
     }
-    this.stopped=true;clearTimeout(this.saveTimer);clearTimeout(this.refreshTimer);this.documentCounts=new WeakMap();if(this.data)void this.flush();this.app.workspace.detachLeavesOfType(VIEW);}
+    this.stopped=true;clearTimeout(this.saveTimer);clearTimeout(this.refreshTimer);this.documentCounts=new WeakMap();if(this.data)void this.flush();
+    // Workbench tabs stay where they are: after an update they come back in place (Obsidian's
+    // plugin guidelines: do not detach leaves on unload).
+  }
 }
 module.exports=WorkbenchPlugin;

@@ -17,6 +17,11 @@ const {Library}=__awRequire("features/library.js");
 const {MarkdownPaste}=__awRequire("features/markdown-paste.js");
 // aw-palette-* and aw-style-* are listed so classes left by earlier versions are cleaned up.
 const APPEARANCE=/^aw-(?:palette|style|caption|glass-fog)-|^aw-(?:figure-tools-off|glass)$/;
+// A created note counts as new when it is opened within this time.
+const NEW_NOTE_OPEN_MS=10000;
+// Settings are saved soon after a change; statistics gathered while typing wait longer, so
+// data.json (and any sync of it) is not rewritten several times a second.
+const SAVE_MS=750,TYPING_SAVE_MS=10000;
 
 class WorkbenchSettings extends PluginSettingTab {
   constructor(app,plugin){super(app,plugin);this.plugin=plugin;}
@@ -79,6 +84,8 @@ class WorkbenchPlugin extends Plugin {
     this.registerEvent(this.app.workspace.on('window-close',(_leaf,win)=>this.appearanceDocs.delete(win.document)));
     this.addSettingTab(new WorkbenchSettings(this.app,this));
     this.registerEditorExtension(EditorView.updateListener.of(update=>this.trackUpdate(update)));
+    // Quitting closes the window without unloading plugins: save what is still waiting.
+    this.registerEvent(this.app.workspace.on('quit',tasks=>{if(this.saveTimer||this.saving)tasks.add(()=>this.flush());}));
     for(const event of ['create','modify','delete']) this.registerEvent(this.app.vault.on(event,file=>{
       if(event==='delete'&&file instanceof TFile){delete this.data.records[file.path];this.scheduleSave();}
       this.scheduleRefresh();
@@ -91,8 +98,11 @@ class WorkbenchPlugin extends Plugin {
     this.registerEvent(this.app.workspace.on('active-leaf-change',()=>this.scheduleRefresh()));
     this.app.workspace.onLayoutReady(()=>{
       if(this.stopped)return;
-      // Vault emits create for every existing file while indexing; count only later ones.
-      this.registerEvent(this.app.vault.on('create',file=>this.trackCreate(file)));
+      // Vault emits create for every existing file while indexing; count only later ones. A new
+      // note counts when this Obsidian opens it right after creating it (new note, a link to a
+      // missing note, a daily note); files arriving by Sync, git or the file manager are not opened.
+      this.registerEvent(this.app.vault.on('create',file=>this.noteCreated(file)));
+      this.registerEvent(this.app.workspace.on('file-open',file=>this.trackCreate(file)));
       if(this.data.settings.openOnStartup)void this.openWorkbench();
     });
     this.scheduleSave();
@@ -112,7 +122,7 @@ class WorkbenchPlugin extends Plugin {
       active||=user;
     }
     if(active)Core.recordActivity(this.data,this.session);
-    this.changed();
+    this.scheduleSave(TYPING_SAVE_MS);this.scheduleRefresh();
   }
   // Pasted or dragged lists are not newly completed work. A checkbox toggle may carry
   // no user-event annotation, so tiny unannotated replacements are accepted as well.
@@ -121,7 +131,18 @@ class WorkbenchPlugin extends Plugin {
     let size=0;tr.changes.iterChanges((fromA,toA,fromB,toB)=>{size+=(toA-fromA)+(toB-fromB);});
     return size<=2;
   }
+  noteCreated(file){
+    if(this.stopped||!(file instanceof TFile)||file.extension!=='md')return;
+    const now=Date.now(),fresh=this.freshNotes??=new Map();
+    // Oldest first: files that were never opened (a sync of many) are dropped as time passes.
+    for(const [p,at] of fresh){if(now-at<=NEW_NOTE_OPEN_MS)break;fresh.delete(p);}
+    fresh.delete(file.path);fresh.set(file.path,now);
+  }
   trackCreate(file){
+    const at=file?this.freshNotes?.get(file.path):undefined;
+    if(at===undefined)return;
+    this.freshNotes.delete(file.path);
+    if(Date.now()-at>NEW_NOTE_OPEN_MS)return;
     if(this.stopped||!this.data.settings.tracking||!(file instanceof TFile)||file.extension!=='md'||Core.isExcluded(file.path,this.data.settings.excludedFolders))return;
     Core.recordNote(this.data,Core.dayKey());this.changed();
   }
@@ -130,10 +151,14 @@ class WorkbenchPlugin extends Plugin {
     this.recordDay=date;
     if(Core.pruneRecords(this.data,date))this.scheduleSave();
   }
-  scheduleSave(){
+  scheduleSave(delay=SAVE_MS){
     if(this.stopped)return;
     if(this.saving){this.saveRequested=true;return;}
-    if(!this.saveTimer)this.saveTimer=setTimeout(()=>{this.saveTimer=null;void this.flush();},750);
+    // A sooner save replaces a later one already waiting.
+    const due=Date.now()+delay;
+    if(this.saveTimer&&this.saveDue<=due)return;
+    clearTimeout(this.saveTimer);this.saveDue=due;
+    this.saveTimer=setTimeout(()=>{this.saveTimer=null;void this.flush();},delay);
   }
   flush(){
     this.saveRequested=true;
@@ -205,7 +230,10 @@ class WorkbenchPlugin extends Plugin {
       for(const name of [...doc.body.classList])if(APPEARANCE.test(name))doc.body.classList.remove(name);
       doc.body.style.removeProperty('--aw-annot-font');
     }
-    this.stopped=true;clearTimeout(this.saveTimer);clearTimeout(this.refreshTimer);this.documentCounts=new WeakMap();if(this.data)void this.flush();this.app.workspace.detachLeavesOfType(VIEW);}
+    this.stopped=true;clearTimeout(this.saveTimer);clearTimeout(this.refreshTimer);this.documentCounts=new WeakMap();if(this.data)void this.flush();
+    // Workbench tabs stay where they are: after an update they come back in place (Obsidian's
+    // plugin guidelines: do not detach leaves on unload).
+  }
 }
 module.exports=WorkbenchPlugin;
 
@@ -775,7 +803,7 @@ class WorkbenchView extends ItemView{
     const footer=el(root,'footer','aw-footer');
     const local=el(footer,'span','aw-local');icon(local,'hard-drive');el(local,'span','',settings.tracking?'仅保存在本地':'本地记录 · 已暂停');
     const help=el(footer,'details','aw-help');help.open=helpOpen;el(help,'summary','','如何统计？');
-    el(help,'p','','新增字数：本机编辑器内新增的非空白字符，含公式、代码和粘贴内容，删除后恢复不重复计数。编辑时长：有输入的分钟，以及其间不超过 5 分钟的停顿。深度专注：连续编辑达到 25 分钟的时段。新建笔记：Obsidian 中新建的 Markdown 文件。完成任务：编辑器里新勾选的任务，反复勾选只算一次。');
+    el(help,'p','','新增字数：本机编辑器内新增的非空白字符，含公式、代码和粘贴内容，删除后恢复不重复计数。编辑时长：有输入的分钟，以及其间不超过 5 分钟的停顿。深度专注：连续编辑达到 25 分钟的时段。新建笔记：在本机 Obsidian 中新建并随即打开的 Markdown 文件，经同步、git 或文件管理器加入的不计。完成任务：编辑器里新勾选的任务，反复勾选只算一次。');
     el(help,'p','','贡献分 = 新增字数 ÷ 100 + 编辑分钟 ÷ 10 + 专注分钟 ÷ 10 + 新建笔记 × 2 + 完成任务。热力图强度按所选时间范围内活跃日的四分位数分级。');
     this.renderStamp=this.stamp();this.contentEl.scrollTop=scrollTop;
     if(heatWrap)heatWrap.scrollLeft=heatScroll??heatWrap.scrollWidth;
@@ -1240,7 +1268,8 @@ class FolderNotes extends Component {
           if(!this.stopped)await this.app.workspace.revealLeaf(explorer);
         }
         this.plugin.scheduleRefresh();
-      }else await this.app.workspace.getLeaf('tab').openFile(created);
+      // As Obsidian's own new note: focused, in the editor, with the title selected for renaming.
+      }else await this.app.workspace.getLeaf('tab').openFile(created,{active:true,state:{mode:'source'},eState:{rename:'all'}});
     } catch(error) {new Notice(`新建${label}失败，请检查目标目录或写入权限。`);console.error('Workbench folder creation:',error);}
     finally {this.creating=false;}
   }
@@ -1517,6 +1546,11 @@ const MIN_WIDTH=40;
 const SNAP_FRACTIONS=[1/4,1/3,1/2,2/3,3/4,1],SNAP=10;
 // A drag only targets a slot while the pointer stays this close to the figure.
 const REACH=96;
+// Edits that name an image by its number need the rendered images and the source to agree.
+const numbered=(figure,change)=>(lines,block)=>{
+  if(block.images.length!==figure.querySelectorAll('.image-embed').length)throw Error('图片与源码对不上（例如含网络图片），请在源码中修改这组插图。');
+  return change(lines,block);
+};
 const rectIn=(rect,origin)=>({left:rect.left-origin.left,top:rect.top-origin.top,width:rect.width,height:rect.height});
 const centre=r=>({x:r.left+r.width/2,y:r.top+r.height/2});
 // Nearest slot to a point, or -1 when the point is farther than REACH from every slot edge.
@@ -1557,7 +1591,7 @@ function markLabel(title) {
 // slot it would land in; dragging a single image outlines the left / centre / right
 // positions. Every change is written back to the note's Markdown, so print follows.
 class FigureTools extends Component {
-  constructor(plugin){super();this.plugin=plugin;this.app=plugin.app;this.documents=new Map();this.decorated=new WeakSet();this.gesture=null;}
+  constructor(plugin){super();this.plugin=plugin;this.app=plugin.app;this.documents=new Map();this.decorated=new WeakSet();this.contexts=new WeakMap();this.gesture=null;}
   onload(){
     this.attachDocument(this.app.workspace.containerEl?.ownerDocument);
     this.registerEvent(this.app.workspace.on('window-open',(_leaf,win)=>this.attachDocument(win.document)));
@@ -1575,22 +1609,27 @@ class FigureTools extends Component {
     owner.registerDomEvent(doc,'mouseover',event=>this.hover(event));
     owner.registerDomEvent(doc,'pointerdown',event=>this.pointerDown(event),true);
   }
-  // Reading view (and rendered callouts in Live Preview): label captions and remember
-  // which source line each figure starts on.
+  // Reading view (and rendered callouts in Live Preview): label captions and keep each
+  // figure's context, which tells where its section is in the note at edit time.
   process(el,ctx){
     const titles=[...el.querySelectorAll(CAPTIONED)];
     if(el.matches?.(CAPTIONED))titles.push(el);
     titles.forEach(markLabel);
-    const info=ctx?.getSectionInfo?.(el);
-    if(!info)return;
+    if(!ctx?.getSectionInfo?.(el))return;
     const figures=[...el.querySelectorAll(FIGURE)];
     if(el.matches?.(FIGURE))figures.push(el);
-    for(const figure of figures){figure.dataset.awLine=String(info.lineStart);figure.dataset.awSource=ctx.sourcePath;}
+    for(const figure of figures)this.contexts.set(figure,ctx);
+  }
+  // The Markdown view a figure belongs to; null for figures in embedded notes, hover previews
+  // and other views, which are not edited in place.
+  viewOf(figure){
+    if(figure.closest('.markdown-embed,.hover-popover'))return null;
+    return this.app.workspace.getLeavesOfType('markdown').map(leaf=>leaf.view).find(v=>v?.containerEl?.contains(figure))??null;
   }
   hover(event){
     if(!this.enabled()||this.gesture)return;
     const figure=event.target?.closest?.(FIGURE);
-    if(!figure||this.decorated.has(figure)||!figure.closest('.markdown-preview-view,.markdown-source-view'))return;
+    if(!figure||this.decorated.has(figure)||!figure.closest('.markdown-preview-view,.markdown-source-view')||!this.viewOf(figure))return;
     this.decorate(figure);
   }
   decorate(figure){
@@ -1691,7 +1730,7 @@ class FigureTools extends Component {
       const shown=img.getBoundingClientRect().width||width;
       if(Math.abs(shown-start.width)<3){preview();return;}
       const final=Math.min(4096,Math.max(MIN_WIDTH,fraction?Math.round(shown):Math.round(shown/10)*10));
-      if(!await this.edit(figure,(lines,block)=>Edit.setWidth(lines,block,index,final)))preview();
+      if(!await this.edit(figure,numbered(figure,(lines,block)=>Edit.setWidth(lines,block,index,final))))preview();
     };
   }
   // Grid / mosaic: a small copy of the image follows the pointer; the nearest slot is outlined.
@@ -1709,7 +1748,7 @@ class FigureTools extends Component {
       to=nearestSlot(slots,at.x,at.y);
       this.place(slot,to<0||to===from?null:slots[to]);
     };
-    this.gesture.onEnd=()=>{if(to>=0&&to!==from)void this.edit(figure,(lines,block)=>Edit.moveImage(lines,block,from,to));};
+    this.gesture.onEnd=()=>{if(to>=0&&to!==from)void this.edit(figure,numbered(figure,(lines,block)=>Edit.moveImage(lines,block,from,to)));};
   }
   // Single image: three outlines (left / centre / right) of the image's size; drop on one to align.
   startAlign(event,figure,embed){
@@ -1780,36 +1819,55 @@ class FigureTools extends Component {
     g.cleanup?.();
     if(cancelled)g.revert?.();
   }
-  // Live Preview edits go through the editor (undoable); reading view edits rewrite
-  // the file after checking the recorded block is still where it was rendered.
+  // Live Preview edits go through the editor (undoable); reading view edits rewrite the file
+  // after checking the block is still what the view shows. apply() resolves to whether the
+  // note changed.
   locate(figure){
+    const view=this.viewOf(figure);
+    if(!view)return null;
     if(figure.closest('.markdown-source-view')){
-      const view=this.app.workspace.getLeavesOfType('markdown').map(leaf=>leaf.view).find(v=>v?.containerEl?.contains(figure));
-      const editor=view?.editor,cm=editor?.cm;
-      if(!editor||typeof cm?.posAtDOM!=='function')return null;
+      const editor=view.editor,cm=editor?.cm;
+      if(!editor||typeof cm?.posAtDOM!=='function'||typeof cm.dispatch!=='function')return null;
       const line=cm.state.doc.lineAt(cm.posAtDOM(figure)).number-1;
       return {apply:change=>{
         const lines=editor.getValue().split('\n'),block=Edit.findBlock(lines,line);
         if(!block)throw Error('这里不是插图块。');
-        const next=change(lines,block);
-        editor.replaceRange(next.slice(block.start,block.end+1).join('\n'),{line:block.start,ch:0},{line:block.end,ch:lines[block.end].length});
+        const doc=cm.state.doc,insert=change(lines,block).slice(block.start,block.end+1).join('\n');
+        if(insert===lines.slice(block.start,block.end+1).join('\n'))return false;
+        // Straight to CodeMirror, still one undoable step. Editor.replaceRange would also scroll
+        // the cursor into view, and the cursor is wherever it was before the click (the toolbar
+        // keeps it out of the callout), often the top of the note: the page would jump there.
+        // Not an "input." event: a layout change is not writing, and is never merged into the
+        // typing before it in the undo history.
+        cm.dispatch({changes:{from:doc.line(block.start+1).from,to:doc.line(block.end+1).to,insert},userEvent:'set.figure'});
+        return true;
       }};
     }
-    const line=Number(figure.dataset.awLine),file=this.app.vault.getAbstractFileByPath(figure.dataset.awSource||'');
-    if(!Number.isInteger(line)||!(file instanceof TFile))return null;
-    return {apply:change=>this.app.vault.process(file,data=>{
-      const eol=data.includes('\r\n')?'\r\n':'\n',lines=data.split(eol),block=Edit.findBlock(lines,line);
-      if(!block||block.start!==line)throw Error('笔记内容已变化，请刷新后重试。');
-      return change(lines,block).join(eol);
-    })};
+    // Reading view: where the figure's section is now (Obsidian moves unchanged sections without
+    // running post-processors again), in the file the view shows now (it may have been renamed).
+    const info=this.contexts.get(figure)?.getSectionInfo?.(figure),file=view.file;
+    if(!info||!(file instanceof TFile))return null;
+    const line=info.lineStart,shown=String(info.text??'').split(/\r?\n/);
+    return {apply:async change=>{
+      let changed=false;
+      await this.app.vault.process(file,data=>{
+        const eol=data.includes('\r\n')?'\r\n':'\n',lines=data.split(eol),block=Edit.findBlock(lines,line);
+        const same=block&&block.start===line&&lines.slice(block.start,block.end+1).join('\n')===shown.slice(block.start,block.end+1).join('\n');
+        if(!same)throw Error('笔记内容已变化，请稍后重试。');
+        const next=change(lines,block);
+        changed=next.length!==lines.length||next.some((l,i)=>l!==lines[i]);
+        return changed?next.join(eol):data;
+      });
+      return changed;
+    }};
   }
-  // Resolves true once the change is written, false after showing why it wasn't.
+  // Resolves true once the change is written; false when there was nothing to change, or after
+  // showing why it wasn't written.
   async edit(figure,change){
     try{
       const located=this.locate(figure);
       if(!located){new Notice('无法定位这张插图的源码，请在编辑或阅读视图中重试。');return false;}
-      await located.apply(change);
-      return true;
+      return await located.apply(change)!==false;
     }catch(error){new Notice(error?.message||'修改插图失败。');return false;}
   }
   displaySettings(container){
@@ -1817,7 +1875,7 @@ class FigureTools extends Component {
       .addToggle(t=>t.setValue(this.enabled()).onChange(v=>{this.plugin.data.settings.figureTools=v;this.plugin.applyAppearanceEverywhere();this.plugin.changed();}));
   }
 }
-module.exports={FigureTools,markLabel,nearestSlot,snapWidth};
+module.exports={FigureTools,markLabel,nearestSlot,snapWidth,numbered};
 
 },
 "features/figure-edit.js":(module,exports,__awRequire)=>{
@@ -1841,11 +1899,9 @@ function findBlock(lines, line) {
   if(!header||header[2].toLowerCase()!=='figure')return null;
   let end=start;
   while(end+1<lines.length&&QUOTED.test(lines[end+1])&&!HEADER.test(lines[end+1]))end++;
+  // Every image, in the order they render: its line and its place on that line.
   const images=[];
-  for(let i=start+1;i<=end;i++){
-    const found=imagesIn(lines[i]);
-    if(found.length===1)images.push({line:i,width:found[0].width});
-  }
+  for(let i=start+1;i<=end;i++)imagesIn(lines[i]).forEach((found,at)=>images.push({line:i,at,width:found.width}));
   return {start,end,prefix:header[1],meta:(header[3]||'').trim(),fold:header[4],caption:header[5],images};
 }
 function replaceWidth(embed, width) {
@@ -1857,9 +1913,15 @@ function setWidth(lines, block, imageIndex, width) {
   const image=block.images[imageIndex];
   if(!image)throw Error('找不到这张图片。');
   if(width!==null&&(!Number.isInteger(width)||width<1||width>4096))throw Error('宽度需为 1–4096 的整数。');
-  const text=lines[image.line],[found]=imagesIn(text),next=lines.slice();
-  next[image.line]=text.slice(0,found.index)+replaceWidth(found.text,width)+text.slice(found.index+found.text.length);
+  const next=lines.slice();
+  next[image.line]=replaceImage(lines[image.line],image.at,found=>replaceWidth(found.text,width));
   return next;
+}
+// The line with its at-th image rewritten.
+function replaceImage(text,at,rewrite){
+  const found=imagesIn(text)[at];
+  if(!found)throw Error('找不到这张图片。');
+  return text.slice(0,found.index)+rewrite(found)+text.slice(found.index+found.text.length);
 }
 function setMeta(lines, block, meta) {
   if(!LAYOUT.test(meta))throw Error('不支持的布局。');
@@ -1869,14 +1931,21 @@ function setMeta(lines, block, meta) {
   next[block.start]=`${block.prefix}[!figure|${meta}]${block.fold}${block.caption}`;
   return next;
 }
-// Reorder image lines only; captions, blank quoted lines and other content stay put.
+// Reorder images; captions, blank quoted lines and other content stay put. With one image per
+// line the image lines move; when images share a line, the embeds trade places instead.
 function moveImage(lines, block, from, to) {
-  const slots=block.images.map(image=>image.line);
-  const valid=i=>Number.isInteger(i)&&i>=0&&i<slots.length;
+  const images=block.images;
+  const valid=i=>Number.isInteger(i)&&i>=0&&i<images.length;
   if(!valid(from)||!valid(to))throw Error('找不到要移动的图片。');
-  const order=slots.map(line=>lines[line]),[moved]=order.splice(from,1);order.splice(to,0,moved);
+  const shared=new Set(images.map(image=>image.line)).size<images.length;
+  const order=images.map(image=>shared?imagesIn(lines[image.line])[image.at].text:lines[image.line]);
+  const [moved]=order.splice(from,1);order.splice(to,0,moved);
   const next=lines.slice();
-  slots.forEach((line,i)=>{next[line]=order[i];});
+  // From the last image back, so the positions of earlier images on a line stay valid.
+  for(let i=images.length-1;i>=0;i--){
+    const {line,at}=images[i];
+    next[line]=shared?replaceImage(next[line],at,()=>order[i]):order[i];
+  }
   return next;
 }
 // "图 1"、"表 2-3"、"Figure 4"、"Fig. 5"、"Table 6": the label part of a caption.
@@ -1892,6 +1961,7 @@ module.exports={findBlock,setWidth,setMeta,moveImage,captionLabel,imagesIn,isGro
 'use strict';
 const {Component,Modal,Notice,Setting,editorLivePreviewField}=require('obsidian');
 const {ViewPlugin,Decoration,WidgetType}=require('@codemirror/view');
+const {syntaxTree}=require('@codemirror/language');
 const Format=__awRequire("features/annotation-format.js");
 const {parseAnnotation,findAnnotations,formatAnnotation,placement,targetClasses,noteTree,DIRECTIONS,COLORS,LINES}=Format;
 const SVG='http://www.w3.org/2000/svg';
@@ -1912,6 +1982,10 @@ function build(doc,node){
 }
 const noteNode=(doc,spec)=>build(doc,noteTree(spec));
 const livePreview=state=>!editorLivePreviewField||state.field(editorLivePreviewField,false)===true;
+// Code, math, comments and front matter keep their text as written (reading view makes no
+// highlight there either). Obsidian names a token's syntax node after its classes, joined by _.
+const VERBATIM=/(?:^|_)(?:inline-code|hmd-codeblock|math|comment|hmd-frontmatter)(?:_|$)/;
+const verbatim=(state,pos)=>VERBATIM.test(syntaxTree(state).resolveInner(pos,1).type.name);
 const KEYS=['note','dir','color','custom','line','highlight'];
 const sameSpec=(a,b)=>KEYS.every(k=>a[k]===b[k]);
 
@@ -1950,6 +2024,7 @@ function editorExtension(){
     }
     const out=[];
     for(const a of [...seen.values()].sort((x,y)=>x.markFrom-y.markFrom)){
+      if(verbatim(view.state,a.markFrom)||verbatim(view.state,a.from))continue;
       if(ranges.some(r=>r.from<=a.to&&r.to>=a.markFrom)){out.push(Decoration.mark({class:'aw-annot-source'}).range(a.from,a.to));continue;}
       const where=placement(a),attributes=a.color==='custom'?{style:`--aw-annot-color:${a.custom}`}:undefined;
       if(where==='pin'){out.push(Decoration.replace({widget:new PinnedWidget(a,view.state.sliceDoc(a.targetFrom,a.targetTo))}).range(a.markFrom,a.to));continue;}
@@ -1964,7 +2039,9 @@ function editorExtension(){
   return ViewPlugin.fromClass(class{
     constructor(view){this.decorations=build(view);}
     update(update){
-      if(update.docChanged||update.viewportChanged||update.selectionSet||livePreview(update.startState)!==livePreview(update.state))
+      // The syntax tree also arrives in steps after a change: code found later is left alone then.
+      if(update.docChanged||update.viewportChanged||update.selectionSet||livePreview(update.startState)!==livePreview(update.state)
+        ||syntaxTree(update.startState)!==syntaxTree(update.state))
         this.decorations=build(update.view);
     }
   },{decorations:plugin=>plugin.decorations});
@@ -2043,22 +2120,23 @@ class Annotations extends Component{
       else mark.parentNode.insertBefore(note,where==='before'?mark:next);
     }
   }
-  // The annotation the cursor is on, with its line, or null.
+  // The annotation under the cursor, or overlapping the selection, with its line; or null.
   annotationAt(editor){
-    const cursor=editor.getCursor(),text=editor.getLine(cursor.line);
-    const found=findAnnotations(text,0).find(a=>a.markFrom<=cursor.ch&&cursor.ch<=a.to);
-    return found?{...found,line:cursor.line}:null;
+    const from=editor.getCursor('from'),to=editor.getCursor('to');
+    if(from.line!==to.line)return null;
+    const empty=from.ch===to.ch;
+    const found=findAnnotations(editor.getLine(from.line),0).find(a=>empty?a.markFrom<=from.ch&&from.ch<=a.to:a.markFrom<to.ch&&from.ch<a.to);
+    return found?{...found,line:from.line}:null;
   }
-  // Right-click: add an annotation to selected text, or edit / remove the one under the cursor.
+  // Right-click: edit / remove the annotation under the cursor or selection (a selection inside
+  // one would otherwise nest a second annotation in it), or add one to selected text.
   menu(menu,editor){
     if(!this.plugin.data?.settings)return;
-    const selected=editor.getSelection();
-    if(selected.trim()&&!/[\r\n]/.test(selected)){
-      menu.addItem(item=>item.setTitle('添加标注').setIcon('message-square-plus').onClick(()=>this.add(editor)));
+    const selected=editor.getSelection(),at=this.annotationAt(editor);
+    if(!at){
+      if(selected.trim()&&!/[\r\n]/.test(selected))menu.addItem(item=>item.setTitle('添加标注').setIcon('message-square-plus').onClick(()=>this.add(editor)));
       return;
     }
-    const at=this.annotationAt(editor);
-    if(!at)return;
     menu.addItem(item=>item.setTitle('编辑标注').setIcon('message-square-text').onClick(()=>this.edit(editor,at)));
     menu.addItem(item=>item.setTitle('删除标注').setIcon('message-square-x').onClick(()=>
       editor.replaceRange('',{line:at.line,ch:at.from},{line:at.line,ch:at.to})));
@@ -2271,7 +2349,10 @@ class ScrollRuler extends Component{
     const knob=doc.createElement('div');knob.className='aw-ruler-knob';
     const label=doc.createElement('span');label.className='aw-ruler-label';
     knob.appendChild(label);el.appendChild(heads);el.appendChild(knob);host.appendChild(el);host.classList.add('aw-has-ruler');
-    const entry={owner,el,heads,knob,label,marks:[],frame:0};this.entries.set(view,entry);
+    // Frames come from the ruler's own window: a popout keeps updating while the main window
+    // is minimised or covered (its frames would pause).
+    const win=doc.defaultView||window;
+    const entry={owner,el,heads,knob,label,marks:[],frame:0,win};this.entries.set(view,entry);
     // scroll does not bubble; capture it from whichever scroller the current mode uses.
     owner.registerDomEvent(host,'scroll',()=>this.schedule(view),{capture:true});
     owner.registerDomEvent(el,'pointerdown',event=>this.drag(view,event));
@@ -2283,7 +2364,7 @@ class ScrollRuler extends Component{
   }
   detach(view){
     const entry=this.entries.get(view);if(!entry)return;
-    cancelAnimationFrame(entry.frame);entry.el.remove();view.contentEl?.classList.remove('aw-has-ruler');
+    entry.win.cancelAnimationFrame(entry.frame);entry.el.remove();view.contentEl?.classList.remove('aw-has-ruler');
     this.removeChild(entry.owner);this.entries.delete(view);
   }
   scroller(view){
@@ -2292,7 +2373,7 @@ class ScrollRuler extends Component{
   }
   schedule(view){
     const entry=this.entries.get(view);
-    if(entry&&!entry.frame)entry.frame=requestAnimationFrame(()=>{entry.frame=0;this.update(view);});
+    if(entry&&!entry.frame)entry.frame=entry.win.requestAnimationFrame(()=>{entry.frame=0;this.update(view);});
   }
   update(view){
     const entry=this.entries.get(view),s=entry&&this.scroller(view);
@@ -2321,8 +2402,13 @@ class ScrollRuler extends Component{
       const lines=cm.state.doc.lines,base=cm.documentTop-top;
       return headings.map(h=>clamp01((base+cm.lineBlockAt(cm.state.doc.line(Math.min(h.line+1,lines)).from).top)/height));
     }
-    const sections=view.previewMode?.renderer?.sections;
-    if(height>0&&Array.isArray(sections)&&sections.length&&sections.every(x=>Number.isFinite(x?.height)&&Number.isInteger(x.lineStart)&&Number.isInteger(x.lineEnd))){
+    // Obsidian's sections carry start/end positions ({line,col,offset}); the page header (title,
+    // properties) and footer (backlinks) are sections too, with no lines of their own: their
+    // heights count, but no heading is paired with them.
+    const renderer=view.previewMode?.renderer,sections=renderer?.sections;
+    const ui=x=>x===renderer?.header||x===renderer?.footer;
+    const text=Array.isArray(sections)?sections.map((x,i)=>i).filter(i=>!ui(sections[i])):[];
+    if(height>0&&text.length&&sections.every(x=>Number.isFinite(x?.height))&&text.every(i=>Number.isInteger(sections[i].start?.line)&&Number.isInteger(sections[i].end?.line))){
       const sizer=s.querySelector('.markdown-preview-sizer');
       let y=sizer?sizer.getBoundingClientRect().top-top:0;
       const starts=sections.map(x=>{
@@ -2330,11 +2416,11 @@ class ScrollRuler extends Component{
         const at=y;y+=x.height;return at;
       });
       // Headings and sections both run down the note: one pass pairs them.
-      let j=0;
+      let j=0;const last=sections[text.at(-1)].end.line;
       return headings.map(h=>{
-        while(j<sections.length-1&&sections[j].lineEnd<h.line)j++;
-        const x=sections[j],inside=x.lineStart<=h.line&&h.line<=x.lineEnd;
-        return clamp01(inside?starts[j]/height:h.line/Math.max(1,sections.at(-1).lineEnd+1));
+        while(j<text.length-1&&sections[text[j]].end.line<h.line)j++;
+        const x=sections[text[j]],inside=x.start.line<=h.line&&h.line<=x.end.line;
+        return clamp01(inside?starts[text[j]]/height:h.line/Math.max(1,last+1));
       });
     }
     const lines=Math.max(1,view.editor?.lineCount?.()||String(view.data||'').split('\n').length);
@@ -2542,7 +2628,7 @@ class Library extends Component{
   changed(){
     this.cache=null;
     if(this.timer||!this.views().length)return;
-    this.timer=window.setTimeout(()=>{this.timer=0;for(const v of this.views())v.refresh();},300);
+    this.timer=window.setTimeout(()=>{this.timer=0;for(const v of this.views())v.refreshWhenShown();},300);
   }
   refreshNow(){this.cache=null;for(const v of this.views())v.refresh();}
   items(){
@@ -2649,8 +2735,11 @@ class LibraryView extends ItemView{
       if(entries.some(e=>e.isIntersecting)&&this.shown<this.list.length){this.loadMore();this.more.unobserve(this.moreEl);this.more.observe(this.moreEl);}
     },{root:this.mainEl,rootMargin:'800px 0px'});
     this.more.observe(this.moreEl);
-    // A wider or narrower pane changes the number of columns.
-    this.resize=new win.ResizeObserver(()=>{if(this.columns()!==this.cols.length)this.relayout();});
+    // A wider or narrower pane changes the number of columns; a pane shown again catches up.
+    this.resize=new win.ResizeObserver(()=>{
+      if(this.stale&&this.mainEl.offsetParent!==null){this.stale=false;this.refresh();return;}
+      if(this.columns()!==this.cols.length)this.relayout();
+    });
     this.resize.observe(this.mainEl);
     this.syncControls();
     this.refresh(true);
@@ -2664,8 +2753,15 @@ class LibraryView extends ItemView{
     if(this.searchEl&&this.searchEl.value!==this.filter.text)this.searchEl.value=this.filter.text;
   }
   setScope(kind,value=''){this.filter.scope={kind,value};this.saveState();this.refresh();}
+  // Links are resolved again after every save while typing. A hidden pane (another sidebar tab,
+  // a collapsed sidebar) skips that work and catches up when it is shown.
+  refreshWhenShown(){
+    if(this.mainEl&&this.mainEl.offsetParent===null){this.stale=true;return;}
+    this.refresh();
+  }
   refresh(force=false){
     if(!this.gridEl)return;
+    this.stale=false;
     const all=this.library.items(),list=L.filterItems(all,this.filter);
     this.renderSide(all);
     const waiting=this.filter.shape!=='all'?all.filter(i=>!i.w&&!this.library.failed.has(i.path)):[];
@@ -2932,13 +3028,21 @@ const {Component}=require('obsidian');
 
 // A Markdown table: a row with a pipe, then the delimiter row (| --- | :-: | ...).
 const TABLE=/^[ \t]*\|?[^\n]*\|[^\n]*\r?\n[ \t]*\|?[ \t]*:?-{3,}:?[ \t]*(?:\|[ \t]*:?-{3,}:?[ \t]*)*\|?[ \t]*$/m;
-// Code editors mark their HTML as preformatted on the outer element.
-const PREFORMATTED=/white-space:\s*pre\b/i;
+// Code editors (VS Code and its kin) wrap the copy in one <div> styled white-space: pre. Only
+// that outer element counts: rich text from documents and web pages often carries pre-wrap or
+// pre-line on inner spans (Google Docs does on every one), and keeps Obsidian's conversion.
+const LEAD=/^(?:\s|<meta\b[^>]*>|<\/?(?:html|head|body)\b[^>]*>|<!--[\s\S]*?-->)*/i;
+const OUTER=/^<div\b[^>]*?\sstyle\s*=\s*(["'])((?:(?!\1)[\s\S])*)\1/i;
+const PRE=/(?:^|;)\s*white-space\s*:\s*pre\s*(?:;|$)/i;
+function fromCodeEditor(html){
+  const outer=OUTER.exec(html.replace(LEAD,''));
+  return !!outer&&PRE.test(outer[2]);
+}
 
 // The text to paste instead of Obsidian's HTML conversion, or null to leave the paste alone.
 function sourceText(html,text){
   if(!html||!text)return null;
-  if(!PREFORMATTED.test(html)&&!TABLE.test(text))return null;
+  if(!fromCodeEditor(html)&&!TABLE.test(text))return null;
   return text.replace(/\r\n?/g,'\n');
 }
 
@@ -2953,7 +3057,8 @@ class MarkdownPaste extends Component{
     const text=sourceText(data.getData('text/html'),data.getData('text/plain'));
     if(text==null)return;
     evt.preventDefault();
-    editor.replaceSelection(text);
+    // Marked as a paste, like Obsidian's own: counted as writing, and its own undo step.
+    editor.replaceSelection(text,'input.paste');
   }
   displaySettings(container,Setting){
     const s=this.plugin.data.settings;

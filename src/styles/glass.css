@@ -51,6 +51,8 @@
   }
   body:is(.theme-light,.theme-dark) :is(.markdown-rendered,.markdown-source-view):not(.academia, .academia *) table th {background: var(--aw-glass-table-head);color: var(--ds-heading);font-weight: 600;}
   body:is(.theme-light,.theme-dark) :is(.markdown-rendered,.markdown-source-view):not(.academia, .academia *) table :is(th,td) {border-bottom: 1px solid rgba(var(--ds-ink-rgb),.07);}
+  /* experiment keeps its compact cells on the slab too. */
+  body:is(.theme-light,.theme-dark) :is(.markdown-rendered,.markdown-source-view).experiment:not(.academia) table {--aw-cell-pad: 8px 12px;}
 
   /* Images sit on white cards, so diagrams with transparent backgrounds stay legible. */
   body:is(.theme-light,.theme-dark) :is(.markdown-rendered,.markdown-source-view) :is(.image-embed img,p > img) {

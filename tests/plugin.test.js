@@ -8,7 +8,7 @@ const Core=require('../src/core');
 // options.layoutReady: the layout is already up (plugin enabled in a running app), so
 // onLayoutReady runs its callback at once, as Obsidian does.
 function fixture(options={}) {
-  const notices=[], timers=new Map(), handlers={}; let timerId=0;
+  const notices=[], timers=new Map(), delays=new Map(), handlers={}; let timerId=0;
   class Component {
     registerEvent(){} registerDomEvent(){}
     addChild(child){child.onload?.();return child;}
@@ -25,14 +25,15 @@ function fixture(options={}) {
   class TFile {constructor(path){this.path=path;this.extension='md';}}
   const fakeDoc=()=>{const set=new Set(['theme-light']),props=new Map();return {classes:set,props,body:{classList:{add:n=>set.add(n),remove:n=>set.delete(n),[Symbol.iterator]:()=>set.values()},style:{setProperty:(k,v)=>props.set(k,v),removeProperty:k=>props.delete(k)}}};};
   const main=fakeDoc(),classes=main.classes,leaves=[];
-  const workspace={containerEl:{ownerDocument:main},on(){return {};},iterateAllLeaves(fn){leaves.forEach(fn);},
+  const workspace={containerEl:{ownerDocument:main},on(name,fn){(handlers['workspace:'+name]??=[]).push(fn);return {};},iterateAllLeaves(fn){leaves.forEach(fn);},
     onLayoutReady(fn){if(options.layoutReady){fn();return;}(this.readyFns??=[]).push(fn);this.ready=()=>this.readyFns.forEach(f=>f());},getLeavesOfType(){return [];},detachLeavesOfType(){this.detached=true;}};
   const mod={exports:{}};
   const context={module:mod,require:name=>{
     if(name==='obsidian')return {Plugin,Component,TFile,TFolder:class{},Platform:{isMacOS:true},Modal:class{},FuzzySuggestModal:class{},ItemView:class{},PluginSettingTab:class{},Setting:class{},Notice:class{constructor(text){notices.push(text);}},setIcon(){},MarkdownView:class{},editorInfoField:'info'};
+    if(name==='@codemirror/language')return {syntaxTree:()=>({resolveInner:()=>({type:{name:'Document'}})})};
     if(name==='@codemirror/view')return {EditorView:{updateListener:{of:fn=>fn}},ViewPlugin:{fromClass:(cls,spec)=>({cls,spec})},Decoration:{none:[],set:list=>list,mark:spec=>({spec,range:(from,to)=>({from,to,spec})}),replace:spec=>({spec,range:(from,to)=>({from,to,spec})})},WidgetType:class{}};
     throw Error(name);
-  },window:{setInterval:()=>1},setTimeout:fn=>{timers.set(++timerId,fn);return timerId;},clearTimeout:id=>timers.delete(id),console,Intl,Date};
+  },window:{setInterval:()=>1},setTimeout:(fn,ms)=>{timers.set(++timerId,fn);delays.set(timerId,ms);return timerId;},clearTimeout:id=>timers.delete(id),console,Intl,Date};
   vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../dist/algorithm-workbench/main.js'),'utf8'),context);
   const plugin=new mod.exports();plugin.saved=[];plugin.app={workspace,metadataCache:{on:(name,fn)=>{(handlers['metadata:'+name]??=[]).push(fn);return {};},getFileCache:()=>null},vault:{getAbstractFileByPath:()=>null,on:(name,fn)=>{(handlers[name]??=[]).push(fn);return {};}}};
   const docs=new Map();
@@ -51,7 +52,7 @@ function fixture(options={}) {
     }]};
   };
 
-  return {plugin,workspace,notices,update,docs,timers,handlers,TFile,classes,fakeDoc,leaves};
+  return {plugin,workspace,notices,update,docs,timers,delays,handlers,TFile,classes,fakeDoc,leaves};
 }
 test('bundled plugin loads, counts actual transactions, filters folders and saves',async()=>{
   const {plugin,update}=fixture();await plugin.onload();
@@ -64,7 +65,7 @@ test('bundled plugin loads, counts actual transactions, filters folders and save
   assert.equal(JSON.stringify(plugin.saved).includes('已有文字'),false);
   plugin.onunload();await plugin.saveQueue;
 });
-test('pause does not backfill; unload stops updates and closes views',async()=>{
+test('pause does not backfill; unload stops updates and leaves the workbench tabs in place',async()=>{
   const {plugin,workspace,update}=fixture();await plugin.onload();
   plugin.data.settings.tracking=false;plugin.extension(update('','不会计入'));
   assert.equal(Object.keys(plugin.data.days).length,0);
@@ -72,7 +73,7 @@ test('pause does not backfill; unload stops updates and closes views',async()=>{
   assert.equal(plugin.data.days[Core.dayKey()].characters,1);
   plugin.onunload();plugin.extension(update('不会计入新','不会计入新又一个'));
   assert.equal(plugin.data.days[Core.dayKey()].characters,1);
-  assert.ok(workspace.detached);await plugin.saveQueue;
+  assert.ok(!workspace.detached,'an update brings the tab back where it was');await plugin.saveQueue;
 });
 test('writes are serialized and a failed write can recover',async()=>{
   const {plugin}=fixture();await plugin.onload();
@@ -159,13 +160,27 @@ test('checked tasks count once per file and day; pasted lists do not count',asyn
   assert.ok(plugin.data.days[today].minutes>=1);
   plugin.onunload();await plugin.saveQueue;
 });
-test('new notes count only after the vault finishes loading, outside excluded folders',async()=>{
+test('new notes count only after the vault finishes loading, when opened right away, outside excluded folders',async()=>{
   const {plugin,workspace,handlers,TFile}=fixture();await plugin.onload();plugin.data.settings.openOnStartup=false;
-  for(const fn of handlers.create)fn(new TFile('启动扫描.md'));
+  for(const fn of handlers.create||[])fn(new TFile('启动扫描.md'));
   assert.equal(plugin.data.days[Core.dayKey()],undefined);
   workspace.ready();
-  for(const fn of handlers.create){fn(new TFile('新笔记.md'));fn(new TFile('Templates/模板.md'));}
-  assert.equal(plugin.data.days[Core.dayKey()].notes,1);
+  const create=path=>{const file=new TFile(path);for(const fn of handlers.create)fn(file);return file;};
+  const open=file=>{for(const fn of handlers['workspace:file-open'])fn(file);};
+  const notes=()=>plugin.data.days[Core.dayKey()]?.notes??0;
+  // Created and opened by Obsidian (new note, link, daily note): one new note, counted once.
+  const made=create('新笔记.md');open(made);open(made);open(null);
+  assert.equal(notes(),1);
+  // Arrived by Sync, git or the file manager: created, never opened.
+  for(let i=0;i<150;i++)create(`同步/${i}.md`);
+  assert.equal(notes(),1);
+  open(create('Templates/模板.md'));assert.equal(notes(),1,'excluded folder');
+  // Opened long after it arrived: not a new note. Files never opened are dropped as time passes.
+  const synced=create('同步/稍后打开.md'),now=Date.now;
+  try{
+    Date.now=()=>now()+60000;open(synced);assert.equal(notes(),1);
+    create('同步/又一个.md');assert.deepEqual([...plugin.freshNotes.keys()],['同步/又一个.md']);
+  }finally{Date.now=now;}
   plugin.onunload();await plugin.saveQueue;
 });
 
@@ -251,4 +266,23 @@ test('annotation font: a named face reaches every window as a CSS variable, unsa
   plugin.data.settings.annotFont='';plugin.applyAppearanceEverywhere();assert.equal(main.props.has('--aw-annot-font'),false);
   plugin.data.settings.annotFont='KaiTi';plugin.applyAppearanceEverywhere();
   plugin.onunload();assert.equal(main.props.size,0);await plugin.saveQueue;
+});
+test('typing statistics are saved every 10 s, settings soon after a change, and what waits is saved on quit',async()=>{
+  const {plugin,update,timers,delays,handlers}=fixture();await plugin.onload();await plugin.flush();
+  const saved=plugin.saved.length;
+  plugin.extension(update('已有','已有文字'));
+  assert.equal(delays.get(plugin.saveTimer),10000,'not several writes a second while typing');
+  plugin.extension(update('已有文字','已有文字又'));
+  assert.equal([...timers.keys()].filter(id=>delays.get(id)===10000).length,1,'one timer for a run of typing');
+  plugin.changed();
+  assert.equal(delays.get(plugin.saveTimer),750,'a setting change brings the save forward');
+  plugin.extension(update('已有文字又','已有文字又一'));
+  assert.equal(delays.get(plugin.saveTimer),750,'and typing does not push it back');
+  // Obsidian quits by closing the window, without unloading plugins.
+  const tasks=[];for(const fn of handlers['workspace:quit'])fn({add:fn=>tasks.push(fn())});
+  assert.equal(tasks.length,1);await tasks[0];
+  assert.equal(plugin.saved.length,saved+1);assert.equal(plugin.saved.at(-1).days[Core.dayKey()].characters,4,'文字 + 又 + 一');
+  const idle=[];for(const fn of handlers['workspace:quit'])fn({add:fn=>idle.push(fn)});
+  assert.equal(idle.length,0,'nothing waiting: quitting is not held up');
+  plugin.onunload();await plugin.saveQueue;
 });

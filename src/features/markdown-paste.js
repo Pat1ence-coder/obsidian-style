@@ -9,13 +9,21 @@ const {Component}=require('obsidian');
 
 // A Markdown table: a row with a pipe, then the delimiter row (| --- | :-: | ...).
 const TABLE=/^[ \t]*\|?[^\n]*\|[^\n]*\r?\n[ \t]*\|?[ \t]*:?-{3,}:?[ \t]*(?:\|[ \t]*:?-{3,}:?[ \t]*)*\|?[ \t]*$/m;
-// Code editors mark their HTML as preformatted on the outer element.
-const PREFORMATTED=/white-space:\s*pre\b/i;
+// Code editors (VS Code and its kin) wrap the copy in one <div> styled white-space: pre. Only
+// that outer element counts: rich text from documents and web pages often carries pre-wrap or
+// pre-line on inner spans (Google Docs does on every one), and keeps Obsidian's conversion.
+const LEAD=/^(?:\s|<meta\b[^>]*>|<\/?(?:html|head|body)\b[^>]*>|<!--[\s\S]*?-->)*/i;
+const OUTER=/^<div\b[^>]*?\sstyle\s*=\s*(["'])((?:(?!\1)[\s\S])*)\1/i;
+const PRE=/(?:^|;)\s*white-space\s*:\s*pre\s*(?:;|$)/i;
+function fromCodeEditor(html){
+  const outer=OUTER.exec(html.replace(LEAD,''));
+  return !!outer&&PRE.test(outer[2]);
+}
 
 // The text to paste instead of Obsidian's HTML conversion, or null to leave the paste alone.
 function sourceText(html,text){
   if(!html||!text)return null;
-  if(!PREFORMATTED.test(html)&&!TABLE.test(text))return null;
+  if(!fromCodeEditor(html)&&!TABLE.test(text))return null;
   return text.replace(/\r\n?/g,'\n');
 }
 
@@ -30,7 +38,8 @@ class MarkdownPaste extends Component{
     const text=sourceText(data.getData('text/html'),data.getData('text/plain'));
     if(text==null)return;
     evt.preventDefault();
-    editor.replaceSelection(text);
+    // Marked as a paste, like Obsidian's own: counted as writing, and its own undo step.
+    editor.replaceSelection(text,'input.paste');
   }
   displaySettings(container,Setting){
     const s=this.plugin.data.settings;

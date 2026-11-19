@@ -21,7 +21,7 @@ function setup() {
   let nativeCalls=0;
   const plugin={data:{settings:{folderNotes:true}},scheduleRefresh(){},addCommand(c){this.command=c;},app:{
     commands:{commands:{'file-explorer:new-file':{callback(){nativeCalls++;}},'file-explorer:new-folder':{callback(){nativeCalls++;}}}},
-    workspace:{getLeavesOfType:type=>type==='file-explorer'?[explorer]:[],revealLeaf:async()=>{},onLayoutReady:fn=>fn(),containerEl:{ownerDocument:document},on:(name,fn)=>{events[name]=fn;return {};},getLeaf:()=>({openFile:async file=>opened.push(file.path)})},
+    workspace:{getLeavesOfType:type=>type==='file-explorer'?[explorer]:[],revealLeaf:async()=>{},onLayoutReady:fn=>fn(),containerEl:{ownerDocument:document},on:(name,fn)=>{events[name]=fn;return {};},getLeaf:()=>({openFile:async(file,options)=>{opened.push(file.path);opened.options=options;}})},
     vault:{createFolder:async p=>{if(files.has(p))throw Error('exists');const f=new TFolder(p);files.set(p,f);createdFolders.push(p);return f;},on:(name,fn)=>{events[name]=fn;return {};},getAbstractFileByPath:p=>files.get(p),create:async(p)=>{
       if(files.has(p))throw Error('exists');const f=new TFile(p);files.set(p,f);created.push(p);return f;
     }}
@@ -37,7 +37,10 @@ function setup() {
 const settle=()=>new Promise(resolve=>setImmediate(resolve));
 test('left-click folder then Cmd+N creates exactly one note there',async()=>{
   const f=setup();f.click('研究');await f.invoke();assert.equal(f.nativeCalls,0);
-  assert.deepEqual(f.created,['研究/未命名.md']);assert.deepEqual(f.opened,f.created);
+  assert.deepEqual(f.created,['研究/未命名.md']);assert.deepEqual([...f.opened],f.created);
+  // Opened as Obsidian's own new note: focused even with "always focus new tabs" off, in the
+  // editor even when notes open in reading view, with the title ready to rename.
+  assert.deepEqual(JSON.parse(JSON.stringify(f.opened.options)),{active:true,state:{mode:'source'},eState:{rename:'all'}});
 });
 test('file selection follows its parent and existing notes are never overwritten',async()=>{
   const f=setup();f.click('研究/a.md');f.files.set('研究/未命名.md',{text:'preserve'});
