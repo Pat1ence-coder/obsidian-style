@@ -19,6 +19,7 @@ function fixture(options={}) {
     async saveData(data){this.saved.push(data);}
     registerView(type,create){(this.views??={})[type]=create;if(type==='algorithm-workbench')this.makeView=create;}
     addRibbonIcon(icon,title){(this.ribbons??=[]).push([icon,title]);} addCommand(command){(this.commands??={})[command.id]=command;} addSettingTab(){}
+    addStatusBarItem(){return this.statusBarItem??=(()=>{const cls=new Set();return {hidden:false,textContent:'',title:'',classes:cls,classList:{add:(...n)=>n.forEach(x=>cls.add(x)),toggle:(n,on)=>{on?cls.add(n):cls.delete(n);}},setAttribute(){},addEventListener(t,fn){this['on'+t]=fn;}};})();}
     registerEditorExtension(ext){(this.extensions??=[]).push(ext);if(typeof ext==='function')this.extension??=ext;} registerEvent(){} registerInterval(){}
     registerMarkdownPostProcessor(fn){(this.postProcessors??=[]).push(fn);}
   }
@@ -176,7 +177,7 @@ test('checked tasks count once per file and day; pasted lists do not count',asyn
   plugin.onunload();await plugin.saveQueue;
 });
 test('new notes count only after the vault finishes loading, when opened right away, outside excluded folders',async()=>{
-  const {plugin,workspace,handlers,TFile}=fixture();await plugin.onload();plugin.data.settings.openOnStartup=false;
+  const {plugin,workspace,handlers,TFile,update}=fixture();await plugin.onload();plugin.data.settings.openOnStartup=false;
   for(const fn of handlers.create||[])fn(new TFile('启动扫描.md'));
   assert.equal(plugin.data.days[Core.dayKey()],undefined);
   workspace.ready();
@@ -186,6 +187,17 @@ test('new notes count only after the vault finishes loading, when opened right a
   // Created and opened by Obsidian (new note, link, daily note): one new note, counted once.
   const made=create('新笔记.md');open(made);open(made);open(null);
   assert.equal(notes(),1);
+  // Creating and deleting an empty note on the same day retracts the accidental count.
+  const accidental=create('误建空笔记.md');open(accidental);
+  assert.equal(notes(),2);
+  for(const fn of handlers.delete||[])fn(accidental);
+  assert.equal(notes(),1,'same-day deleted empty note is retracted');
+  // Status bar tracks daily goal progress and opens workbench on click.
+  plugin.data.settings.dailyGoal=10;plugin.changed();
+  assert.match(plugin.statusBarItem.textContent,/0 \/ 10 字 · 0%/);
+  plugin.extension(update('','一二三四五六七八九十'));
+  assert.match(plugin.statusBarItem.textContent,/10 \/ 10 字 ✓/);
+  assert.ok(plugin.statusBarItem.classes.has('is-goal-met'));
   // Arrived by Sync, git or the file manager: created, never opened.
   for(let i=0;i<150;i++)create(`同步/${i}.md`);
   assert.equal(notes(),1);

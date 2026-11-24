@@ -25,7 +25,6 @@ class FigureModal extends Modal {
   }
   onOpen(){
     this.setTitle('插入排版图片');this.contentEl.addClass('aw-figure-modal');
-    this.contentEl.createEl('p',{text:'选择图片，设置宽度与图注。插入后仍是可直接编辑的 Markdown。'});
     new Setting(this.contentEl).setName('布局').addDropdown(d=>{
       this.layoutDropdown=d;
       d.addOptions({single:'单张图片','grid-1':'多图 · 1 列','grid-2':'多图 · 2 列','grid-3':'多图 · 3 列','grid-4':'多图 · 4 列','mosaic-left':'多图 · 大图在左（一大多小）','mosaic-right':'多图 · 大图在右（一大多小）'}).setValue(this.layout).onChange(value=>{
@@ -34,7 +33,7 @@ class FigureModal extends Modal {
         this.layout=value;this.updateLayout();
       });
     });
-    new Setting(this.contentEl).setName('添加图片').setDesc('可连续添加库内图片，或一次选择电脑中的多张图片。').addButton(b=>b.setButtonText('从笔记库添加').onClick(()=>{
+    new Setting(this.contentEl).setName('添加图片').addButton(b=>b.setButtonText('从笔记库添加').onClick(()=>{
       if(this.busy)return;
       new ImagePicker(this.feature,file=>{if(!this.closed&&!this.busy)this.addSources([{existing:file}]);}).open();
     }));
@@ -48,7 +47,7 @@ class FigureModal extends Modal {
     });
     this.sourceList=this.contentEl.createDiv({cls:'aw-figure-list'});this.renderSources();
     new Setting(this.contentEl).setName('图注').addText(t=>t.setPlaceholder('图 1 · 训练损失曲线').onChange(v=>this.caption=v));
-    this.widthSetting=new Setting(this.contentEl).setName('宽度（px）').setDesc('默认 640，留空使用原图宽度；窄页面自动缩小。').addText(t=>t.setValue(this.width).onChange(v=>this.width=v));
+    this.widthSetting=new Setting(this.contentEl).setName('宽度（px）').addText(t=>t.setPlaceholder('原图').setValue(this.width).onChange(v=>this.width=v));
     this.alignSetting=new Setting(this.contentEl).setName('对齐').addDropdown(d=>d.addOptions({left:'左对齐',center:'居中',right:'右对齐'}).setValue(this.align).onChange(v=>this.align=v));
     this.updateLayout();
     new Setting(this.contentEl).addButton(b=>b.setButtonText('取消').onClick(()=>this.close())).addButton(b=>{

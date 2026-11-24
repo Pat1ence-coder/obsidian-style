@@ -250,11 +250,11 @@ class LibraryView extends ItemView{
       const chosen=Array.from(upload.files||[]);upload.value='';
       if(chosen.length)void this.ingestHere(chosen);
     });
-    const importBtn=tools.createEl('button',{cls:'aw-lib-tool',attr:{type:'button','aria-label':'导入图片',title:'导入电脑图片（也可直接在此面板按 ⌘V / Ctrl+V 粘贴截图，或拖入图片）'}});
+    const importBtn=tools.createEl('button',{cls:'aw-lib-tool',attr:{type:'button','aria-label':'导入图片',title:'导入图片'}});
     setIcon(importBtn.createSpan({cls:'aw-lib-tool-icon'}),'upload');importBtn.createSpan({text:'导入'});
     this.registerDomEvent(importBtn,'click',()=>upload.click());
 
-    this.roamBtn=tools.createEl('button',{cls:'aw-lib-tool',attr:{type:'button','aria-label':'随机漫游',title:'随机打乱顺序漫游灵感（再次点击换一组顺序；选择排序方式可恢复）'}});
+    this.roamBtn=tools.createEl('button',{cls:'aw-lib-tool',attr:{type:'button','aria-label':'随机漫游',title:'随机漫游'}});
     setIcon(this.roamBtn.createSpan({cls:'aw-lib-tool-icon'}),'shuffle');this.roamBtn.createSpan({text:'漫游'});
     this.registerDomEvent(this.roamBtn,'click',()=>{
       this.shuffleSeed=((Date.now()^(this.shuffleSeed*1664525+1013904223))>>>0)||1;
@@ -262,7 +262,7 @@ class LibraryView extends ItemView{
     });
 
     const search=head.createDiv({cls:'aw-lib-search'});setIcon(search.createSpan({cls:'aw-lib-search-icon'}),'search');
-    this.searchEl=search.createEl('input',{attr:{type:'search',placeholder:'搜索名称、目录、标签 · 可粘贴或拖入图片','aria-label':'搜索素材'}});
+    this.searchEl=search.createEl('input',{attr:{type:'search',placeholder:'搜索素材','aria-label':'搜索素材'}});
     let typing=0;
     this.registerDomEvent(this.searchEl,'input',()=>{window.clearTimeout(typing);typing=window.setTimeout(()=>{this.filter.text=this.searchEl.value;this.refresh();},150);});
     const bar=head.createDiv({cls:'aw-lib-filters'});
@@ -400,7 +400,7 @@ class LibraryView extends ItemView{
     };
     const scopes=side.createDiv({cls:'aw-lib-group'});
     row(scopes,{kind:'all',icon:'images',text:'全部素材',count:all.length});
-    row(scopes,{kind:'unused',icon:'inbox',text:'待整理',count:unused,title:'没有被任何笔记引用的图片'});
+    row(scopes,{kind:'unused',icon:'inbox',text:'待整理',count:unused});
     row(scopes,{kind:'rated',icon:'star',text:'已评星',count:rated});
     const tree=L.folderTree(all);
     if(tree.children.length){
@@ -703,7 +703,7 @@ class ImagePreviewModal extends Modal{
     const img=frame.createEl('img',{cls:'aw-lib-stage-img',attr:{alt:item.name}});
     if(file)img.src=this.app.vault.getResourcePath(file);
     img.addEventListener('click',()=>{this.zoomed=!this.zoomed;frame.classList.toggle('is-zoomed',this.zoomed);});
-    const counter=stage.createDiv({cls:'aw-lib-stage-counter',text:pool.length>1?`${index+1} / ${pool.length} · ← → 切换 · 点击图片缩放`:'点击图片放大查看'});
+    if(pool.length>1)stage.createDiv({cls:'aw-lib-stage-counter',text:`${index+1} / ${pool.length}`});
 
     const side=wrap.createDiv({cls:'aw-lib-inspect'});
     const metaSec=side.createDiv({cls:'aw-lib-inspect-sec'});
@@ -715,7 +715,7 @@ class ImagePreviewModal extends Modal{
     }
 
     const rateSec=side.createDiv({cls:'aw-lib-inspect-sec'});
-    rateSec.createDiv({cls:'aw-lib-inspect-label',text:'星级（快捷键 1–5）'});
+    rateSec.createDiv({cls:'aw-lib-inspect-label',text:'星级'});
     const starRow=rateSec.createDiv({cls:'aw-lib-inspect-stars'});
     for(let n=1;n<=5;n++){
       const b=starRow.createEl('button',{cls:'aw-lib-inspect-star'+(n<=item.rating?' is-on':''),text:'★',attr:{type:'button','aria-label':`${n} 星`}});
@@ -723,7 +723,7 @@ class ImagePreviewModal extends Modal{
     }
 
     const palSec=side.createDiv({cls:'aw-lib-inspect-sec'});
-    palSec.createDiv({cls:'aw-lib-inspect-label',text:'主色板（点击复制 HEX）'});
+    palSec.createDiv({cls:'aw-lib-inspect-label',text:'主色板'});
     const swatchRow=palSec.createDiv({cls:'aw-lib-swatches'});
     const familyRow=palSec.createDiv({cls:'aw-lib-color-chips'});
     const fillPalette=(palInfo)=>{
@@ -731,7 +731,7 @@ class ImagePreviewModal extends Modal{
       const swatches=palInfo?.palette||[];
       if(!swatches.length){swatchRow.createSpan({cls:'aw-lib-hint',text:'读取中…'});return;}
       for(const hex of swatches){
-        const chip=swatchRow.createEl('button',{cls:'aw-lib-swatch',attr:{type:'button',title:`点击复制 ${hex}`}});
+        const chip=swatchRow.createEl('button',{cls:'aw-lib-swatch',attr:{type:'button',title:hex}});
         const dot=chip.createSpan({cls:'aw-lib-swatch-dot'});
         dot.style.background=hex;
         chip.createSpan({cls:'aw-lib-swatch-hex',text:hex});
@@ -752,7 +752,6 @@ class ImagePreviewModal extends Modal{
       if(!pal){pal=sampleImageColors(img,doc);if(pal)this.library.setPalette(item.path,pal);}
       fillPalette(pal);
     },{once:true});
-    void counter;
 
     const tagSec=side.createDiv({cls:'aw-lib-inspect-sec'});
     tagSec.createDiv({cls:'aw-lib-inspect-label',text:'标签'});
@@ -799,7 +798,7 @@ class TagsModal extends Modal{
   onOpen(){
     const el=this.contentEl;el.addClass('aw-lib-modal');this.setTitle('编辑标签');
     let input;
-    new Setting(el).setName(this.name).setDesc('用空格或逗号分隔，最多 12 个。标签只保存在插件数据里，不改动图片文件。').addText(t=>{
+    new Setting(el).setName(this.name).addText(t=>{
       input=t.inputEl;t.setValue(this.tags.join(' ')).setPlaceholder('封面 配色 灵感');
       t.inputEl.addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.isComposing){event.preventDefault();this.done(input.value);}});
     });

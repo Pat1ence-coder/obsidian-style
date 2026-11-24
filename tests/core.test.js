@@ -189,3 +189,22 @@ test('reading position memory loads safely, caps at 200 entries, clears near end
   C.renamePath(d,'n/204.md','moved/204.md');
   assert.ok(d.reading['moved/204.md']);assert.equal(d.reading['n/204.md'],undefined);
 });
+
+test('dailyGoal and statusBar settings validate, and same-day empty new notes retract on delete',()=>{
+  const d=setup();
+  assert.equal(d.settings.dailyGoal,0);assert.equal(d.settings.statusBar,true);
+  const load=settings=>C.loadState({...JSON.parse(JSON.stringify(d)),settings},new Date(2026,9,12,12)).settings;
+  assert.equal(load({dailyGoal:1500}).dailyGoal,1500);
+  assert.equal(load({dailyGoal:-5}).dailyGoal,0);
+  assert.equal(load({dailyGoal:999999}).dailyGoal,C.MAX_DAILY_GOAL);
+  assert.equal(load({statusBar:false}).statusBar,false);
+  // Empty new note created and deleted on the same day retracts +1 note; written new note keeps its count.
+  C.recordNote(d,day,'empty.md');
+  C.recordNote(d,day,'written.md');
+  C.recordChange(d,'written.md',0,50,day);
+  assert.equal(d.days[day].notes,2);
+  assert.equal(C.retractEmptyNewNote(d,'empty.md',day),true);
+  assert.equal(d.days[day].notes,1);
+  assert.equal(C.retractEmptyNewNote(d,'written.md',day),false,'written note keeps its count');
+  assert.equal(d.days[day].notes,1);
+});

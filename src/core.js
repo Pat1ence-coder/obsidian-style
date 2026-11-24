@@ -1,6 +1,7 @@
 'use strict';
 const Library = require('./features/library-data');
-const DEFAULT_SETTINGS = { nameScreenshots: true, folderNotes: true, openOnStartup: true, tracking: true, recentLimit: 8, range: 90, metric: 'score', captionSize: 'normal', figureTools: true, scrollRuler: true, rulerHeadings: true, rulerMemory: true, pasteSource: true, decorImage: '', glass: true, glassFog: 'normal', annotFont: '', excludedFolders: ['Templates', 'templates'] };
+const DEFAULT_SETTINGS = { nameScreenshots: true, folderNotes: true, openOnStartup: true, tracking: true, statusBar: true, dailyGoal: 0, recentLimit: 8, range: 90, metric: 'score', captionSize: 'normal', figureTools: true, scrollRuler: true, rulerHeadings: true, rulerMemory: true, pasteSource: true, decorImage: '', glass: true, glassFog: 'normal', annotFont: '', excludedFolders: ['Templates', 'templates'] };
+const MAX_DAILY_GOAL = 100000;
 const RANGES = [30, 90, 180, 365];
 // Figure and table caption sizes; body class aw-caption-<id>, defined in figures.css.
 const CAPTION_SIZES = [{id:'small', label:'小'}, {id:'normal', label:'标准'}, {id:'large', label:'大'}];
@@ -102,7 +103,8 @@ function loadState(raw, now = new Date()) {
   const d = emptyData(now); d.started = raw.started;
   if (raw.version === 2) d.activityStarted = raw.activityStarted;
   const s = raw.settings || {};
-  for (const name of ['openOnStartup', 'tracking', 'folderNotes', 'nameScreenshots', 'figureTools', 'scrollRuler', 'rulerHeadings', 'rulerMemory', 'glass', 'pasteSource']) if (typeof s[name] === 'boolean') d.settings[name] = s[name];
+  for (const name of ['openOnStartup', 'tracking', 'statusBar', 'folderNotes', 'nameScreenshots', 'figureTools', 'scrollRuler', 'rulerHeadings', 'rulerMemory', 'glass', 'pasteSource']) if (typeof s[name] === 'boolean') d.settings[name] = s[name];
+  if (Number.isInteger(s.dailyGoal) && s.dailyGoal >= 0) d.settings.dailyGoal = Math.min(MAX_DAILY_GOAL, s.dailyGoal);
   if (RANGES.includes(s.range)) d.settings.range = s.range;
   if (METRICS.some(m => m.key === s.metric)) d.settings.metric = s.metric;
   if (CAPTION_SIZES.some(x => x.id === s.captionSize)) d.settings.captionSize = s.captionSize;
@@ -129,6 +131,7 @@ function loadState(raw, now = new Date()) {
   for (const [path,r] of Object.entries(raw.records)) {
     if (!r || !DATE.test(r.day) || !validCount(r.peak) || !validCount(r.last) || r.peak < r.last) throw Error('计数基线损坏');
     if ((r.taskNet !== undefined && !Number.isSafeInteger(r.taskNet)) || (r.taskPeak !== undefined && !validCount(r.taskPeak))) throw Error('任务基线损坏');
+    if (r.created !== undefined && typeof r.created !== 'boolean') throw Error('计数基线损坏');
     if (r.day === dayKey(now)) d.records[path] = {...r};
   }
   // Ratings and tags of the image library, plus per-note reading positions: optional, malformed dropped.
@@ -201,7 +204,27 @@ function recordTasks(data, path, delta, date) {
   if (added) { const day = ensureDay(data,date); day.tasks = (day.tasks||0)+added; }
   return added;
 }
-function recordNote(data, date) { const day = ensureDay(data,date); day.notes = (day.notes||0)+1; }
+function recordNote(data, date, path) {
+  const day = ensureDay(data,date);
+  day.notes = (day.notes||0)+1;
+  if (path) {
+    const prev = own(data.records,path) && data.records[path].day === date ? data.records[path] : { day:date, peak:0, last:0 };
+    prev.created = true;
+    data.records[path] = prev;
+  }
+}
+// Retracts a same-day newly created empty note when deleted (or moved into an excluded folder),
+// while preserving historical character contributions of written notes.
+function retractEmptyNewNote(data, path, date) {
+  if (!path || !own(data.records,path)) return false;
+  const r = data.records[path];
+  delete data.records[path];
+  if (!r || r.day !== date || !r.created) return false;
+  const day = data.days[date];
+  if (!day || (own(day.files,path) && day.files[path] > 0) || !(day.notes > 0)) return false;
+  if (day.notes > 1) day.notes -= 1; else delete day.notes;
+  return true;
+}
 const round1 = n => Math.round(n*10)/10;
 function dayScore(day) {
   if (!day) return 0;
@@ -270,5 +293,5 @@ function calendarDays(now, weeks) {
   const start = shiftDay(monday,-7*(weeks-1));
   return Array.from({length:weeks*7},(_,i)=>dayKey(shiftDay(start,i)));
 }
-module.exports = {transactionCounts,pruneRecords,DEFAULT_SETTINGS,RANGES,METRICS,CAPTION_SIZES,GLASS_FOGS,dayKey,shiftDay,countCharacters,emptyData,loadState,loadReading,setReading,isExcluded,recordChange,
-  recordActivity,taskDelta,recordTasks,recordNote,dayScore,metricValue,lastDays,summary,currentStreak,activeValues,intensity,percentile,renamePath,recentFiles,calendarDays};
+module.exports = {transactionCounts,pruneRecords,DEFAULT_SETTINGS,MAX_DAILY_GOAL,RANGES,METRICS,CAPTION_SIZES,GLASS_FOGS,dayKey,shiftDay,countCharacters,emptyData,loadState,loadReading,setReading,isExcluded,recordChange,
+  recordActivity,taskDelta,recordTasks,recordNote,retractEmptyNewNote,dayScore,metricValue,lastDays,summary,currentStreak,activeValues,intensity,percentile,renamePath,recentFiles,calendarDays};

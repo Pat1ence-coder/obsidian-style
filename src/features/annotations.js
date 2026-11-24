@@ -136,8 +136,8 @@ class AnnotationModal extends Modal{
       if((event.metaKey||event.ctrlKey)&&event.key==='Enter'&&!event.isComposing){event.preventDefault();this.done();}
     });
     let renderPreview=()=>{};
-    new Setting(el).setName('笔记').setDesc('阅读时显示的手写批注，最多 80 个字；较长内容会自动折行让位。').addText(t=>{
-      t.setPlaceholder('写一句简短标注…').setValue(this.spec.note||'').onChange(v=>{this.spec.note=v;renderPreview();});
+    new Setting(el).setName('笔记').addText(t=>{
+      t.setPlaceholder('输入标注…').setValue(this.spec.note||'').onChange(v=>{this.spec.note=v;renderPreview();});
       t.inputEl.maxLength=Format.MAX_NOTE;this.noteInput=t.inputEl;
       t.inputEl.addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.isComposing){event.preventDefault();this.done();}});
     });
@@ -156,10 +156,10 @@ class AnnotationModal extends Modal{
       lineEl.appendChild(doc.createTextNode(' 示例后文'));
     };
     const pickers=el.createDiv({cls:'aw-annot-pickers'});
-    const group=(name,desc)=>{const box=pickers.createDiv({cls:'aw-annot-picker'});box.createDiv({cls:'aw-annot-picker-name',text:name});box.createDiv({cls:'aw-annot-picker-desc',text:desc});return box;};
+    const group=name=>{const box=pickers.createDiv({cls:'aw-annot-picker'});box.createDiv({cls:'aw-annot-picker-name',text:name});return box;};
     const choose=(buttons,key,value)=>{this.spec[key]=value;for(const b of buttons)b.setAttribute('aria-pressed',String(b.dataset.value===value));renderPreview();};
     // Position: the eight directions around a small "文字" chip.
-    const compass=group('位置','标注相对目标文字的位置。').createDiv({cls:'aw-annot-compass'}),dirs=[];
+    const compass=group('位置').createDiv({cls:'aw-annot-compass'}),dirs=[];
     for(const id of ['nw','n','ne','w','center','e','sw','s','se']){
       if(id==='center'){compass.createSpan({cls:'aw-annot-compass-center',text:'文字'});continue;}
       const d=DIRECTIONS.find(x=>x.id===id),b=compass.createEl('button',{cls:'aw-annot-choice',text:d.arrow,attr:{type:'button','aria-label':d.label}});
@@ -167,7 +167,7 @@ class AnnotationModal extends Modal{
     }
     choose(dirs,'dir',this.spec.dir);
     // Colour: eight named colours and a custom one.
-    const swatches=group('颜色','随标注一起保存在笔记里。').createDiv({cls:'aw-annot-swatches'}),colors=[];
+    const swatches=group('颜色').createDiv({cls:'aw-annot-swatches'}),colors=[];
     for(const c of COLORS){
       const b=swatches.createEl('button',{cls:'aw-annot-choice aw-annot-c-'+c.id,attr:{type:'button'}});
       b.createSpan({cls:'aw-annot-dot'});b.createSpan({text:c.label});
@@ -178,9 +178,9 @@ class AnnotationModal extends Modal{
     custom.createSpan({text:'自定义'});custom.dataset.value='custom';colors.push(custom);
     picker.addEventListener('input',()=>{this.spec.custom=picker.value;choose(colors,'color','custom');});
     choose(colors,'color',this.spec.color);
-    new Setting(el).setName('高亮标注目标').setDesc('目标文字带一层与标注同色的浅底；目标本身已有底色时可以关掉。')
+    new Setting(el).setName('高亮标注目标')
       .addToggle(t=>t.setValue(this.spec.highlight!==false).onChange(v=>{this.spec.highlight=v;renderPreview();}));
-    new Setting(el).setName('线条').setDesc('双线、虚线、实线、波浪或螺旋手绘箭头。')
+    new Setting(el).setName('线条')
       .addDropdown(d=>{for(const l of LINES)d.addOption(l.id,l.label);d.setValue(this.spec.line).onChange(v=>{this.spec.line=v;renderPreview();});});
     const footer=new Setting(el);
     if(typeof this.onRemove==='function'){

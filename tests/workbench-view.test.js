@@ -5,7 +5,7 @@ const cards=f=>f.content.querySelectorAll('.aw-card').map(n=>n.className.split('
 test('board modules share one card anatomy; recent rows and the active tab',()=>{
   const f=fixture();f.view.render();
   for(const card of f.content.querySelectorAll('.aw-card')){
-    assert.ok(card.querySelector('.aw-card-icon')&&card.querySelector('.aw-card-title')&&card.querySelector('.aw-card-sub')&&card.querySelector('.aw-panel'));
+    assert.ok(card.querySelector('.aw-card-icon')&&card.querySelector('.aw-card-title')&&card.querySelector('.aw-panel')&&!card.querySelector('.aw-card-sub'));
   }
   assert.equal(f.content.querySelectorAll('.aw-kpi').length,3);
   assert.equal(f.content.querySelectorAll('.aw-file-row').length,5);
@@ -20,6 +20,14 @@ test('view tabs switch to the full recent list and the monthly summary',async()=
   assert.deepEqual(cards(f),['aw-card-monthly']);
   const rows=f.content.querySelectorAll('tr');assert.equal(rows.length,13);
   assert.ok(rows[1].textContent.includes('1,286'));assert.ok(rows.at(-1).textContent.includes('—'));
+  await f.content.querySelectorAll('.aw-tab')[3].click();
+  assert.deepEqual(cards(f),['aw-card-weekly']);
+  assert.ok(f.content.querySelector('.aw-week-strip'));
+  assert.equal(f.content.querySelectorAll('.aw-week-day').length,7);
+  await f.content.querySelector('[data-aw-focus="week-prev"]').click();
+  assert.equal(f.view.weekOffset,-1);
+  await f.content.querySelector('[data-aw-focus="week-now"]').click();
+  assert.equal(f.view.weekOffset,0);
 });
 test('recent rows open the correct note',async()=>{
   const f=fixture();f.view.render();const rows=f.content.querySelectorAll('.aw-file-row');

@@ -14,7 +14,7 @@ const hours=minutes=>number(Math.round(minutes/6)/10);
 const clockFormat=new Intl.DateTimeFormat('zh-CN',{hour:'2-digit',minute:'2-digit',hourCycle:'h23'});
 const dateFormat=new Intl.DateTimeFormat('zh-CN',{month:'long',day:'numeric'});
 const fullDateFormat=new Intl.DateTimeFormat('zh-CN',{year:'numeric',month:'long',day:'numeric'});
-const TABS=[['board','看板视图'],['recent','最近笔记'],['monthly','月度汇总']];
+const TABS=[['board','看板视图'],['recent','最近笔记'],['monthly','月度汇总'],['weekly','周度复盘']];
 const metricOf=key=>Core.METRICS.find(m=>m.key===key)||Core.METRICS[0];
 // One companion hue per metric; cards, dots, tabs and the heatmap ramp all follow it.
 const HUES={score:'tone-accent',characters:'tone-4',minutes:'tone-2',focus:'tone-3',notes:'tone-1',tasks:'tone-5'};
@@ -31,15 +31,14 @@ function button(parent,text,cls,fn){
 function icon(parent,name,cls='aw-icon'){
   const node=el(parent,'span',cls);node.setAttribute('aria-hidden','true');setIcon(node,name);return node;
 }
-// Every module shares one header: icon tile, title, dotted subtitle and a pill badge.
-function card(parent,{name,iconName,title,sub,badge,hue='tone-accent'}){
+// Every module shares one header: icon tile, title and an optional pill badge.
+function card(parent,{name,iconName,title,badge,hue='tone-accent'}){
   const section=tint(el(parent,'section',`aw-card aw-card-${name}`),hue);
   const head=el(section,'header','aw-card-head');
   icon(head,iconName,'aw-card-icon');
   const copy=el(head,'div','aw-card-copy');el(copy,'h2','aw-card-title',title);
-  const subtitle=el(copy,'p','aw-card-sub',sub);
   const pill=el(head,'span','aw-badge',badge);
-  return {section,subtitle,pill,body:el(section,'div','aw-panel')};
+  return {section,pill,body:el(section,'div','aw-panel')};
 }
 function stat(parent,label,value,unit,cls='',hue){
   const item=el(parent,'div','aw-stat'+(cls?' '+cls:''));
@@ -98,7 +97,7 @@ function months(data,now=new Date()){
 }
 
 class WorkbenchView extends ItemView{
-  constructor(leaf,plugin){super(leaf);this.plugin=plugin;this.selectedDate=Core.dayKey();this.tab='board';this.creatingNote=false;}
+  constructor(leaf,plugin){super(leaf);this.plugin=plugin;this.selectedDate=Core.dayKey();this.tab='board';this.weekOffset=0;this.creatingNote=false;}
   getViewType(){return VIEW;}
   getDisplayText(){return NAME;}
   getIcon(){return viewIcon();}
@@ -107,14 +106,14 @@ class WorkbenchView extends ItemView{
     this.contentEl.replaceChildren();this.dayEl=null;this.recentEl=null;
     this.heatCells=null;this.statNumbers=null;this.longestEl=null;this.liveParts=[];this.renderStamp=null;this.recentStamp=null;this.dayStamp=null;
   }
-  stamp(){return [Core.dayKey(),JSON.stringify(this.plugin.data.settings),this.plugin.saveError,this.plugin.folderNotes?.getFolder()?.path??'',this.tab].join('|');}
+  stamp(){return [Core.dayKey(),JSON.stringify(this.plugin.data.settings),this.plugin.saveError,this.plugin.folderNotes?.getFolder()?.path??'',this.tab==='weekly'?`weekly:${this.weekOffset}`:this.tab].join('|');}
   daySignature(){
     const day=this.plugin.data.days[this.selectedDate],records=day?.files||{};
     return this.selectedDate+'|'+JSON.stringify(day||null)+'|'+(this.ranked||[]).join()+'|'+JSON.stringify(Object.keys(records).map(path=>this.app.vault.getAbstractFileByPath(path) instanceof TFile));
   }
   refresh(){
     if(this.contentEl.getClientRects().length===0)return;
-    if(this.renderStamp!==this.stamp()||this.tab==='monthly'){this.render();return;}
+    if(this.renderStamp!==this.stamp()||this.tab==='monthly'||this.tab==='weekly'){this.render();return;}
     if(this.statNumbers){
       const values=overview(this.plugin.data);
       for(const [key,node] of this.statNumbers)if(node.textContent!==values[key])node.textContent=values[key];
@@ -130,7 +129,6 @@ class WorkbenchView extends ItemView{
     const active=this.contentEl.ownerDocument.activeElement;
     const focusDate=active?.dataset?.awDate,focusKey=active?.dataset?.awFocus;
     const scrollTop=this.contentEl.scrollTop;
-    const helpOpen=this.contentEl.querySelector('.aw-help')?.open||false;
     const heatScroll=this.contentEl.querySelector('.aw-heat-scroll')?.scrollLeft;
     this.contentEl.replaceChildren();this.contentEl.classList.add('aw-view');
     this.statNumbers=null;this.longestEl=null;this.heatCells=null;this.dayEl=null;this.recentEl=null;this.liveParts=[];
@@ -149,12 +147,8 @@ class WorkbenchView extends ItemView{
       this.dayEl=el(stack,'div','aw-day-slot');this.renderDay();
       this.renderMonths(stack);this.renderRecentCard(stack,Math.min(settings.recentLimit,5));
     }else if(this.tab==='recent')this.renderRecentCard(stack,settings.recentLimit);
+    else if(this.tab==='weekly')this.renderWeekly(stack);
     else this.renderMonthly(stack);
-    const footer=el(root,'footer','aw-footer');
-    const local=el(footer,'span','aw-local');icon(local,'hard-drive');el(local,'span','',settings.tracking?'仅保存在本地':'本地记录 · 已暂停');
-    const help=el(footer,'details','aw-help');help.open=helpOpen;el(help,'summary','','如何统计？');
-    el(help,'p','','新增字数：本机编辑器内新增的非空白字符，含公式、代码和粘贴内容，删除后恢复不重复计数。编辑时长：有输入的分钟，以及其间不超过 5 分钟的停顿。深度专注：连续编辑达到 25 分钟的时段。新建笔记：在本机 Obsidian 中新建并随即打开的 Markdown 文件，经同步、git 或文件管理器加入的不计。完成任务：编辑器里新勾选的任务，反复勾选只算一次。');
-    el(help,'p','','贡献分 = 新增字数 ÷ 100 + 编辑分钟 ÷ 10 + 专注分钟 ÷ 10 + 新建笔记 × 2 + 完成任务。热力图强度按所选时间范围内活跃日的四分位数分级。');
     this.renderStamp=this.stamp();this.contentEl.scrollTop=scrollTop;
     if(heatWrap)heatWrap.scrollLeft=heatScroll??heatWrap.scrollWidth;
     if(focusDate)this.heatCells?.get(focusDate)?.focus({preventScroll:true});
@@ -173,10 +167,10 @@ class WorkbenchView extends ItemView{
     const tools=el(hero,'div','aw-toolbar');
     const range=button(tools,'','aw-chip',event=>this.chooseRange(event));range.dataset.awFocus='range';
     el(range,'span','aw-chip-key','时间:');el(range,'span','',`最近 ${settings.range} 天`);icon(range,'chevron-down','aw-chip-icon');
-    el(tools,'span','aw-chip aw-chip-static',settings.tracking?'范围: 本机记录':'范围: 统计已暂停');
     const create=button(tools,'','aw-chip aw-new-note',()=>this.newNote());icon(create,'plus','aw-chip-icon');el(create,'span','','新建笔记');
     const folder=this.plugin.folderNotes?.getFolder();
     create.title=folder?`在 ${folder.path==='/'?'笔记库根目录':folder.path} 中新建`:'按 Obsidian 当前的新建笔记设置创建';
+    button(tools,'复制本周周报','aw-chip aw-copy-weekly',()=>void this.copyWeekly(0));
     button(tools,'导出全量 CSV','aw-chip aw-export',()=>this.exportCSV());
     const refresh=button(tools,'刷新','aw-chip aw-refresh',()=>this.render());refresh.setAttribute('aria-label','刷新看板');
   }
@@ -196,7 +190,7 @@ class WorkbenchView extends ItemView{
     const kpis=[
       {key:'score',label:'累计贡献分',unit:'分',iconName:'sparkles',badge:`近 ${data.settings.range} 天`,foot:['active','活跃天数','天']},
       {key:'characters',label:'新增字数',unit:'字',iconName:'pen-line',badge:`最长连续 ${values.longest} 天`,foot:['streak','当前连续','天'],longest:true},
-      {key:'minutes',label:'编辑时长',unit:'小时',iconName:'clock',badge:'本机记录',foot:['focus','深度专注','小时']},
+      {key:'minutes',label:'编辑时长',unit:'小时',iconName:'clock',badge:'',foot:['focus','深度专注','小时']},
     ];
     for(const k of kpis){
       const box=tint(el(stack,'section',`aw-kpi aw-kpi-${k.key}`),HUES[k.key]);
@@ -209,18 +203,24 @@ class WorkbenchView extends ItemView{
     }
   }
   renderToday(stack){
-    const c=card(stack,{name:'today',iconName:'sun',title:'今日进度',sub:`${dateFormat.format(new Date())} · 对比近期日均`,badge:'',hue:'tone-accent'});
+    const c=card(stack,{name:'today',iconName:'sun',title:'今日进度',badge:'',hue:'tone-accent'});
     const box=el(c.body,'div','aw-today'),range=this.plugin.data.settings.range;
     const read=()=>Dash.todayProgress(this.plugin.data,new Date(),range);
     this.live(read,t=>{
       c.pill.textContent=`${number(t.score)} 分`;box.replaceChildren();
-      for(const [key,label,value,avg,unit] of [['characters','新增字数',t.characters,t.avgCharacters,'字'],['minutes','编辑时长',t.minutes,t.avgMinutes,'分钟']]){
+      const charTarget=t.dailyGoal>0?t.dailyGoal:t.avgCharacters;
+      const charRatio=charTarget?t.characters/charTarget:0;
+      const minRatio=t.avgMinutes?t.minutes/t.avgMinutes:0;
+      for(const [key,label,value,target,ratio,unit] of [
+        ['characters','新增字数',t.characters,t.dailyGoal>0?t.dailyGoal:0,charRatio,'字'],
+        ['minutes','编辑时长',t.minutes,0,minRatio,'分钟'],
+      ]){
         const row=tint(el(box,'div','aw-progress-row'),HUES[key]),top=el(row,'div','aw-progress-top');
         el(top,'span','aw-progress-label',label);
-        const v=el(top,'span','aw-progress-value');el(v,'strong','',number(value));el(v,'span','aw-unit',unit);
-        const ratio=avg?value/avg:0,bar=el(row,'div','aw-progress');bar.setAttribute('role','presentation');
+        const v=el(top,'span','aw-progress-value');el(v,'strong','',number(value));
+        el(v,'span','aw-unit',target>0?`/ ${number(target)} ${unit}`:unit);
+        const bar=el(row,'div','aw-progress');bar.setAttribute('role','presentation');
         el(bar,'i').style.setProperty('--aw-progress',String(Math.min(1,ratio)));
-        el(row,'div','aw-progress-note',avg?`日均 ${number(avg)} ${unit} · ${Math.round(ratio*100)}%`:'近期还没有可对比的活跃日');
       }
       const foot=el(box,'div','aw-today-foot');
       for(const [label,value,unit] of [['专注',t.focus,'分钟'],['新建',t.notes,'篇'],['任务',t.tasks,'项']]){
@@ -232,7 +232,7 @@ class WorkbenchView extends ItemView{
   }
   renderTrend(stack){
     const range=this.plugin.data.settings.range,n=range<=30?30:90;
-    const c=card(stack,{name:'trend',iconName:'trending-up',title:'活跃趋势',sub:`最近 ${n} 天 · 每日贡献分与 7 日均线`,badge:'',hue:HUES.score});
+    const c=card(stack,{name:'trend',iconName:'trending-up',title:'活跃趋势',badge:'',hue:HUES.score});
     const legend=el(c.body,'div','aw-chart-legend');
     for(const [cls,text] of [['aw-key-bar','每日贡献分'],['aw-key-line','7 日均线']]){
       const key=el(legend,'span','aw-key');el(key,'i',cls).setAttribute('aria-hidden','true');el(key,'span','',text);
@@ -287,7 +287,7 @@ class WorkbenchView extends ItemView{
     if(plot.dataset.awHover!==undefined)show(Number(plot.dataset.awHover));
   }
   renderMonths(stack){
-    const c=card(stack,{name:'months',iconName:'calendar-range',title:'月度贡献',sub:'最近 6 个月 · 贡献分',badge:'',hue:HUES.score});
+    const c=card(stack,{name:'months',iconName:'calendar-range',title:'月度贡献',badge:'',hue:HUES.score});
     const read=()=>Dash.monthBars(months(this.plugin.data));
     this.live(read,bars=>{
       const current=bars[bars.length-1];c.body.replaceChildren();
@@ -300,13 +300,11 @@ class WorkbenchView extends ItemView{
         const track=el(col,'div','aw-bar-track');el(track,'i','aw-bar-fill'+(b.score>0?'':' is-empty')).style.setProperty('--aw-bar',String(b.ratio));
         el(col,'span','aw-bar-label',`${Number(b.month.slice(5))}月`);
       }
-      const total=bars.reduce((s,b)=>s+b.score,0),active=bars.reduce((s,b)=>s+b.active,0);
-      el(c.body,'p','aw-bars-note',`6 个月合计 ${number(Math.round(total*10)/10)} 分 · ${active} 天活跃`);
     });
   }
   renderPulse(stack){
     const data=this.plugin.data,settings=data.settings,metric=metricOf(settings.metric);
-    const c=card(stack,{name:'pulse',iconName:'calendar-days',title:'年度活跃热力图',sub:`${metric.label} · 强度按个人近期分位数`,badge:'',hue:HUES[metric.key]});
+    const c=card(stack,{name:'pulse',iconName:'calendar-days',title:'年度活跃热力图',badge:'',hue:HUES[metric.key]});
     this.activeEl=c.pill;
     const tabs=el(c.body,'div','aw-segment');tabs.setAttribute('role','group');tabs.setAttribute('aria-label','热力图指标');
     for(const m of Core.METRICS){
@@ -340,7 +338,6 @@ class WorkbenchView extends ItemView{
       if(target&&!target.disabled){event.target.tabIndex=-1;target.tabIndex=0;target.focus();}
     });
     const caption=el(c.body,'div','aw-heat-caption');
-    el(caption,'span','',`完整 ${WEEKS} 周 · 统计：最近 ${settings.range} 天 · 区间外淡化 · 自 ${metric.key==='characters'?data.started:data.activityStarted} 起记录`);
     const legend=el(caption,'span','aw-legend');el(legend,'span','','少');
     for(let level=0;level<=4;level++)el(legend,'i',`aw-level-${level}`).setAttribute('aria-hidden','true');
     el(legend,'span','','多');
@@ -366,11 +363,8 @@ class WorkbenchView extends ItemView{
     if(!this.dayEl)return;
     this.dayEl.replaceChildren();this.dayStamp=this.daySignature();
     const data=this.plugin.data,day=data.days[this.selectedDate],score=Core.dayScore(day);
-    const metric=metricOf(data.settings.metric),value=Core.metricValue(day,metric.key);
-    const rank=this.ranked&&this.selectedDate>=Core.lastDays(new Date(),data.settings.range)[0]?Core.percentile(value,this.ranked):null;
     const date=new Date(this.selectedDate+'T12:00:00');
-    const sub=rank===null?(this.selectedDate<data.started?'启用之前 · 没有记录':'本机记录'):`本机记录 · ${metric.label}强度第 ${rank}% 分位`;
-    const c=card(this.dayEl,{name:'day',iconName:'file-text',title:`${fullDateFormat.format(date)} 明细`,sub,badge:`${number(score)} 分`,hue:'tone-1'});
+    const c=card(this.dayEl,{name:'day',iconName:'file-text',title:`${fullDateFormat.format(date)} 明细`,badge:`${number(score)} 分`,hue:'tone-1'});
     c.section.querySelector('.aw-card-title').title=this.selectedDate;
     const row=el(c.body,'div','aw-stats aw-stats-compact');
     stat(row,'贡献得分',number(score),'分','',HUES.score);
@@ -379,17 +373,17 @@ class WorkbenchView extends ItemView{
     stat(row,'新建笔记',number(day?.notes||0),'篇','',HUES.notes);
     stat(row,'完成任务',number(day?.tasks||0),'项','',HUES.tasks);
     const entries=Object.entries(day?.files||{}).sort((a,b)=>b[1]-a[1]);
-    if(!entries.length){el(c.body,'p','aw-empty',this.selectedDate<data.started?'这一天在启用之前，没有记录。':'这一天没有新增文字。');return;}
+    if(!entries.length){el(c.body,'p','aw-empty','暂无记录');return;}
     const list=el(c.body,'div','aw-day-list');
     for(const [path,count] of entries){
       const file=this.app.vault.getAbstractFileByPath(path),exists=file instanceof TFile;
-      const row=button(list,'','aw-day-row',()=>this.openFile(path));row.disabled=!exists;row.title=exists?path:`${path}（文件已移除）`;
+      const row=button(list,'','aw-day-row',()=>this.openFile(path));row.disabled=!exists;row.title=exists?path:`${path}（已移除）`;
       icon(row,'file-text','aw-row-icon');el(row,'span','aw-day-name',exists?file.basename:path);el(row,'span','aw-day-count',`+${number(count)} 字`);
       row.setAttribute('aria-label',`${exists?file.basename:path}，新增 ${number(count)} 字${exists?'':'，文件已移除'}`);
     }
   }
   renderRecentCard(stack,limit){
-    const c=card(stack,{name:'recent',iconName:'history',title:'继续编辑',sub:'按修改时间 · 已排除模板目录',badge:'',hue:'tone-2'});
+    const c=card(stack,{name:'recent',iconName:'history',title:'继续编辑',badge:'',hue:'tone-2'});
     this.recentEl=c.body;this.recentPill=c.pill;this.recentLimit=limit;
     this.renderRecent(Core.recentFiles(this.app.vault.getMarkdownFiles(),this.plugin.data.settings));
   }
@@ -398,7 +392,7 @@ class WorkbenchView extends ItemView{
     const area=this.recentEl;area.replaceChildren();
     this.recentStamp=JSON.stringify(files.map(f=>[f.path,f.stat.mtime]));
     const shown=files.slice(0,this.recentLimit);this.recentPill.textContent=`${shown.length} 篇`;
-    if(!shown.length){el(area,'p','aw-empty','还没有笔记，点击“新建笔记”开始记录。');return;}
+    if(!shown.length){el(area,'p','aw-empty','暂无笔记');return;}
     const list=el(area,'div','aw-file-list');
     shown.forEach((file,i)=>{
       const row=button(list,'',i===0?'aw-file-row aw-file-latest':'aw-file-row',()=>this.openFile(file.path));row.title=file.path;
@@ -412,7 +406,7 @@ class WorkbenchView extends ItemView{
   }
   renderMonthly(stack){
     const rows=months(this.plugin.data),best=Math.max(1,...rows.map(r=>r.score));
-    const c=card(stack,{name:'monthly',iconName:'table',title:'月度汇总',sub:'最近 12 个月 · 本机记录',badge:`${rows.filter(r=>r.active).length} 个月活跃`,hue:'tone-3'});
+    const c=card(stack,{name:'monthly',iconName:'table',title:'月度汇总',badge:`${rows.filter(r=>r.active).length} 个月活跃`,hue:'tone-3'});
     const wrap=el(c.body,'div','aw-table-scroll'),table=el(wrap,'table','aw-table');
     const head=el(el(table,'thead'),'tr');
     for(const label of ['月份','贡献分','','新增字数','活跃天数','编辑时长','深度专注','新建笔记','完成任务'])el(head,'th','',label);
@@ -426,6 +420,90 @@ class WorkbenchView extends ItemView{
         if(i===1&&r.active)el(td,'span','aw-bar').style.setProperty('--aw-bar',String(r.score/best));
       });
     }
+  }
+  renderWeekly(stack){
+    const review=Dash.weeklyReview(this.plugin.data,new Date(),this.weekOffset);
+    const c=card(stack,{name:'weekly',iconName:'calendar-range',title:`周度复盘 · ${review.startDate} 至 ${review.endDate}`,badge:`${number(review.totals.score)} 分`,hue:'tone-accent'});
+    const nav=el(c.body,'div','aw-week-nav');
+    const prevBtn=button(nav,'上一周','aw-chip aw-week-prev',()=>{this.weekOffset-=1;this.render();});prevBtn.dataset.awFocus='week-prev';
+    if(this.weekOffset<0){
+      const curBtn=button(nav,'回到本周','aw-chip aw-week-now',()=>{this.weekOffset=0;this.render();});curBtn.dataset.awFocus='week-now';
+    }
+    const nextBtn=button(nav,'下一周','aw-chip aw-week-next',()=>{if(this.weekOffset<0){this.weekOffset+=1;this.render();}});
+    nextBtn.disabled=this.weekOffset>=0;nextBtn.dataset.awFocus='week-next';
+    const copyBtn=button(nav,'复制 Markdown 周报','aw-chip aw-week-copy',()=>void this.copyWeekly(this.weekOffset));
+    copyBtn.dataset.awFocus='week-copy';
+
+    const row=el(c.body,'div','aw-stats aw-week-stats');
+    const items=[
+      ['score','贡献得分',number(review.totals.score),'分','分'],
+      ['characters','新增字数',number(review.totals.characters),'字','字'],
+      ['minutes','编辑时长',number(review.totals.minutes),'分钟','分钟'],
+      ['focus','深度专注',number(review.totals.focus),'分钟','分钟'],
+      ['notes','新建笔记',number(review.totals.notes),'篇','篇'],
+      ['tasks','完成任务',number(review.totals.tasks),'项','项'],
+    ];
+    for(const [key,label,val,unit,deltaUnit] of items){
+      const strong=stat(row,label,val,unit,'',HUES[key]),cell=strong.parentElement.parentElement;
+      const d=review.deltas[key];
+      const delta=d.diff===0?'持平':`${d.diff>0?'+':''}${number(d.diff)} ${deltaUnit}${d.pct===null?'':` · ${d.pct>0?'+':''}${d.pct}%`}`;
+      el(cell,'div','aw-stat-delta'+(d.diff>0?' is-up':d.diff<0?' is-down':''),delta);
+    }
+
+    const strip=el(c.body,'div','aw-week-strip'),maxScore=Math.max(1,...review.days.map(d=>d.score));
+    for(const d of review.days){
+      const col=button(strip,'','aw-week-day'+(d.isToday?' is-today':'')+(d.future?' is-future':''),()=>{
+        if(d.future)return;
+        this.selectedDate=d.date;this.tab='board';this.render();
+      });
+      col.disabled=d.future;
+      col.title=d.future?d.date:`${d.date} · ${number(d.characters)} 字`;
+      el(col,'span','aw-week-day-val',d.future?'—':number(d.characters)+' 字');
+      const track=el(col,'span','aw-week-day-track');
+      const fill=el(track,'i','aw-week-day-fill'+(d.score>0?'':' is-empty')+(d.goalMet?' is-goal-met':''));
+      fill.style.setProperty('--aw-bar',String(d.future?0:d.score/maxScore));
+      el(col,'span','aw-week-day-name',d.isToday?`${d.weekday} · 今`:d.weekday);
+    }
+
+    const cols=el(c.body,'div','aw-week-columns');
+    const filesBox=el(cols,'div','aw-week-col');
+    el(filesBox,'h3','aw-week-heading','重点笔记');
+    if(!review.topFiles.length)el(filesBox,'p','aw-empty','暂无记录');
+    else{
+      const list=el(filesBox,'div','aw-day-list aw-week-list');
+      for(const item of review.topFiles.slice(0,8)){
+        const file=this.app.vault.getAbstractFileByPath(item.path),exists=file instanceof TFile;
+        const r=button(list,'','aw-day-row',()=>this.openFile(item.path));r.disabled=!exists;
+        r.title=exists?item.path:`${item.path}（已移除）`;
+        icon(r,'file-text','aw-row-icon');
+        el(r,'span','aw-day-name',exists?file.basename:item.name);
+        el(r,'span','aw-day-count',`+${number(item.characters)} 字 · ${item.days} 天`);
+      }
+    }
+    const folderBox=el(cols,'div','aw-week-col');
+    el(folderBox,'h3','aw-week-heading','目录分布');
+    if(!review.topFolders.length)el(folderBox,'p','aw-empty','暂无数据');
+    else{
+      const topChars=Math.max(1,...review.topFolders.map(f=>f.characters));
+      const flist=el(folderBox,'div','aw-week-folders');
+      for(const f of review.topFolders.slice(0,6)){
+        const frow=el(flist,'div','aw-week-folder');
+        const head=el(frow,'div','aw-week-folder-head');
+        el(head,'span','aw-week-folder-name',f.folder);
+        el(head,'span','aw-week-folder-val',`+${number(f.characters)} 字 · ${f.noteCount} 篇`);
+        const fbar=el(frow,'div','aw-progress');
+        el(fbar,'i').style.setProperty('--aw-progress',String(f.characters/topChars));
+      }
+    }
+  }
+  async copyWeekly(offset=0){
+    if(typeof this.plugin.copyWeeklySummary==='function')return this.plugin.copyWeeklySummary(offset);
+    const review=Dash.weeklyReview(this.plugin.data,new Date(),offset);
+    const md=Dash.formatWeeklyMarkdown(review);
+    const clip=this.contentEl.ownerDocument?.defaultView?.navigator?.clipboard??globalThis.navigator?.clipboard;
+    if(!clip?.writeText){new Notice('当前环境不支持剪贴板写入。');return false;}
+    try{await clip.writeText(md);new Notice(`已复制写作周报（${review.startDate} 至 ${review.endDate}）。`);return true;}
+    catch{new Notice('复制周报失败。');return false;}
   }
   async exportCSV(){
     const vault=this.app.vault,stamp=Core.dayKey().replace(/-/g,'');

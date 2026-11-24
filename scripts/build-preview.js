@@ -5,7 +5,7 @@ const fs=require('node:fs'),path=require('node:path');
 const root=fs.realpathSync(path.resolve(__dirname,'..'));
 const {checkedPath}=require('./safe-paths');
 const tab=process.argv[2];
-if(process.argv.length>3||(tab!==undefined&&!['board','recent','monthly'].includes(tab)))throw Error('Invalid preview view; use board, recent or monthly');
+if(process.argv.length>3||(tab!==undefined&&!['board','recent','monthly','weekly'].includes(tab)))throw Error('Invalid preview view; use board, recent, monthly or weekly');
 const out=path.join(root,'artifacts/preview');
 const name=tab?`workbench-${tab}.html`:'workbench-static.html';
 for(const file of [path.join(out,name),path.join(out,'preview-meta.json'),path.join(root,'dist/algorithm-workbench/styles.css')])checkedPath(root,file);

@@ -2,6 +2,7 @@
 const {Plugin, PluginSettingTab, Setting, Notice, TFile, editorInfoField} = require('obsidian');
 const {EditorView} = require('@codemirror/view');
 const Core = require('./core');
+const Dash = require('./features/dashboard-data');
 const {WorkbenchView,VIEW,NAME,viewIcon}=require('./features/workbench');
 const {FolderNotes}=require('./features/folder-notes');
 const {Figures}=require('./features/figures');
@@ -58,12 +59,17 @@ class WorkbenchSettings extends PluginSettingTab {
     this.containerEl.createEl('h3',{text:'工作台与写作统计'});
     new Setting(this.containerEl).setName('启动时打开工作台').setDesc('在新标签页打开，保留原有笔记标签页。').addToggle(t=>t.setValue(s.openOnStartup).onChange(v=>{s.openOnStartup=v;this.plugin.changed();}));
     new Setting(this.containerEl).setName('记录写作量').setDesc('从启用后开始，仅统计本机编辑；关闭时不补记。').addToggle(t=>t.setValue(s.tracking).onChange(v=>{s.tracking=v;this.plugin.data.records={};this.plugin.changed();}));
+    new Setting(this.containerEl).setName('状态栏显示今日进度').setDesc('在底部状态栏实时显示今日新增字数与目标进度，点击直接打开写作工作台。').addToggle(t=>t.setValue(s.statusBar!==false).onChange(v=>{s.statusBar=v;this.plugin.updateStatusBar();this.plugin.changed();}));
+    new Setting(this.containerEl).setName('每日目标字数').setDesc('填写每日目标新增字数（如 1000）；填 0 或留空则按近期活跃日的日均值对比。').addText(t=>t.setPlaceholder('0（按日均对比）').setValue(s.dailyGoal?String(s.dailyGoal):'').onChange(v=>{
+      const n=Math.trunc(Number(v.trim())||0);
+      s.dailyGoal=n>0?Math.min(Core.MAX_DAILY_GOAL,n):0;
+      this.plugin.updateStatusBar();this.plugin.changed();
+    }));
     new Setting(this.containerEl).setName('最近编辑篇数').addSlider(t=>t.setLimits(3,30,1).setValue(s.recentLimit).setDynamicTooltip().onChange(v=>{s.recentLimit=v;this.plugin.changed();}));
     new Setting(this.containerEl).setName('排除文件夹').setDesc('每行一个相对笔记库的路径；同时影响新统计和最近编辑列表，保留历史记录。').addTextArea(t=>t.setValue(s.excludedFolders.join('\n')).onChange(v=>{
       s.excludedFolders=v.split('\n').map(x=>x.trim().replace(/^\/+|\/+$/g,'')).filter(Boolean);this.plugin.data.records={};this.plugin.changed();
     }));
     new Setting(this.containerEl).setName('立即打开工作台').addButton(b=>b.setButtonText('打开').onClick(()=>this.plugin.openWorkbench()));
-    this.containerEl.createEl('p',{text:'数据保存在此插件目录的 data.json，仅包含设置、日期、文件路径、计数，以及素材库里的星级和标签。针对单台设备，不合并多设备统计。'});
   }
 }
 
@@ -100,6 +106,14 @@ class WorkbenchPlugin extends Plugin {
     this.registerView(VIEW,leaf=>new WorkbenchView(leaf,this));
     this.addRibbonIcon(viewIcon(),`打开${NAME}`,()=>this.openWorkbench());
     this.addCommand({id:'open-workbench',name:`打开${NAME}`,callback:()=>this.openWorkbench()});
+    this.addCommand({id:'copy-weekly-summary',name:'复制本周写作周报',callback:()=>void this.copyWeeklySummary(0)});
+    this.statusBarEl=typeof this.addStatusBarItem==='function'?this.addStatusBarItem():null;
+    if(this.statusBarEl){
+      this.statusBarEl.classList?.add?.('aw-status-badge','mod-clickable');
+      this.statusBarEl.setAttribute?.('aria-label',`打开${NAME}`);
+      this.statusBarEl.addEventListener?.('click',()=>void this.openWorkbench());
+    }
+    this.updateStatusBar();
     // The image library: its own pane, opened in the right sidebar.
     this.library=this.addChild(new Library(this));
     // Palette and caption size are body classes read by both stylesheets; popout windows get
@@ -114,18 +128,30 @@ class WorkbenchPlugin extends Plugin {
     this.registerEvent(this.app.workspace.on('quit',tasks=>{if(this.saveTimer||this.saving)tasks.add(()=>this.flush());}));
     for(const event of ['create','modify','delete']) this.registerEvent(this.app.vault.on(event,file=>{
       if(event==='delete'&&file){
-        if(file instanceof TFile)delete this.data.records[file.path];
+        const today=Core.dayKey();
+        this.freshNotes?.delete(file.path);
+        if(file instanceof TFile)Core.retractEmptyNewNote(this.data,file.path,today);
+        else if(file.path){
+          for(const p of Object.keys(this.data.records))if(p===file.path||p.startsWith(file.path+'/'))Core.retractEmptyNewNote(this.data,p,today);
+        }
         if(this.data.reading){
           for(const p of Object.keys(this.data.reading))if(p===file.path||p.startsWith(file.path+'/'))delete this.data.reading[p];
         }
+        this.updateStatusBar();
         this.scheduleSave();
       }
       this.scheduleRefresh();
     }));
-    this.registerEvent(this.app.vault.on('rename',(file,oldPath)=>{Core.renamePath(this.data,oldPath,file.path);this.changed();}));
+    this.registerEvent(this.app.vault.on('rename',(file,oldPath)=>{
+      Core.renamePath(this.data,oldPath,file.path);
+      if(file instanceof TFile&&Core.isExcluded(file.path,this.data.settings.excludedFolders)){
+        Core.retractEmptyNewNote(this.data,file.path,Core.dayKey());
+      }
+      this.changed();
+    }));
     this.registerInterval(window.setInterval(()=>{
       if(this.stopped)return;
-      this.cleanRecords(); this.scheduleRefresh(); if(this.saveError)this.scheduleSave();
+      this.cleanRecords(); this.updateStatusBar(); this.scheduleRefresh(); if(this.saveError)this.scheduleSave();
     },60000));
     this.registerEvent(this.app.workspace.on('active-leaf-change',()=>this.scheduleRefresh()));
     this.app.workspace.onLayoutReady(()=>{
@@ -154,6 +180,7 @@ class WorkbenchPlugin extends Plugin {
       active||=user;
     }
     if(active)Core.recordActivity(this.data,this.session);
+    this.updateStatusBar();
     this.scheduleSave(TYPING_SAVE_MS);this.scheduleRefresh();
   }
   // Pasted or dragged lists are not newly completed work. A checkbox toggle may carry
@@ -176,7 +203,7 @@ class WorkbenchPlugin extends Plugin {
     this.freshNotes.delete(file.path);
     if(Date.now()-at>NEW_NOTE_OPEN_MS)return;
     if(this.stopped||!this.data.settings.tracking||!(file instanceof TFile)||file.extension!=='md'||Core.isExcluded(file.path,this.data.settings.excludedFolders))return;
-    Core.recordNote(this.data,Core.dayKey());this.changed();
+    Core.recordNote(this.data,Core.dayKey(),file.path);this.changed();
   }
   cleanRecords(date=Core.dayKey()) {
     if(this.recordDay===date)return;
@@ -261,7 +288,31 @@ class WorkbenchPlugin extends Plugin {
     if(this.stopped||this.readOnly||!this.data?.reading)return;
     if(Core.setReading(this.data.reading,path,item))this.scheduleSave(TYPING_SAVE_MS);
   }
-  changed(){this.scheduleSave();this.scheduleRefresh();}
+  updateStatusBar(){
+    const el=this.statusBarEl,s=this.data?.settings;
+    if(!el)return;
+    if(this.stopped||!s?.tracking||s.statusBar===false){el.hidden=true;return;}
+    el.hidden=false;
+    const fmt=n=>new Intl.NumberFormat('zh-CN',{maximumFractionDigits:1}).format(n);
+    const today=this.data.days[Core.dayKey()],chars=today?.characters||0,score=Core.dayScore(today),goal=s.dailyGoal||0;
+    const met=goal>0&&chars>=goal;
+    const text=goal>0
+      ?(met?`今日 ${fmt(chars)} / ${fmt(goal)} 字 ✓`:`今日 ${fmt(chars)} / ${fmt(goal)} 字 · ${Math.min(999,Math.round(chars/goal*100))}%`)
+      :(score>0?`今日 ${fmt(chars)} 字 · ${fmt(score)} 分`:'今日 0 字');
+    if(el.textContent!==text)el.textContent=text;
+    el.classList?.toggle?.('is-goal-met',met);
+    const tip=goal>0?`今日新增 ${fmt(chars)} 字，目标 ${fmt(goal)} 字（点击打开${NAME}）`:`今日新增 ${fmt(chars)} 字，贡献 ${fmt(score)} 分（点击打开${NAME}）`;
+    if(el.title!==tip)el.title=tip;
+  }
+  async copyWeeklySummary(weekOffset=0){
+    const review=Dash.weeklyReview(this.data,new Date(),weekOffset);
+    const md=Dash.formatWeeklyMarkdown(review);
+    const clip=this.app?.workspace?.containerEl?.ownerDocument?.defaultView?.navigator?.clipboard??globalThis.navigator?.clipboard;
+    if(!clip?.writeText){new Notice('当前环境不支持剪贴板写入。');return false;}
+    try{await clip.writeText(md);new Notice(`已复制写作周报（${review.startDate} 至 ${review.endDate}）。`);return true;}
+    catch{new Notice('复制周报失败。');return false;}
+  }
+  changed(){this.updateStatusBar();this.scheduleSave();this.scheduleRefresh();}
   onunload(){
     for(const doc of this.appearanceDocs??[]){
       for(const name of [...doc.body.classList])if(APPEARANCE.test(name))doc.body.classList.remove(name);
