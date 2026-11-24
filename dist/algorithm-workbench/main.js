@@ -557,12 +557,31 @@ module.exports = {transactionCounts,pruneRecords,DEFAULT_SETTINGS,RANGES,METRICS
 "features/library-data.js":(module,exports,__awRequire)=>{
 'use strict';
 // The image library (素材库), data side: which vault files are images, how they are filtered,
-// sorted, grouped by folder and laid out in columns, and the ratings and tags the plugin keeps
-// for them (images cannot carry tags of their own). Nothing here touches Obsidian or the DOM.
+// sorted, shuffled, grouped by folder, analysed for dominant colours and laid out in columns,
+// and the ratings and tags the plugin keeps for them. Nothing here touches Obsidian or the DOM.
 const STILL=['png','jpg','jpeg','webp','avif','bmp'];
 const IMAGE=new Set([...STILL,'gif','svg']);
 const TYPES=[{id:'all',label:'全部类型'},{id:'still',label:'图片'},{id:'gif',label:'GIF'},{id:'svg',label:'SVG'}];
-const SHAPES=[{id:'all',label:'全部比例'},{id:'landscape',label:'横图'},{id:'portrait',label:'竖图'},{id:'square',label:'方图'}];
+const SHAPES=[
+  {id:'all',label:'全部比例'},
+  {id:'landscape',label:'横图'},
+  {id:'portrait',label:'竖图'},
+  {id:'square',label:'方图'},
+  {id:'wide',label:'宽幅 16:9+'},
+  {id:'long',label:'长截图'},
+];
+const COLORS=[
+  {id:'all',label:'全部颜色',hex:''},
+  {id:'red',label:'红色系',hex:'#ef5350'},
+  {id:'orange',label:'橙色系',hex:'#f59e0b'},
+  {id:'yellow',label:'黄色系',hex:'#eab308'},
+  {id:'green',label:'绿色系',hex:'#22c55e'},
+  {id:'cyan',label:'青色系',hex:'#06b6d4'},
+  {id:'blue',label:'蓝色系',hex:'#3b82f6'},
+  {id:'purple',label:'紫色系',hex:'#8b5cf6'},
+  {id:'light',label:'浅色 / 白',hex:'#f1f5f9'},
+  {id:'dark',label:'深色 / 黑',hex:'#334155'},
+];
 const RATINGS=[{id:'all',label:'全部星级'},{id:'5',label:'★★★★★'},{id:'4',label:'★★★★ 以上'},{id:'3',label:'★★★ 以上'},{id:'2',label:'★★ 以上'},{id:'1',label:'★ 以上'},{id:'none',label:'未评星'}];
 const SORTS=[{id:'new',label:'最近修改'},{id:'old',label:'最早修改'},{id:'name',label:'名称'},{id:'large',label:'文件最大'}];
 const SIZES=[{id:'s',label:'小卡片',width:150},{id:'m',label:'中卡片',width:210},{id:'l',label:'大卡片',width:300}];
@@ -578,12 +597,92 @@ function shapeOf(w,h){
   const r=w/h;
   return r>1.1?'landscape':r<1/1.1?'portrait':'square';
 }
+function matchesShape(w,h,shape){
+  if(!shape||shape==='all')return true;
+  if(!(w>0&&h>0))return false;
+  if(shape==='wide')return w/h>=1.65;
+  if(shape==='long')return h/w>=1.85;
+  return shapeOf(w,h)===shape;
+}
 function formatSize(bytes){
   const n=Math.max(0,Number(bytes)||0);
   if(n<1024)return `${n} B`;
   if(n<1024*1024)return `${Math.round(n/1024)} KB`;
   const mb=n/1024/1024;
   return `${mb<10?mb.toFixed(1):Math.round(mb)} MB`;
+}
+
+// Pure RGBA pixel analysis (from a small downsampled canvas): extracts up to 2–3 dominant colour
+// families (so charts/UI with white backgrounds still match their accent hue) and up to 5 HEX swatches.
+function rgbToHex(r,g,b){
+  const h=n=>Math.max(0,Math.min(255,Math.round(n))).toString(16).padStart(2,'0');
+  return `#${h(r)}${h(g)}${h(b)}`;
+}
+function rgbToHsl(r,g,b){
+  const rn=r/255,gn=g/255,bn=b/255,max=Math.max(rn,gn,bn),min=Math.min(rn,gn,bn),d=max-min,l=(max+min)/2;
+  if(d===0)return [0,0,l];
+  const s=d/(1-Math.abs(2*l-1));
+  let h=max===rn?((gn-bn)/d)%6:max===gn?(bn-rn)/d+2:(rn-gn)/d+4;
+  h=h*60;if(h<0)h+=360;
+  return [h,s,l];
+}
+function hueBucket(h){
+  if(h>=340||h<16)return 'red';
+  if(h<42)return 'orange';
+  if(h<70)return 'yellow';
+  if(h<162)return 'green';
+  if(h<200)return 'cyan';
+  if(h<255)return 'blue';
+  return 'purple';
+}
+function analyzePixels(rgba){
+  if(!rgba||rgba.length<4)return {colors:[],palette:[]};
+  const hueWeights=dict(),clusters=new Map();
+  let opaque=0,chromatic=0,lightCount=0,darkCount=0;
+  for(let i=0;i+3<rgba.length;i+=4){
+    if(rgba[i+3]<96)continue;
+    const r=rgba[i],g=rgba[i+1],b=rgba[i+2];
+    opaque++;
+    const [h,s,l]=rgbToHsl(r,g,b);
+    if(s>=0.18&&l>=0.12&&l<=0.93){
+      chromatic++;
+      const bucket=hueBucket(h);
+      hueWeights[bucket]=(hueWeights[bucket]||0)+(0.6+s);
+    }else if(l<0.28)darkCount++;
+    else if(l>0.78)lightCount++;
+    const key=((r>>4)<<8)|((g>>4)<<4)|(b>>4);
+    let c=clusters.get(key);
+    if(!c){c={n:0,r:0,g:0,b:0,s:0};clusters.set(key,c);}
+    c.n++;c.r+=r;c.g+=g;c.b+=b;c.s+=s;
+  }
+  if(!opaque)return {colors:[],palette:[]};
+  const colors=Object.entries(hueWeights)
+    .filter(([,w])=>w>=opaque*0.045)
+    .sort((a,b)=>b[1]-a[1])
+    .slice(0,2)
+    .map(([k])=>k);
+  if(darkCount>=opaque*0.42)colors.push('dark');
+  else if(lightCount>=opaque*0.62&&chromatic<=opaque*0.38)colors.push('light');
+  if(!colors.length)colors.push(darkCount>=lightCount?'dark':'light');
+
+  const ranked=[...clusters.values()]
+    .map(c=>({r:c.r/c.n,g:c.g/c.n,b:c.b/c.n,score:c.n*(1+(c.s/c.n)*0.85)}))
+    .sort((a,b)=>b.score-a.score);
+  const picked=[];
+  for(const cand of ranked){
+    if(picked.every(p=>Math.hypot(p.r-cand.r,p.g-cand.g,p.b-cand.b)>=38))picked.push(cand);
+    if(picked.length>=5)break;
+  }
+  for(const cand of ranked){
+    if(picked.length>=5)break;
+    if(!picked.includes(cand))picked.push(cand);
+  }
+  const palette=[];
+  for(const p of picked){
+    const hex=rgbToHex(p.r,p.g,p.b);
+    if(!palette.includes(hex))palette.push(hex);
+  }
+  return {colors,palette};
 }
 
 // Ratings (1–5) and tags per image path, kept in the plugin's data.
@@ -628,6 +727,30 @@ function forgetInLibrary(lib,path){
     if(key===path||key.startsWith(path+'/'))delete table[key];
 }
 
+// Safe names and collision-free vault paths for pasted or dropped images.
+function sanitizeImageName(rawName,fallbackExt='png',now=new Date()){
+  const p=n=>String(n).padStart(2,'0');
+  const stamp=`${now.getFullYear()}${p(now.getMonth()+1)}${p(now.getDate())}-${p(now.getHours())}${p(now.getMinutes())}${p(now.getSeconds())}`;
+  const raw=String(rawName||'').trim();
+  const dot=raw.lastIndexOf('.');
+  let stem=dot>0?raw.slice(0,dot):raw,ext=(dot>0?raw.slice(dot+1):fallbackExt).toLowerCase();
+  if(ext==='jpeg')ext='jpg';
+  if(!isImage(ext))ext=isImage(fallbackExt)?String(fallbackExt).toLowerCase():'png';
+  stem=stem.replace(/[/\\:*?"<>|\u0000-\u001f]+/g,'-').replace(/^\.+|\.+$/g,'').trim().slice(0,64);
+  if(!stem||/^(?:image|blob|clipboard|pasted image)$/i.test(stem))stem=`素材-${stamp}`;
+  return {stem,ext,name:`${stem}.${ext}`};
+}
+function uniqueVaultPath(folder,fileName,exists){
+  const dir=String(folder||'').replace(/^\/+|\/+$/g,'');
+  const dot=fileName.lastIndexOf('.'),stem=dot>0?fileName.slice(0,dot):fileName,ext=dot>0?fileName.slice(dot):'';
+  for(let n=0;n<10000;n++){
+    const leaf=n===0?`${stem}${ext}`:`${stem}-${n}${ext}`;
+    const candidate=dir?`${dir}/${leaf}`:leaf;
+    if(!exists(candidate))return candidate;
+  }
+  throw Error('同名图片过多，请重命名后重试。');
+}
+
 // Images referenced from notes: resolvedLinks is {note: {target: count}}. Returns
 // {used: Set of image paths, refs: Map image → notes linking to it}.
 function references(resolvedLinks){
@@ -641,14 +764,15 @@ function references(resolvedLinks){
   return {used,refs};
 }
 // Files (TFile-like: path, basename, extension, stat, parent) → library items.
-function makeItems(files,{lib=emptyLibrary(),used=new Set(),dims=new Map()}={}){
+function makeItems(files,{lib=emptyLibrary(),used=new Set(),dims=new Map(),palettes=new Map()}={}){
   const items=[];
   for(const f of files){
     if(!isImage(f.extension))continue;
-    const size=dims.get(f.path);
+    const size=dims.get(f.path),pal=palettes.get(f.path);
     items.push({path:f.path,name:f.basename,ext:String(f.extension).toLowerCase(),folder:f.parent?.path&&f.parent.path!=='/'?f.parent.path:'',
       size:f.stat?.size||0,mtime:f.stat?.mtime||0,rating:own(lib.ratings,f.path)?lib.ratings[f.path]:0,
-      tags:own(lib.tags,f.path)?lib.tags[f.path]:[],used:used.has(f.path),w:size?.w||0,h:size?.h||0});
+      tags:own(lib.tags,f.path)?lib.tags[f.path]:[],used:used.has(f.path),w:size?.w||0,h:size?.h||0,
+      colors:pal?.colors||[],palette:pal?.palette||[]});
   }
   return items;
 }
@@ -674,20 +798,33 @@ function matchesText(item,text){
 function matches(item,f){
   if(!inScope(item,f.scope)||!matchesText(item,f.text))return false;
   if(f.type&&f.type!=='all'&&kindOf(item.ext)!==f.type)return false;
-  if(f.shape&&f.shape!=='all'&&shapeOf(item.w,item.h)!==f.shape)return false;
+  if(f.shape&&f.shape!=='all'&&!matchesShape(item.w,item.h,f.shape))return false;
+  if(f.color&&f.color!=='all'&&!(item.colors||[]).includes(f.color))return false;
   if(f.rating==='none')return !item.rating;
   if(f.rating&&f.rating!=='all')return item.rating>=Number(f.rating);
   return true;
 }
 const byName=(a,b)=>a.name.localeCompare(b.name,'zh-CN',{numeric:true})||a.path.localeCompare(b.path);
-function sortItems(items,sort){
+// Deterministic seeded Fisher-Yates shuffle so rating/tagging in roam mode never scrambles positions.
+function shuffleItems(items,seed=1){
+  const list=[...items];
+  let s=(Number(seed)||1)>>>0;
+  const rand=()=>{s=(s+0x6d2b79f5)>>>0;let t=Math.imul(s^(s>>>15),1|s);t=(t+Math.imul(t^(t>>>7),61|t))^t;return ((t^(t>>>14))>>>0)/4294967296;};
+  for(let i=list.length-1;i>0;i--){
+    const j=Math.floor(rand()*(i+1));
+    [list[i],list[j]]=[list[j],list[i]];
+  }
+  return list;
+}
+function sortItems(items,sort,seed=0){
+  if(sort==='shuffle'||seed>0)return shuffleItems(items,seed||1);
   const list=[...items];
   if(sort==='name')return list.sort(byName);
   if(sort==='old')return list.sort((a,b)=>a.mtime-b.mtime||byName(a,b));
   if(sort==='large')return list.sort((a,b)=>b.size-a.size||byName(a,b));
   return list.sort((a,b)=>b.mtime-a.mtime||byName(a,b));
 }
-const filterItems=(items,f)=>sortItems(items.filter(item=>matches(item,f)),f.sort);
+const filterItems=(items,f,seed=0)=>sortItems(items.filter(item=>matches(item,f)),f.sort,seed);
 
 // Folders that hold images, nested, each with the number of images in it and below it.
 function folderTree(items){
@@ -732,8 +869,10 @@ function placeCards(items,heights,width,gap){
 }
 function columnCount(width,card,gap){return Math.max(1,Math.floor((width+gap)/(card+gap)));}
 
-module.exports={IMAGE,TYPES,SHAPES,RATINGS,SORTS,SIZES,isImage,kindOf,shapeOf,formatSize,emptyLibrary,parseTags,loadLibrary,setRating,setTags,
-  renameInLibrary,forgetInLibrary,references,makeItems,inScope,matches,sortItems,filterItems,folderTree,tagCounts,cardHeight,placeCards,columnCount};
+module.exports={IMAGE,TYPES,SHAPES,COLORS,RATINGS,SORTS,SIZES,isImage,kindOf,shapeOf,matchesShape,formatSize,
+  rgbToHex,analyzePixels,emptyLibrary,parseTags,loadLibrary,setRating,setTags,renameInLibrary,forgetInLibrary,
+  sanitizeImageName,uniqueVaultPath,references,makeItems,inScope,matches,shuffleItems,sortItems,filterItems,
+  folderTree,tagCounts,cardHeight,placeCards,columnCount};
 
 },
 "features/workbench.js":(module,exports,__awRequire)=>{
@@ -3258,12 +3397,13 @@ const {Component,ItemView,Menu,Modal,Notice,Setting,TFile,MarkdownView,setIcon}=
 const L=__awRequire("features/library-data.js");
 const VIEW='aw-library',NAME='素材库',ICON='images';
 // Cards are added a page at a time as the grid scrolls; GAP matches the CSS gap.
-const PAGE=60,GAP=12;
+const PAGE=60,GAP=12,SAMPLE=24;
 // Top-level folders take turns with the theme's tones, as in the reference.
 const TONES=['tone-accent','tone-amber','tone-2','tone-3','tone-4','tone-1','tone-5'];
-const FILTER={scope:{kind:'all',value:''},text:'',type:'all',shape:'all',rating:'all',sort:'new',size:'m'};
+const FILTER={scope:{kind:'all',value:''},text:'',type:'all',shape:'all',color:'all',rating:'all',sort:'new',size:'m'};
 const pick=(list,id,fallback)=>list.some(x=>x.id===id)?id:fallback;
 const basename=path=>path.split('/').pop().replace(/\.md$/i,'');
+const MIME_EXT={'image/png':'png','image/jpeg':'jpg','image/webp':'webp','image/gif':'gif','image/avif':'avif','image/bmp':'bmp','image/svg+xml':'svg'};
 
 // A saved filter (leaf state) back into a safe one.
 function cleanFilter(raw){
@@ -3271,32 +3411,87 @@ function cleanFilter(raw){
   if(!raw||typeof raw!=='object')return f;
   const kind=raw.scope?.kind;
   if(['all','unused','rated','folder','tag'].includes(kind))f.scope={kind,value:typeof raw.scope.value==='string'?raw.scope.value:''};
-  f.type=pick(L.TYPES,raw.type,'all');f.shape=pick(L.SHAPES,raw.shape,'all');f.rating=pick(L.RATINGS,raw.rating,'all');
+  f.type=pick(L.TYPES,raw.type,'all');f.shape=pick(L.SHAPES,raw.shape,'all');
+  f.color=pick(L.COLORS,raw.color,'all');f.rating=pick(L.RATINGS,raw.rating,'all');
   f.sort=pick(L.SORTS,raw.sort,'new');f.size=pick(L.SIZES,raw.size,'m');
   return f;
 }
 
-// The index every library view reads: the vault's images with their ratings, tags, pixel sizes
-// and the notes that embed or link them. Rebuilt lazily after the vault or the links change.
+// Downsample an already-decoded <img> onto a 24×24 canvas and extract its dominant colour families & HEX swatches.
+function sampleImageColors(img,doc){
+  if(!img||!(img.naturalWidth>0&&img.naturalHeight>0)||!doc?.createElement)return null;
+  try{
+    const canvas=doc.createElement('canvas');
+    if(!canvas?.getContext)return null;
+    canvas.width=SAMPLE;canvas.height=SAMPLE;
+    const g=canvas.getContext('2d',{willReadFrequently:true})||canvas.getContext('2d');
+    if(!g)return null;
+    g.clearRect(0,0,SAMPLE,SAMPLE);
+    g.drawImage(img,0,0,SAMPLE,SAMPLE);
+    return L.analyzePixels(g.getImageData(0,0,SAMPLE,SAMPLE).data);
+  }catch{return null;}
+}
+
+function extractImageFiles(list){
+  const out=[];
+  for(const item of list||[]){
+    if(!item)continue;
+    const file=typeof item.getAsFile==='function'?item.getAsFile():item;
+    if(!file)continue;
+    const ext=(file.name||'').includes('.')?file.name.split('.').pop():MIME_EXT[String(file.type||'').toLowerCase()];
+    if(L.isImage(ext)||/^image\//i.test(file.type||''))out.push(file);
+  }
+  return out;
+}
+
+function migratePathMap(map,oldPath,newPath){
+  for(const key of [...map.keys()]){
+    const next=key===oldPath?newPath:key.startsWith(oldPath+'/')?newPath+key.slice(oldPath.length):null;
+    if(next&&next!==key){map.set(next,map.get(key));map.delete(key);}
+  }
+}
+function deletePathMap(map,path){
+  for(const key of [...map.keys()])if(key===path||key.startsWith(path+'/'))map.delete(key);
+}
+
+// The index every library view reads: the vault's images with their ratings, tags, pixel sizes,
+// dominant colours and the notes that embed or link them.
 class Library extends Component{
   constructor(plugin){
     super();this.plugin=plugin;this.app=plugin.app;
-    this.cache=null;this.links=null;this.dims=new Map();this.failed=new Set();this.queue=[];this.probing=new Set();this.active=0;this.timer=0;
+    this.cache=null;this.links=null;this.dims=new Map();this.palettes=new Map();
+    this.failed=new Set();this.queue=[];this.probing=new Set();this.active=0;this.timer=0;
+    this.lastMarkdownLeaf=null;
   }
   onload(){
     this.plugin.registerView(VIEW,leaf=>new LibraryView(leaf,this));
     this.plugin.addRibbonIcon(ICON,'打开'+NAME,()=>void this.open());
     this.plugin.addCommand({id:'open-library',name:'打开'+NAME,callback:()=>void this.open()});
-    const vault=this.app.vault;
+    const vault=this.app.vault,ws=this.app.workspace;
+    if(typeof ws?.on==='function'){
+      this.registerEvent(ws.on('active-leaf-change',leaf=>{
+        if(MarkdownView&&leaf?.view instanceof MarkdownView)this.lastMarkdownLeaf=leaf;
+      }));
+    }
     // Notes come and go all the time; only pictures and folders change the library.
     const counts=(file,path=file.path)=>!(file instanceof TFile)||L.isImage(path.split('.').pop());
     this.registerEvent(vault.on('create',file=>{if(counts(file))this.changed();}));
-    this.registerEvent(vault.on('rename',(file,oldPath)=>{if(counts(file)||counts(file,oldPath))this.changed();}));
-    this.registerEvent(vault.on('modify',file=>{this.failed.delete(file.path);if(this.dims.delete(file.path))this.changed();}));
+    this.registerEvent(vault.on('rename',(file,oldPath)=>{
+      migratePathMap(this.dims,oldPath,file.path);
+      migratePathMap(this.palettes,oldPath,file.path);
+      if(counts(file)||counts(file,oldPath))this.changed();
+    }));
+    this.registerEvent(vault.on('modify',file=>{
+      this.failed.delete(file.path);
+      const had=this.dims.delete(file.path)||this.palettes.delete(file.path);
+      if(had)this.changed();
+    }));
     this.registerEvent(vault.on('delete',file=>{
       const lib=this.plugin.data?.library;
       if(lib&&[lib.ratings,lib.tags].some(t=>Object.keys(t).some(p=>p===file.path||p.startsWith(file.path+'/')))){L.forgetInLibrary(lib,file.path);this.plugin.changed();}
-      this.dims.delete(file.path);this.changed();
+      deletePathMap(this.dims,file.path);
+      deletePathMap(this.palettes,file.path);
+      this.changed();
     }));
     // Links settle after the vault index; "resolved" comes again after edits.
     this.registerEvent(this.app.metadataCache.on('resolved',()=>{this.links=null;this.changed();}));
@@ -3315,7 +3510,7 @@ class Library extends Component{
       // The corner picture counts as used too.
       const used=new Set(this.links.used),decor=this.plugin.data.settings.decorImage;
       if(decor)used.add(decor);
-      this.cache=L.makeItems(this.app.vault.getFiles(),{lib:this.plugin.data.library,used,dims:this.dims});
+      this.cache=L.makeItems(this.app.vault.getFiles(),{lib:this.plugin.data.library,used,dims:this.dims,palettes:this.palettes});
     }
     return this.cache;
   }
@@ -3328,13 +3523,26 @@ class Library extends Component{
     this.dims.set(path,{w,h});
     const item=this.cache?.find(i=>i.path===path);
     if(item){item.w=w;item.h=h;}
-    // Only a shape filter depends on sizes; otherwise the card updates itself.
     if(this.views().some(v=>v.filter.shape!=='all'))this.changed();
   }
-  // Load the pictures whose sizes are unknown (for the shape filter), four at a time.
-  probe(items,doc){
-    for(const item of items)if(!item.w&&!this.probing.has(item.path)&&!this.failed.has(item.path)){this.probing.add(item.path);this.queue.push(item.path);}
-    const win=doc.defaultView||window;
+  setPalette(path,info){
+    if(!info||(!info.colors?.length&&!info.palette?.length))return;
+    const prev=this.palettes.get(path);
+    if(prev&&prev.palette.join()===info.palette.join()&&prev.colors.join()===info.colors.join())return;
+    this.palettes.set(path,info);
+    const item=this.cache?.find(i=>i.path===path);
+    if(item){item.colors=info.colors;item.palette=info.palette;}
+    if(this.views().some(v=>v.filter.color!=='all'))this.changed();
+  }
+  // Load pictures whose sizes or colours are still unknown when filtering by shape or colour, four at a time.
+  probe(items,doc,{needColor=false}={}){
+    for(const item of items){
+      const missing=!item.w||(needColor&&!this.palettes.has(item.path));
+      if(missing&&!this.probing.has(item.path)&&!this.failed.has(item.path)){
+        this.probing.add(item.path);this.queue.push(item.path);
+      }
+    }
+    const win=doc?.defaultView||window;
     while(this.active<4&&this.queue.length){
       const path=this.queue.shift(),file=this.file(path);
       if(!file){this.probing.delete(path);continue;}
@@ -3342,14 +3550,54 @@ class Library extends Component{
       const img=new win.Image();
       const done=()=>{
         this.active--;this.probing.delete(path);img.onload=img.onerror=null;
-        if(img.naturalWidth>0&&img.naturalHeight>0)this.setDims(path,img.naturalWidth,img.naturalHeight);else this.failed.add(path);
-        this.probe([],doc);
+        if(img.naturalWidth>0&&img.naturalHeight>0){
+          this.setDims(path,img.naturalWidth,img.naturalHeight);
+          const pal=sampleImageColors(img,doc);
+          if(pal)this.setPalette(path,pal);
+        }else this.failed.add(path);
+        this.probe([],doc,{needColor});
       };
       img.onload=done;img.onerror=done;img.src=this.app.vault.getResourcePath(file);
     }
   }
   setRating(path,n){L.setRating(this.plugin.data.library,path,n);this.plugin.changed();this.refreshNow();}
   setTags(path,tags){L.setTags(this.plugin.data.library,path,tags);this.plugin.changed();this.refreshNow();}
+  editableMarkdownLeaf(){
+    const ok=leaf=>Boolean(leaf?.view&&MarkdownView&&leaf.view instanceof MarkdownView&&leaf.view.getMode?.()!=='preview');
+    if(ok(this.lastMarkdownLeaf))return this.lastMarkdownLeaf;
+    const recent=this.app.workspace.getMostRecentLeaf?.();
+    if(ok(recent))return recent;
+    return this.app.workspace.getLeavesOfType?.('markdown')?.find(ok)??null;
+  }
+  async ingest(files,{folder='',doc=null}={}){
+    const valid=extractImageFiles(files);
+    if(!valid.length)return [];
+    const vault=this.app.vault,saved=[];
+    const dir=String(folder||'').replace(/^\/+|\/+$/g,'');
+    if(dir&&!vault.getAbstractFileByPath(dir)&&typeof vault.createFolder==='function'){
+      try{await vault.createFolder(dir);}catch{}
+    }
+    const sourcePath=this.editableMarkdownLeaf()?.view?.file?.path||'';
+    for(const raw of valid){
+      const fallbackExt=MIME_EXT[String(raw.type||'').toLowerCase()]||'png';
+      const clean=L.sanitizeImageName(raw.name,fallbackExt);
+      let targetPath;
+      if(dir||typeof this.app.fileManager?.getAvailablePathForAttachment!=='function'){
+        targetPath=L.uniqueVaultPath(dir,clean.name,p=>Boolean(vault.getAbstractFileByPath(p)));
+      }else{
+        targetPath=await this.app.fileManager.getAvailablePathForAttachment(clean.name,sourcePath);
+      }
+      const bytes=await raw.arrayBuffer();
+      await vault.createBinary(targetPath,bytes);
+      saved.push(targetPath);
+    }
+    this.refreshNow();
+    if(saved.length&&doc){
+      const where=dir?`「${dir}」`:'附件目录';
+      new Notice(saved.length===1?`已导入图片：${saved[0]}`:`已导入 ${saved.length} 张图片到${where}。`);
+    }
+    return saved;
+  }
   async open(){
     try{
       const ws=this.app.workspace;
@@ -3363,7 +3611,8 @@ class Library extends Component{
 class LibraryView extends ItemView{
   constructor(leaf,library){
     super(leaf);this.library=library;this.plugin=library.plugin;
-    this.filter=cleanFilter(null);this.expanded=new Set();this.list=[];this.listKey='';this.shown=0;this.cards=new Map();this.cols=[];
+    this.filter=cleanFilter(null);this.shuffleSeed=0;this.internalDrag=false;
+    this.expanded=new Set();this.list=[];this.listKey='';this.shown=0;this.cards=new Map();this.cols=[];
   }
   getViewType(){return VIEW;}
   getDisplayText(){return NAME;}
@@ -3375,13 +3624,30 @@ class LibraryView extends ItemView{
     await super.setState?.(state,result);
   }
   async onOpen(){
-    const root=this.contentEl;root.empty();root.addClass('aw-lib');
+    const root=this.contentEl,doc=root.ownerDocument;root.empty();root.addClass('aw-lib');root.tabIndex=-1;
     const head=root.createDiv({cls:'aw-lib-head'});
     const title=head.createDiv({cls:'aw-lib-title'});
     setIcon(title.createSpan({cls:'aw-lib-title-icon'}),ICON);title.createSpan({cls:'aw-lib-title-text',text:NAME});
     this.countEl=title.createSpan({cls:'aw-lib-count'});
+    const tools=title.createDiv({cls:'aw-lib-tools'});
+    const upload=root.createEl('input',{attr:{type:'file',multiple:'multiple',accept:'.png,.jpg,.jpeg,.gif,.webp,.avif,.svg,.bmp',hidden:'hidden'}});
+    this.registerDomEvent(upload,'change',()=>{
+      const chosen=Array.from(upload.files||[]);upload.value='';
+      if(chosen.length)void this.ingestHere(chosen);
+    });
+    const importBtn=tools.createEl('button',{cls:'aw-lib-tool',attr:{type:'button','aria-label':'导入图片',title:'导入电脑图片（也可直接在此面板按 ⌘V / Ctrl+V 粘贴截图，或拖入图片）'}});
+    setIcon(importBtn.createSpan({cls:'aw-lib-tool-icon'}),'upload');importBtn.createSpan({text:'导入'});
+    this.registerDomEvent(importBtn,'click',()=>upload.click());
+
+    this.roamBtn=tools.createEl('button',{cls:'aw-lib-tool',attr:{type:'button','aria-label':'随机漫游',title:'随机打乱顺序漫游灵感（再次点击换一组顺序；选择排序方式可恢复）'}});
+    setIcon(this.roamBtn.createSpan({cls:'aw-lib-tool-icon'}),'shuffle');this.roamBtn.createSpan({text:'漫游'});
+    this.registerDomEvent(this.roamBtn,'click',()=>{
+      this.shuffleSeed=((Date.now()^(this.shuffleSeed*1664525+1013904223))>>>0)||1;
+      this.syncControls();this.refresh(true);
+    });
+
     const search=head.createDiv({cls:'aw-lib-search'});setIcon(search.createSpan({cls:'aw-lib-search-icon'}),'search');
-    this.searchEl=search.createEl('input',{attr:{type:'search',placeholder:'搜索文件名、文件夹、标签','aria-label':'搜索素材'}});
+    this.searchEl=search.createEl('input',{attr:{type:'search',placeholder:'搜索名称、目录、标签 · 可粘贴或拖入图片','aria-label':'搜索素材'}});
     let typing=0;
     this.registerDomEvent(this.searchEl,'input',()=>{window.clearTimeout(typing);typing=window.setTimeout(()=>{this.filter.text=this.searchEl.value;this.refresh();},150);});
     const bar=head.createDiv({cls:'aw-lib-filters'});
@@ -3389,10 +3655,15 @@ class LibraryView extends ItemView{
     this.scopeEl=bar.createEl('select',{cls:'dropdown aw-lib-pill aw-lib-scope',attr:{'aria-label':'范围'}});
     this.registerDomEvent(this.scopeEl,'change',()=>{const [kind,...rest]=this.scopeEl.value.split(':');this.setScope(kind,rest.join(':'));});
     this.selects={};
-    for(const [key,list,label] of [['type',L.TYPES,'类型'],['shape',L.SHAPES,'比例'],['rating',L.RATINGS,'星级'],['sort',L.SORTS,'排序']]){
+    this.colorDot=bar.createSpan({cls:'aw-lib-color-indicator',attr:{'aria-hidden':'true'}});
+    for(const [key,list,label] of [['color',L.COLORS,'颜色'],['type',L.TYPES,'类型'],['shape',L.SHAPES,'比例'],['rating',L.RATINGS,'星级'],['sort',L.SORTS,'排序']]){
       const sel=bar.createEl('select',{cls:'dropdown aw-lib-pill',attr:{'aria-label':label}});
       for(const o of list)sel.createEl('option',{text:o.label,attr:{value:o.id}});
-      this.registerDomEvent(sel,'change',()=>{this.filter[key]=sel.value;this.saveState();this.refresh();});
+      this.registerDomEvent(sel,'change',()=>{
+        this.filter[key]=sel.value;
+        if(key==='sort')this.shuffleSeed=0;
+        this.syncControls();this.saveState();this.refresh(key==='sort');
+      });
       this.selects[key]=sel;
     }
     const sizes=bar.createDiv({cls:'aw-lib-sizes',attr:{role:'group','aria-label':'卡片大小'}});
@@ -3407,7 +3678,37 @@ class LibraryView extends ItemView{
     this.gridEl=this.mainEl.createDiv({cls:'aw-lib-grid'});
     this.emptyEl=this.mainEl.createDiv({cls:'aw-lib-empty'});
     this.moreEl=this.mainEl.createDiv({cls:'aw-lib-more',attr:{'aria-hidden':'true'}});
-    const win=root.ownerDocument.defaultView||window;
+
+    // Clipboard image paste & external file drop capture.
+    this.registerDomEvent(doc,'paste',event=>{
+      const active=doc.activeElement;
+      const inPane=root.contains(active)||this.app.workspace.activeLeaf===this.leaf;
+      if(!inPane||doc.querySelector('.modal-container'))return;
+      const imgs=extractImageFiles(event.clipboardData?.items?.length?event.clipboardData.items:event.clipboardData?.files);
+      if(!imgs.length)return;
+      event.preventDefault();
+      void this.ingestHere(imgs);
+    });
+    const hasExternalFiles=event=>!this.internalDrag&&Array.from(event.dataTransfer?.types||[]).includes('Files');
+    this.registerDomEvent(root,'dragover',event=>{
+      if(!hasExternalFiles(event))return;
+      event.preventDefault();
+      if(event.dataTransfer)event.dataTransfer.dropEffect='copy';
+      root.classList.add('is-drop-target');
+    });
+    this.registerDomEvent(root,'dragleave',event=>{
+      if(!event.relatedTarget||!root.contains(event.relatedTarget))root.classList.remove('is-drop-target');
+    });
+    this.registerDomEvent(root,'drop',event=>{
+      root.classList.remove('is-drop-target');
+      if(this.internalDrag)return;
+      const imgs=extractImageFiles(event.dataTransfer?.files);
+      if(!imgs.length)return;
+      event.preventDefault();
+      void this.ingestHere(imgs);
+    });
+
+    const win=doc.defaultView||window;
     // More cards as the end comes near; observing again re-checks after a page is added.
     this.more=new win.IntersectionObserver(entries=>{
       if(entries.some(e=>e.isIntersecting)&&this.shown<this.list.length){this.loadMore();this.more.unobserve(this.moreEl);this.more.observe(this.moreEl);}
@@ -3424,10 +3725,20 @@ class LibraryView extends ItemView{
   }
   async onClose(){this.more?.disconnect();this.resize?.disconnect();this.cards.clear();this.contentEl.empty();}
   saveState(){this.app.workspace.requestSaveLayout?.();}
+  ingestHere(files){
+    const folder=this.filter.scope.kind==='folder'?this.filter.scope.value:'';
+    return this.library.ingest(files,{folder,doc:this.contentEl.ownerDocument});
+  }
   syncControls(){
     if(!this.selects)return;
     for(const [key,sel] of Object.entries(this.selects))sel.value=this.filter[key];
     for(const b of this.sizeButtons)b.setAttribute('aria-pressed',String(b.dataset.size===this.filter.size));
+    this.roamBtn?.setAttribute('aria-pressed',String(this.shuffleSeed>0));
+    if(this.colorDot){
+      const picked=L.COLORS.find(c=>c.id===this.filter.color);
+      this.colorDot.hidden=!picked?.hex;
+      if(picked?.hex)this.colorDot.style.background=picked.hex;
+    }
     if(this.searchEl&&this.searchEl.value!==this.filter.text)this.searchEl.value=this.filter.text;
   }
   setScope(kind,value=''){this.filter.scope={kind,value};this.saveState();this.refresh();}
@@ -3440,13 +3751,14 @@ class LibraryView extends ItemView{
   refresh(force=false){
     if(!this.gridEl)return;
     this.stale=false;
-    const all=this.library.items(),list=L.filterItems(all,this.filter);
+    const all=this.library.items(),needColor=this.filter.color!=='all';
+    const waiting=all.filter(i=>!this.library.failed.has(i.path)&&((this.filter.shape!=='all'&&!i.w)||(needColor&&!this.library.palettes.has(i.path))));
+    if(waiting.length)this.library.probe(waiting,this.contentEl.ownerDocument,{needColor});
+    const list=L.filterItems(all,this.filter,this.shuffleSeed);
     this.renderSide(all);
-    const waiting=this.filter.shape!=='all'?all.filter(i=>!i.w&&!this.library.failed.has(i.path)):[];
-    if(waiting.length)this.library.probe(waiting,this.contentEl.ownerDocument);
     this.countEl.textContent=list.length===all.length?`${all.length}`:`${list.length} / ${all.length}`;
-    this.countEl.title=waiting.length?`还有 ${waiting.length} 张图片的尺寸正在读取`:'';
-    const key=this.filter.size+'\n'+list.map(i=>i.path).join('\n');
+    this.countEl.title=waiting.length?`正在读取剩余 ${waiting.length} 张图片的尺寸或主色`:'';
+    const key=this.filter.size+'\n'+this.shuffleSeed+'\n'+list.map(i=>i.path).join('\n');
     if(force||key!==this.listKey){this.listKey=key;this.list=list;this.renderGrid();}
     else{this.list=list;for(const item of list){const card=this.cards.get(item.path);if(card)this.fillCard(card,item);}}
   }
@@ -3543,7 +3855,7 @@ class LibraryView extends ItemView{
     this.emptyEl.empty();
     if(!this.list.length){
       const all=this.library.items().length;
-      this.emptyEl.setText(!all?'笔记库里还没有图片。':this.filter.scope.kind==='unused'&&!this.filter.text?'所有图片都被笔记引用了。':'没有符合条件的图片。');
+      this.emptyEl.setText(!all?'笔记库里还没有图片，可直接拖入或按 ⌘V 粘贴图片。':this.filter.scope.kind==='unused'&&!this.filter.text?'所有图片都被笔记引用了。':'没有符合条件的图片。');
     }
     this.loadMore();
     this.mainEl.scrollTop=top;
@@ -3569,12 +3881,23 @@ class LibraryView extends ItemView{
     const thumb=card.createDiv({cls:'aw-lib-thumb'});
     const img=thumb.createEl('img',{attr:{alt:item.name,loading:'lazy',decoding:'async',draggable:'false'}});
     if(file)img.src=this.app.vault.getResourcePath(file);
-    img.addEventListener('load',()=>{this.library.setDims(item.path,img.naturalWidth,img.naturalHeight);const now=this.library.dims.get(item.path);if(now)this.fillDims(card,now.w,now.h);},{once:true});
+    img.addEventListener('load',()=>{
+      this.library.setDims(item.path,img.naturalWidth,img.naturalHeight);
+      if(!this.library.palettes.has(item.path)){
+        const pal=sampleImageColors(img,doc);
+        if(pal)this.library.setPalette(item.path,pal);
+      }
+      const now=this.library.dims.get(item.path);
+      if(now)this.fillDims(card,now.w,now.h);
+      const pal=this.library.palettes.get(item.path);
+      if(pal)this.fillSwatches(card,pal.palette);
+    },{once:true});
     img.addEventListener('error',()=>card.addClass('is-broken'),{once:true});
     const badges=thumb.createDiv({cls:'aw-lib-badges'});
     badges.createSpan({cls:'aw-lib-dims'});
     const kind=L.kindOf(item.ext);
     if(kind!=='still')badges.createSpan({cls:'aw-lib-kind aw-lib-kind-'+kind,text:kind.toUpperCase()});
+    thumb.createDiv({cls:'aw-lib-mini-swatches'});
     const caption=card.createDiv({cls:'aw-lib-caption'});
     caption.createDiv({cls:'aw-lib-name',text:item.name});
     const meta=caption.createDiv({cls:'aw-lib-meta'});
@@ -3585,17 +3908,29 @@ class LibraryView extends ItemView{
       b.addEventListener('click',event=>{event.stopPropagation();const now=this.library.items().find(i=>i.path===item.path);this.library.setRating(item.path,now?.rating===n?0:n);});
     }
     caption.createDiv({cls:'aw-lib-card-tags'});
-    card.addEventListener('click',event=>{if(!event.defaultPrevented)this.openFile(item.path);});
-    card.addEventListener('keydown',event=>{if(event.key==='Enter'&&event.target===card){event.preventDefault();this.openFile(item.path);}});
+    card.addEventListener('click',event=>{
+      if(event.defaultPrevented)return;
+      if(event.metaKey||event.ctrlKey)this.openFile(item.path);
+      else this.inspect(item.path);
+    });
+    card.addEventListener('keydown',event=>{
+      if(event.key==='Enter'&&event.target===card){
+        event.preventDefault();
+        if(event.metaKey||event.ctrlKey)this.openFile(item.path);
+        else this.inspect(item.path);
+      }
+    });
     card.addEventListener('contextmenu',event=>{event.preventDefault();this.menu(event,item.path);});
-    card.addEventListener('dragstart',event=>this.drag(event,item.path));
+    card.addEventListener('dragstart',event=>{this.internalDrag=true;this.drag(event,item.path);});
+    card.addEventListener('dragend',()=>{this.internalDrag=false;});
     this.fillCard(card,item);
     this.cards.set(item.path,card);
     return card;
   }
-  // The parts of a card that change without a re-render: size, stars, tags.
+  // The parts of a card that change without a re-render: size, swatches, stars, tags.
   fillCard(card,item){
     this.fillDims(card,item.w,item.h);
+    this.fillSwatches(card,item.palette||this.library.palettes.get(item.path)?.palette||[]);
     card.classList.toggle('is-rated',item.rating>0);
     card.querySelectorAll('.aw-lib-star').forEach((b,i)=>b.classList.toggle('is-on',i<item.rating));
     const tags=card.querySelector('.aw-lib-card-tags');
@@ -3607,7 +3942,17 @@ class LibraryView extends ItemView{
       }
     }
   }
-
+  fillSwatches(card,palette){
+    const box=card.querySelector('.aw-lib-mini-swatches');
+    if(!box)return;
+    const key=(palette||[]).slice(0,4).join(',');
+    if(box.dataset.swatches===key)return;
+    box.dataset.swatches=key;box.empty();
+    for(const hex of (palette||[]).slice(0,4)){
+      const dot=box.createSpan({cls:'aw-lib-mini-swatch'});
+      dot.style.background=hex;
+    }
+  }
   fillDims(card,w,h){
     const thumb=card.querySelector('.aw-lib-thumb'),dims=card.querySelector('.aw-lib-dims');
     if(w>0&&h>0){
@@ -3618,20 +3963,28 @@ class LibraryView extends ItemView{
     }else{thumb.style.aspectRatio='4 / 3';dims.hidden=true;}
   }
   // Actions.
+  inspect(path){new ImagePreviewModal(this,path).open();}
   openFile(path){const file=this.library.file(path);if(file)void this.app.workspace.getLeaf('tab').openFile(file);}
   embed(file,source){const link=this.app.fileManager.generateMarkdownLink(file,source);return link.startsWith('!')?link:'!'+link;}
   // Into the note last edited, at its cursor; reading view and other panes are refused.
   insert(path){
-    const file=this.library.file(path),leaf=this.app.workspace.getMostRecentLeaf?.(),view=leaf?.view;
-    if(!file)return;
-    if(!(view instanceof MarkdownView)||view.getMode?.()==='preview'){new Notice('请先在编辑模式下打开一篇笔记。');return;}
+    const file=this.library.file(path),leaf=this.library.editableMarkdownLeaf(),view=leaf?.view;
+    if(!file)return false;
+    if(!view){new Notice('请先在编辑模式下打开一篇笔记。');return false;}
     view.editor.replaceSelection(this.embed(file,view.file?.path||''));
     this.app.workspace.setActiveLeaf(leaf,{focus:true});
+    return true;
+  }
+  async copyText(text,msg){
+    try{
+      const clip=this.contentEl.ownerDocument.defaultView?.navigator?.clipboard??globalThis.navigator?.clipboard;
+      await clip.writeText(text);
+      new Notice(msg);
+    }catch{new Notice('复制失败。');}
   }
   async copy(path){
     const file=this.library.file(path);if(!file)return;
-    try{await this.contentEl.ownerDocument.defaultView.navigator.clipboard.writeText(this.embed(file,''));new Notice('已复制嵌入链接。');}
-    catch{new Notice('复制失败。');}
+    await this.copyText(this.embed(file,''),'已复制嵌入链接。');
   }
   // Dragged into a note, Obsidian itself writes the embed (its own drag of a file); without
   // that, the embed goes along as text.
@@ -3644,7 +3997,8 @@ class LibraryView extends ItemView{
   menu(event,path){
     const file=this.library.file(path);if(!file)return;
     const item=this.library.items().find(i=>i.path===path),menu=new Menu();
-    menu.addItem(i=>i.setTitle('打开').setIcon('image').onClick(()=>this.openFile(path)));
+    menu.addItem(i=>i.setTitle('大图预览').setIcon('maximize-2').onClick(()=>this.inspect(path)));
+    menu.addItem(i=>i.setTitle('在新标签页打开').setIcon('image').onClick(()=>this.openFile(path)));
     menu.addItem(i=>i.setTitle('插入到当前笔记').setIcon('image-plus').onClick(()=>this.insert(path)));
     menu.addItem(i=>i.setTitle('复制嵌入链接').setIcon('link').onClick(()=>void this.copy(path)));
     menu.addSeparator();
@@ -3661,9 +4015,166 @@ class LibraryView extends ItemView{
     this.app.workspace.trigger('file-menu',menu,file,'aw-library',this.leaf);
     menu.showAtMouseEvent(event);
   }
-  editTags(path){
+  editTags(path,after){
     const item=this.library.items().find(i=>i.path===path);if(!item)return;
-    new TagsModal(this.app,{name:item.name+'.'+item.ext,tags:item.tags,known:L.tagCounts(this.library.items()).map(t=>t.tag)},tags=>this.library.setTags(path,tags)).open();
+    new TagsModal(this.app,{name:item.name+'.'+item.ext,tags:item.tags,known:L.tagCounts(this.library.items()).map(t=>t.tag)},tags=>{
+      this.library.setTags(path,tags);
+      after?.();
+    }).open();
+  }
+}
+
+// Vault-native Lightbox & Inspector: ← / → keyboard roaming, 1–5 star rating, dominant HEX swatches,
+// tag editor, note references, and direct insert/open actions.
+class ImagePreviewModal extends Modal{
+  constructor(view,path){
+    super(view.app);this.view=view;this.library=view.library;
+    this.path=path;this.zoomed=false;
+  }
+  pool(){
+    const list=this.view.list;
+    if(list.some(i=>i.path===this.path))return list;
+    const one=this.library.items().find(i=>i.path===this.path);
+    return one?[one]:list;
+  }
+  current(){
+    const pool=this.pool(),idx=pool.findIndex(i=>i.path===this.path);
+    const item=pool[idx>=0?idx:0]||this.library.items().find(i=>i.path===this.path)||null;
+    if(item)this.path=item.path;
+    return {item,pool,index:Math.max(0,idx)};
+  }
+  step(delta){
+    const {pool,index}=this.current();
+    if(pool.length<=1)return;
+    const next=(index+delta+pool.length)%pool.length;
+    this.path=pool[next].path;this.zoomed=false;
+    this.render();
+  }
+  onOpen(){
+    const el=this.contentEl,doc=el.ownerDocument;
+    this.modalEl?.classList?.add?.('aw-lib-modal','aw-lib-lightbox-modal');
+    el.addClass('aw-lib-modal');el.addClass('aw-lib-lightbox');
+    this.onKey=event=>{
+      const modals=doc.querySelectorAll?.('.modal-container');
+      if(modals&&modals.length>1)return;
+      const tag=event.target?.tagName;
+      if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT')return;
+      if(event.key==='ArrowLeft'){event.preventDefault();this.step(-1);}
+      else if(event.key==='ArrowRight'){event.preventDefault();this.step(1);}
+      else if(/^[0-5]$/.test(event.key)&&!event.metaKey&&!event.ctrlKey&&!event.altKey){
+        event.preventDefault();
+        const n=Number(event.key),cur=this.current().item;
+        if(cur){this.library.setRating(cur.path,cur.rating===n?0:n);this.render();}
+      }
+    };
+    doc.addEventListener?.('keydown',this.onKey);
+    this.render();
+  }
+  render(){
+    const el=this.contentEl,doc=el.ownerDocument,{item,pool,index}=this.current();
+    el.empty();
+    if(!item){this.close();return;}
+    this.setTitle(`${item.name}.${item.ext}`);
+    const wrap=el.createDiv({cls:'aw-lib-lightbox-body'});
+    const stage=wrap.createDiv({cls:'aw-lib-stage'});
+    if(pool.length>1){
+      const prev=stage.createEl('button',{cls:'aw-lib-nav is-prev',attr:{type:'button','aria-label':'上一张'}});
+      setIcon(prev,'chevron-left');prev.addEventListener('click',()=>this.step(-1));
+      const next=stage.createEl('button',{cls:'aw-lib-nav is-next',attr:{type:'button','aria-label':'下一张'}});
+      setIcon(next,'chevron-right');next.addEventListener('click',()=>this.step(1));
+    }
+    const frame=stage.createDiv({cls:'aw-lib-stage-frame'+(this.zoomed?' is-zoomed':'')});
+    const file=this.library.file(item.path);
+    const img=frame.createEl('img',{cls:'aw-lib-stage-img',attr:{alt:item.name}});
+    if(file)img.src=this.app.vault.getResourcePath(file);
+    img.addEventListener('click',()=>{this.zoomed=!this.zoomed;frame.classList.toggle('is-zoomed',this.zoomed);});
+    const counter=stage.createDiv({cls:'aw-lib-stage-counter',text:pool.length>1?`${index+1} / ${pool.length} · ← → 切换 · 点击图片缩放`:'点击图片放大查看'});
+
+    const side=wrap.createDiv({cls:'aw-lib-inspect'});
+    const metaSec=side.createDiv({cls:'aw-lib-inspect-sec'});
+    metaSec.createDiv({cls:'aw-lib-inspect-label',text:'信息'});
+    const dimsText=metaSec.createDiv({cls:'aw-lib-inspect-val',text:`${item.w&&item.h?`${item.w} × ${item.h} · `:''}${item.ext.toUpperCase()} · ${L.formatSize(item.size)}`});
+    if(item.folder){
+      const folderBtn=metaSec.createEl('button',{cls:'aw-lib-inspect-folder',text:`目录：${item.folder}`,attr:{type:'button'}});
+      folderBtn.addEventListener('click',()=>{this.view.setScope('folder',item.folder);this.close();});
+    }
+
+    const rateSec=side.createDiv({cls:'aw-lib-inspect-sec'});
+    rateSec.createDiv({cls:'aw-lib-inspect-label',text:'星级（快捷键 1–5）'});
+    const starRow=rateSec.createDiv({cls:'aw-lib-inspect-stars'});
+    for(let n=1;n<=5;n++){
+      const b=starRow.createEl('button',{cls:'aw-lib-inspect-star'+(n<=item.rating?' is-on':''),text:'★',attr:{type:'button','aria-label':`${n} 星`}});
+      b.addEventListener('click',()=>{this.library.setRating(item.path,item.rating===n?0:n);this.render();});
+    }
+
+    const palSec=side.createDiv({cls:'aw-lib-inspect-sec'});
+    palSec.createDiv({cls:'aw-lib-inspect-label',text:'主色板（点击复制 HEX）'});
+    const swatchRow=palSec.createDiv({cls:'aw-lib-swatches'});
+    const familyRow=palSec.createDiv({cls:'aw-lib-color-chips'});
+    const fillPalette=(palInfo)=>{
+      swatchRow.empty();familyRow.empty();
+      const swatches=palInfo?.palette||[];
+      if(!swatches.length){swatchRow.createSpan({cls:'aw-lib-hint',text:'读取中…'});return;}
+      for(const hex of swatches){
+        const chip=swatchRow.createEl('button',{cls:'aw-lib-swatch',attr:{type:'button',title:`点击复制 ${hex}`}});
+        chip.createSpan({cls:'aw-lib-swatch-dot',attr:{style:`background:${hex}`}});
+        chip.createSpan({cls:'aw-lib-swatch-hex',text:hex});
+        chip.addEventListener('click',()=>void this.view.copyText(hex,`已复制色值 ${hex}`));
+      }
+      for(const cid of palInfo?.colors||[]){
+        const def=L.COLORS.find(c=>c.id===cid);
+        if(!def)continue;
+        const b=familyRow.createEl('button',{cls:'aw-lib-chip',text:`筛选：${def.label}`,attr:{type:'button'}});
+        b.addEventListener('click',()=>{this.view.filter.color=cid;this.view.syncControls();this.view.saveState();this.view.refresh();this.close();});
+      }
+    };
+    fillPalette(this.library.palettes.get(item.path));
+    img.addEventListener('load',()=>{
+      this.library.setDims(item.path,img.naturalWidth,img.naturalHeight);
+      dimsText.textContent=`${img.naturalWidth} × ${img.naturalHeight} · ${item.ext.toUpperCase()} · ${L.formatSize(item.size)}`;
+      let pal=this.library.palettes.get(item.path);
+      if(!pal){pal=sampleImageColors(img,doc);if(pal)this.library.setPalette(item.path,pal);}
+      fillPalette(pal);
+    },{once:true});
+    void counter;
+
+    const tagSec=side.createDiv({cls:'aw-lib-inspect-sec'});
+    tagSec.createDiv({cls:'aw-lib-inspect-label',text:'标签'});
+    const tagRow=tagSec.createDiv({cls:'aw-lib-card-tags'});
+    for(const tag of item.tags){
+      const b=tagRow.createEl('button',{cls:'aw-lib-chip',text:'#'+tag,attr:{type:'button'}});
+      b.addEventListener('click',()=>{this.view.setScope('tag',tag);this.close();});
+    }
+    const editTagBtn=tagRow.createEl('button',{cls:'aw-lib-chip is-action',text:item.tags.length?'编辑…':'+ 添加标签',attr:{type:'button'}});
+    editTagBtn.addEventListener('click',()=>this.view.editTags(item.path,()=>this.render()));
+
+    const refSec=side.createDiv({cls:'aw-lib-inspect-sec'});
+    const refs=this.library.refsOf(item.path);
+    refSec.createDiv({cls:'aw-lib-inspect-label',text:`引用笔记（${refs.length}）`});
+    if(!refs.length)refSec.createDiv({cls:'aw-lib-hint',text:'暂未被笔记引用'});
+    else{
+      const refList=refSec.createDiv({cls:'aw-lib-inspect-refs'});
+      for(const note of refs.slice(0,6)){
+        const b=refList.createEl('button',{cls:'aw-lib-inspect-ref',text:basename(note),attr:{type:'button',title:note}});
+        b.addEventListener('click',()=>{
+          const target=this.app.vault.getAbstractFileByPath(note);
+          if(target instanceof TFile){void this.app.workspace.getLeaf('tab').openFile(target);this.close();}
+        });
+      }
+    }
+
+    const actions=side.createDiv({cls:'aw-lib-inspect-actions'});
+    const insertBtn=actions.createEl('button',{cls:'mod-cta aw-lib-inspect-primary',text:'插入到当前笔记',attr:{type:'button'}});
+    insertBtn.addEventListener('click',()=>{if(this.view.insert(item.path))this.close();});
+    const subActions=actions.createDiv({cls:'aw-lib-inspect-sub'});
+    const copyBtn=subActions.createEl('button',{text:'复制链接',attr:{type:'button'}});
+    copyBtn.addEventListener('click',()=>void this.view.copy(item.path));
+    const tabBtn=subActions.createEl('button',{text:'新标签打开',attr:{type:'button'}});
+    tabBtn.addEventListener('click',()=>{this.view.openFile(item.path);this.close();});
+  }
+  onClose(){
+    this.contentEl.ownerDocument?.removeEventListener?.('keydown',this.onKey);
+    this.contentEl.empty();
   }
 }
 
@@ -3691,7 +4202,7 @@ class TagsModal extends Modal{
   onClose(){this.contentEl.empty();}
 }
 
-module.exports={Library,LibraryView,TagsModal,cleanFilter,VIEW};
+module.exports={Library,LibraryView,ImagePreviewModal,TagsModal,sampleImageColors,extractImageFiles,cleanFilter,VIEW};
 
 },
 "features/markdown-paste.js":(module,exports,__awRequire)=>{

@@ -12,6 +12,8 @@ test('which files are images, their kind, shape and size label',()=>{
   for(const e of ['md','pdf','mp4','canvas',''])assert.ok(!L.isImage(e),e);
   assert.equal(L.kindOf('GIF'),'gif');assert.equal(L.kindOf('svg'),'svg');assert.equal(L.kindOf('png'),'still');
   assert.equal(L.shapeOf(1964,2740),'portrait');assert.equal(L.shapeOf(1800,1000),'landscape');assert.equal(L.shapeOf(1000,1050),'square');assert.equal(L.shapeOf(0,10),null);
+  assert.equal(L.matchesShape(1920,1080,'wide'),true);assert.equal(L.matchesShape(1400,1000,'wide'),false);
+  assert.equal(L.matchesShape(1080,2400,'long'),true);assert.equal(L.matchesShape(1080,1500,'long'),false);
   assert.equal(L.formatSize(800),'800 B');assert.equal(L.formatSize(768*1024),'768 KB');assert.equal(L.formatSize(1.9*1024*1024),'1.9 MB');assert.equal(L.formatSize(24.4*1024*1024),'24 MB');
 });
 test('tags are parsed from free text; ratings and tags are sanitised when loaded',()=>{
@@ -126,9 +128,10 @@ test('the index: images with ratings, which are used (the corner picture counts)
 test('a saved filter is cleaned before use',()=>{
   const {cleanFilter}=loadLibrary().exports;
   const plain=x=>JSON.parse(JSON.stringify(x));
-  assert.deepEqual(plain(cleanFilter(null)),{scope:{kind:'all',value:''},text:'',type:'all',shape:'all',rating:'all',sort:'new',size:'m'});
-  assert.deepEqual(plain(cleanFilter({scope:{kind:'folder',value:'assets'},type:'gif',shape:'tall',rating:'4',sort:'large',size:'xl'})),
-    {scope:{kind:'folder',value:'assets'},text:'',type:'gif',shape:'all',rating:'4',sort:'large',size:'m'});
+  assert.deepEqual(plain(cleanFilter(null)),{scope:{kind:'all',value:''},text:'',type:'all',shape:'all',color:'all',rating:'all',sort:'new',size:'m'});
+  assert.deepEqual(plain(cleanFilter({scope:{kind:'folder',value:'assets'},type:'gif',shape:'tall',color:'blue',rating:'4',sort:'large',size:'xl'})),
+    {scope:{kind:'folder',value:'assets'},text:'',type:'gif',shape:'all',color:'blue',rating:'4',sort:'large',size:'m'});
+  assert.equal(cleanFilter({color:'ultraviolet'}).color,'all');
   assert.equal(cleanFilter({scope:{kind:'evil',value:1}}).scope.kind,'all');
 });
 test('library styles ship with the plugin: tokens reach the pane, the side list folds in narrow panes',()=>{
@@ -149,4 +152,47 @@ test('a hidden library pane skips refreshing and catches up when shown',()=>{
   assert.equal(refreshed,0);assert.equal(view.stale,true);
   view.mainEl={offsetParent:{}};view.refreshWhenShown();
   assert.equal(refreshed,1,'shown: refreshed at once');assert.equal(view.stale,false);
+});
+
+test('dominant colour analysis, seeded roam shuffle, image ingest and editable note lookup',async()=>{
+  // 1. White chart with vivid blue line matches both blue accent and light background
+  const buf=new Uint8ClampedArray(100*4);
+  for(let i=0;i<100;i++){
+    const o=i*4,blue=i<15;
+    buf[o]=blue?45:248;buf[o+1]=blue?122:250;buf[o+2]=blue?246:252;buf[o+3]=255;
+  }
+  const res=L.analyzePixels(buf);
+  assert.ok(res.colors.includes('blue'),'accent hue detected on white chart');
+  assert.ok(res.colors.includes('light'),'light background also recorded');
+  assert.ok(res.palette.length>=2&&res.palette.every(h=>/^#[0-9a-f]{6}$/.test(h)));
+
+  // 2. Dark screenshot matches dark family
+  const darkBuf=new Uint8ClampedArray(40*4);
+  for(let i=0;i<40;i++){const o=i*4;darkBuf[o]=24;darkBuf[o+1]=28;darkBuf[o+2]=36;darkBuf[o+3]=255;}
+  assert.deepEqual(L.analyzePixels(darkBuf).colors,['dark']);
+
+  // 3. Seeded shuffle is deterministic for the same seed and changes with a new seed
+  const seq=[{path:'a'},{path:'b'},{path:'c'},{path:'d'},{path:'e'},{path:'f'}];
+  assert.deepEqual(L.shuffleItems(seq,42).map(x=>x.path),L.shuffleItems(seq,42).map(x=>x.path));
+  assert.notDeepEqual(L.shuffleItems(seq,42).map(x=>x.path),L.shuffleItems(seq,99).map(x=>x.path));
+
+  // 4. Safe filename generation & collision-free vault path
+  const d=new Date(2026,10,24,8,9,5);
+  assert.equal(L.sanitizeImageName('image.png','png',d).name,'素材-20261124-080905.png');
+  assert.equal(L.sanitizeImageName('../weird:name?.JPEG','png',d).name,'-weird-name-.jpg');
+  const taken=new Set(['00_Inbox/shot.png','00_Inbox/shot-1.png']);
+  assert.equal(L.uniqueVaultPath('00_Inbox','shot.png',p=>taken.has(p)),'00_Inbox/shot-2.png');
+
+  // 5. Clipboard/drop ingest saves into selected folder and editableMarkdownLeaf skips library leaf
+  const {lib,files,TFile}=loadLibrary();
+  const created=[];
+  lib.app.vault.createFolder=async()=>{};
+  lib.app.vault.createBinary=async(p,b)=>{created.push([p,b.byteLength]);files.push(new TFile(p,{size:b.byteLength}));};
+  const saved=await lib.ingest([
+    {name:'image.png',type:'image/png',arrayBuffer:async()=>new Uint8Array([1,2,3,4]).buffer},
+    {name:'notes.txt',type:'text/plain',arrayBuffer:async()=>new Uint8Array([1]).buffer},
+  ],{folder:'assets'});
+  assert.equal(saved.length,1);
+  assert.match(saved[0],/^assets\/素材-\d{8}-\d{6}\.png$/);
+  assert.equal(created.length,1);assert.equal(created[0][1],4);
 });
