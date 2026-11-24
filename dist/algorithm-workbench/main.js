@@ -16,7 +16,7 @@ const {WindowGlass}=__awRequire("features/window-glass.js");
 const {Library}=__awRequire("features/library.js");
 const {MarkdownPaste}=__awRequire("features/markdown-paste.js");
 // aw-palette-* and aw-style-* are listed so classes left by earlier versions are cleaned up.
-const APPEARANCE=/^aw-(?:palette|style|caption|glass-fog)-|^aw-(?:figure-tools-off|glass)$/;
+const APPEARANCE=/^aw-(?:palette|style|caption|glass-fog)-|^aw-(?:figure-tools-off|glass|annot-recall)$/;
 // A created note counts as new when it is opened within this time.
 const NEW_NOTE_OPEN_MS=10000;
 // Settings are saved soon after a change; statistics gathered while typing wait longer, so
@@ -235,7 +235,7 @@ class WorkbenchPlugin extends Plugin {
   // Appearance settings are body classes read by both stylesheets.
   appearanceClasses(){
     const s=this.data.settings;
-    return ['aw-caption-'+s.captionSize].concat(s.figureTools?[]:['aw-figure-tools-off'],this.windowGlass?.classes()??[]);
+    return ['aw-caption-'+s.captionSize].concat(s.figureTools?[]:['aw-figure-tools-off'],this.windowGlass?.classes()??[],this.annotations?.recall?['aw-annot-recall']:[]);
   }
   applyAppearance(doc){
     if(!doc?.body)return;
@@ -2048,15 +2048,17 @@ module.exports={findBlock,setWidth,setMeta,moveImage,captionLabel,imagesIn,isGro
 },
 "features/annotations.js":(module,exports,__awRequire)=>{
 'use strict';
-const {Component,Modal,Notice,Setting,editorLivePreviewField}=require('obsidian');
+const {Component,MarkdownView,Modal,Notice,Setting,TFile,editorLivePreviewField}=require('obsidian');
 const {ViewPlugin,Decoration,WidgetType}=require('@codemirror/view');
-const {syntaxTree}=require('@codemirror/language');
+let syntaxTree=null;
+try{({syntaxTree}=require('@codemirror/language'));}catch{}
 const Format=__awRequire("features/annotation-format.js");
-const {parseAnnotation,findAnnotations,formatAnnotation,placement,targetClasses,noteTree,DIRECTIONS,COLORS,LINES}=Format;
+const {parseAnnotation,findAnnotations,formatAnnotation,placement,targetClasses,noteTree,collectNoteAnnotations,replaceSectionAnnotation,formatAnnotationSummary,sameSpec,DIRECTIONS,COLORS,LINES}=Format;
 const SVG='http://www.w3.org/2000/svg';
+const STYLE_KEYS=['dir','color','custom','line','highlight'];
 
 function tint(el,spec){
-  if(spec.color==='custom'&&spec.custom)el.style.setProperty('--aw-annot-color',spec.custom);
+  if(spec.color==='custom'&&spec.custom)el.style?.setProperty?.('--aw-annot-color',spec.custom);
   return el;
 }
 // The note element for an annotation (reading view and Live Preview build the same thing).
@@ -2071,12 +2073,45 @@ function build(doc,node){
 }
 const noteNode=(doc,spec)=>build(doc,noteTree(spec));
 const livePreview=state=>!editorLivePreviewField||state.field(editorLivePreviewField,false)===true;
+const treeOf=state=>typeof syntaxTree==='function'?syntaxTree(state):null;
 // Code, math, comments and front matter keep their text as written (reading view makes no
 // highlight there either). Obsidian names a token's syntax node after its classes, joined by _.
 const VERBATIM=/(?:^|_)(?:inline-code|hmd-codeblock|math|comment|hmd-frontmatter)(?:_|$)/;
-const verbatim=(state,pos)=>VERBATIM.test(syntaxTree(state).resolveInner(pos,1).type.name);
-const KEYS=['note','dir','color','custom','line','highlight'];
-const sameSpec=(a,b)=>KEYS.every(k=>a[k]===b[k]);
+const verbatim=(state,pos)=>{const t=treeOf(state);return t?VERBATIM.test(t.resolveInner(pos,1).type.name):false;};
+
+// Keep row-start / row-end pinned notes inside the visible note column without moving their pin.
+const clampPending=new WeakSet();
+function clampNotes(root){
+  if(!root?.querySelectorAll||typeof root.getBoundingClientRect!=='function')return;
+  const box=root.closest?.('.markdown-preview-view,.cm-scroller')||root;
+  if(typeof box.getBoundingClientRect!=='function')return;
+  const bounds=box.getBoundingClientRect();
+  if(!(bounds.width>40))return;
+  const minX=bounds.left+8,maxX=bounds.right-8,avail=maxX-minX,reads=[];
+  for(const el of root.querySelectorAll('.aw-annot-pin .aw-annot-text')){
+    if(typeof el.getBoundingClientRect!=='function')continue;
+    const rect=el.getBoundingClientRect();
+    if(!(rect.width>0))continue;
+    const cur=parseFloat(el.dataset?.awNudge||'0')||0;
+    reads.push({el,cur,left:rect.left-cur,right:rect.right-cur,width:rect.width});
+  }
+  for(const {el,cur,left,right,width} of reads){
+    let next=0;
+    if(width>=avail||left<minX)next=Math.round(minX-left);
+    else if(right>maxX)next=Math.round(maxX-right);
+    next=Math.max(-200,Math.min(200,next));
+    if(next===cur)continue;
+    if(next===0){if(el.dataset)delete el.dataset.awNudge;el.style?.removeProperty?.('--aw-annot-nudge');}
+    else{if(el.dataset)el.dataset.awNudge=String(next);el.style?.setProperty?.('--aw-annot-nudge',next+'px');}
+  }
+}
+function scheduleClamp(root){
+  if(!root||typeof root.getBoundingClientRect!=='function'||clampPending.has(root))return;
+  const raf=root.ownerDocument?.defaultView?.requestAnimationFrame;
+  if(typeof raf!=='function'){clampNotes(root);return;}
+  clampPending.add(root);
+  raf(()=>{clampPending.delete(root);clampNotes(root);});
+}
 
 // Live Preview: the annotation is drawn unless the cursor is on it, in which case the source
 // stays editable (as Obsidian does for its own formatting).
@@ -2103,7 +2138,7 @@ function editorExtension(){
     }
     ignoreEvent(){return false;}
   }
-  const build=view=>{
+  const buildDecorations=view=>{
     if(!livePreview(view.state))return Decoration.none;
     const doc=view.state.doc,ranges=view.state.selection.ranges,seen=new Map();
     for(const {from,to} of view.visibleRanges){
@@ -2126,32 +2161,52 @@ function editorExtension(){
     return Decoration.set(out,true);
   };
   return ViewPlugin.fromClass(class{
-    constructor(view){this.decorations=build(view);}
+    constructor(view){this.decorations=buildDecorations(view);scheduleClamp(view.dom);}
     update(update){
       // The syntax tree also arrives in steps after a change: code found later is left alone then.
       if(update.docChanged||update.viewportChanged||update.selectionSet||livePreview(update.startState)!==livePreview(update.state)
-        ||syntaxTree(update.startState)!==syntaxTree(update.state))
-        this.decorations=build(update.view);
+        ||treeOf(update.startState)!==treeOf(update.state)){
+        this.decorations=buildDecorations(update.view);
+        scheduleClamp(update.view.dom);
+      }else if(update.geometryChanged)scheduleClamp(update.view.dom);
     }
   },{decorations:plugin=>plugin.decorations});
 }
 
-// The add / edit dialog: note, position (3×3 around the text), colour, highlight, line.
+// The add / edit dialog: note, live preview, position (3×3 around the text), colour, highlight, line.
 class AnnotationModal extends Modal{
-  constructor(app,spec,{title,action},submit){
-    super(app);this.spec={...Format.DEFAULTS,...spec};this.title=title;this.action=action;this.submit=submit;
+  constructor(app,spec,{title,action,onRemove}={},submit){
+    super(app);this.spec={...Format.DEFAULTS,...spec};this.title=title;this.action=action;this.onRemove=onRemove;this.submit=submit;
   }
   onOpen(){
     const el=this.contentEl,doc=el.ownerDocument;
     this.setTitle(this.title);el.addClass('aw-annot-modal');
-    new Setting(el).setName('笔记').setDesc('阅读时显示的简短标签，最多 80 个字。').addText(t=>{
-      t.setPlaceholder('写一句简短标注…').setValue(this.spec.note||'').onChange(v=>{this.spec.note=v;});
+    this.modalEl?.addEventListener?.('keydown',event=>{
+      if((event.metaKey||event.ctrlKey)&&event.key==='Enter'&&!event.isComposing){event.preventDefault();this.done();}
+    });
+    let renderPreview=()=>{};
+    new Setting(el).setName('笔记').setDesc('阅读时显示的手写批注，最多 80 个字；较长内容会自动折行让位。').addText(t=>{
+      t.setPlaceholder('写一句简短标注…').setValue(this.spec.note||'').onChange(v=>{this.spec.note=v;renderPreview();});
       t.inputEl.maxLength=Format.MAX_NOTE;this.noteInput=t.inputEl;
       t.inputEl.addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.isComposing){event.preventDefault();this.done();}});
     });
+    const preview=el.createDiv({cls:'aw-annot-preview'}),lineEl=preview.createSpan({cls:'aw-annot-preview-line'});
+    renderPreview=()=>{
+      lineEl.replaceChildren();
+      const sample={...this.spec,note:String(this.spec.note||'').trim()||'手写批注预览'};
+      const where=placement(sample),note=noteNode(doc,sample),mark=doc.createElement('mark');
+      mark.className=targetClasses(sample,'目标文字').join(' ');tint(mark,sample);
+      mark.appendChild(doc.createTextNode('目标文字'));
+      if(where==='pin')mark.appendChild(note);
+      lineEl.appendChild(doc.createTextNode('示例前文 '));
+      if(where==='before')lineEl.appendChild(note);
+      lineEl.appendChild(mark);
+      if(where==='after')lineEl.appendChild(note);
+      lineEl.appendChild(doc.createTextNode(' 示例后文'));
+    };
     const pickers=el.createDiv({cls:'aw-annot-pickers'});
     const group=(name,desc)=>{const box=pickers.createDiv({cls:'aw-annot-picker'});box.createDiv({cls:'aw-annot-picker-name',text:name});box.createDiv({cls:'aw-annot-picker-desc',text:desc});return box;};
-    const choose=(buttons,key,value)=>{this.spec[key]=value;for(const b of buttons)b.setAttribute('aria-pressed',String(b.dataset.value===value));};
+    const choose=(buttons,key,value)=>{this.spec[key]=value;for(const b of buttons)b.setAttribute('aria-pressed',String(b.dataset.value===value));renderPreview();};
     // Position: the eight directions around a small "文字" chip.
     const compass=group('位置','标注相对目标文字的位置。').createDiv({cls:'aw-annot-compass'}),dirs=[];
     for(const id of ['nw','n','ne','w','center','e','sw','s','se']){
@@ -2173,10 +2228,17 @@ class AnnotationModal extends Modal{
     picker.addEventListener('input',()=>{this.spec.custom=picker.value;choose(colors,'color','custom');});
     choose(colors,'color',this.spec.color);
     new Setting(el).setName('高亮标注目标').setDesc('目标文字带一层与标注同色的浅底；目标本身已有底色时可以关掉。')
-      .addToggle(t=>t.setValue(this.spec.highlight!==false).onChange(v=>{this.spec.highlight=v;}));
-    new Setting(el).setName('线条').setDesc('箭头用两条虚线还是一条虚线。')
-      .addDropdown(d=>{for(const l of LINES)d.addOption(l.id,l.label);d.setValue(this.spec.line).onChange(v=>{this.spec.line=v;});});
-    new Setting(el).addButton(b=>b.setButtonText('取消').onClick(()=>this.close()))
+      .addToggle(t=>t.setValue(this.spec.highlight!==false).onChange(v=>{this.spec.highlight=v;renderPreview();}));
+    new Setting(el).setName('线条').setDesc('双线、虚线、实线、波浪或螺旋手绘箭头。')
+      .addDropdown(d=>{for(const l of LINES)d.addOption(l.id,l.label);d.setValue(this.spec.line).onChange(v=>{this.spec.line=v;renderPreview();});});
+    const footer=new Setting(el);
+    if(typeof this.onRemove==='function'){
+      footer.addButton(b=>{
+        b.setButtonText('删除标注').onClick(()=>{try{this.onRemove();this.close();}catch(error){new Notice(error?.message||'删除标注失败。');}});
+        b.buttonEl?.classList?.add?.('mod-warning');
+      });
+    }
+    footer.addButton(b=>b.setButtonText('取消').onClick(()=>this.close()))
       .addButton(b=>b.setButtonText(this.action).setCta().onClick(()=>this.done()));
     doc.defaultView?.setTimeout(()=>this.noteInput?.focus(),0);
   }
@@ -2187,15 +2249,106 @@ class AnnotationModal extends Modal{
   onClose(){this.contentEl.empty();}
 }
 
+// Current-note annotation browser: filter, click to jump to line, or copy Markdown summary.
+class AnnotationSummaryModal extends Modal{
+  constructor(app,{title,items,onJump,onCopy}){
+    super(app);this.noteTitle=title;this.items=items;this.onJump=onJump;this.onCopy=onCopy;
+  }
+  onOpen(){
+    const el=this.contentEl;
+    this.setTitle(`标注汇总 · ${this.noteTitle}`);el.addClass('aw-annot-modal');
+    const head=el.createDiv({cls:'aw-annot-summary-head'});
+    const countEl=head.createSpan({cls:'aw-annot-summary-count',text:`共 ${this.items.length} 条标注`});
+    let query='';
+    const listEl=el.createDiv({cls:'aw-annot-summary-list'});
+    const render=()=>{
+      listEl.replaceChildren();
+      const q=query.trim().toLowerCase();
+      const shown=q?this.items.filter(a=>a.target.toLowerCase().includes(q)||a.note.toLowerCase().includes(q)):this.items;
+      countEl.textContent=q?`匹配 ${shown.length} / ${this.items.length} 条标注`:`共 ${this.items.length} 条标注`;
+      if(!shown.length){
+        listEl.createDiv({cls:'aw-annot-summary-empty',text:this.items.length?'没有匹配的标注。':'当前笔记还没有手写标注。'});
+        return;
+      }
+      for(const item of shown){
+        const row=listEl.createEl('button',{cls:`aw-annot-summary-item aw-annot-c-${item.color}`,attr:{type:'button'}});
+        tint(row,item);
+        row.createSpan({cls:'aw-annot-dot'});
+        row.createSpan({cls:'aw-annot-summary-target',text:item.target});
+        const dirLabel=DIRECTIONS.find(d=>d.id===item.dir)?.label||'右下';
+        const lineLabel=item.line!==Format.DEFAULTS.line?` · ${LINES.find(l=>l.id===item.line)?.label||''}`:'';
+        row.createSpan({cls:'aw-annot-summary-dir',text:`（${dirLabel}${lineLabel}）`});
+        row.createSpan({cls:'aw-annot-summary-note',text:item.note});
+        row.createSpan({cls:'aw-annot-summary-line',text:`L${item.lineIndex+1}`});
+        row.addEventListener('click',()=>{this.close();this.onJump?.(item);});
+      }
+    };
+    if(this.items.length>3){
+      const search=head.createEl('input',{cls:'aw-annot-summary-search',attr:{type:'text',placeholder:'搜索目标或批注…'}});
+      search.addEventListener('input',()=>{query=search.value;render();});
+      el.ownerDocument.defaultView?.setTimeout(()=>search.focus(),0);
+    }
+    render();
+    const footer=new Setting(el).addButton(b=>b.setButtonText('关闭').onClick(()=>this.close()));
+    if(this.items.length){
+      footer.addButton(b=>b.setButtonText('复制 Markdown 汇总').setCta().onClick(()=>{this.onCopy?.();this.close();}));
+    }
+  }
+  onClose(){this.contentEl.empty();}
+}
+
 class Annotations extends Component{
-  constructor(plugin){super();this.plugin=plugin;this.app=plugin.app;}
+  constructor(plugin){
+    super();this.plugin=plugin;this.app=plugin.app;
+    this.documents=new Map();this.noteMeta=new WeakMap();this.recall=false;this.lastStyle=null;
+  }
   onload(){
-    this.plugin.registerMarkdownPostProcessor(el=>this.process(el));
+    this.attachDocument(this.app?.workspace?.containerEl?.ownerDocument);
+    this.registerEvent(this.app.workspace.on('window-open',(_leaf,win)=>this.attachDocument(win?.document)));
+    this.registerEvent(this.app.workspace.on('window-close',(_leaf,win)=>{
+      const owner=this.documents.get(win?.document);
+      if(owner){this.removeChild?.(owner);this.documents.delete(win.document);}
+    }));
+    this.registerEvent(this.app.workspace.on('layout-change',()=>this.clampAll()));
+    this.plugin.registerMarkdownPostProcessor((el,ctx)=>this.process(el,ctx));
     this.plugin.registerEditorExtension(editorExtension());
     this.registerEvent(this.app.workspace.on('editor-menu',(menu,editor)=>this.menu(menu,editor)));
+    this.plugin.addCommand?.({
+      id:'annotate-selection',name:'添加或编辑标注',
+      editorCallback:editor=>{
+        const at=this.annotationAt(editor);
+        if(at)this.edit(editor,at);
+        else if(editor.getSelection().trim())this.add(editor);
+        else new Notice('请先选中一段文字，或把光标放在已有标注上。');
+      },
+    });
+    this.plugin.addCommand?.({id:'toggle-annotation-recall',name:'切换标注自测遮罩',callback:()=>this.toggleRecall()});
+    this.plugin.addCommand?.({id:'open-annotation-summary',name:'查看与复制当前笔记标注',callback:()=>void this.openSummary()});
+  }
+  onunload(){this.recall=false;this.documents.clear();}
+  attachDocument(doc){
+    if(!doc||typeof doc.addEventListener!=='function'||this.documents.has(doc))return;
+    const owner=this.addChild?.(new Component())??new Component();
+    this.documents.set(doc,owner);
+    owner.registerDomEvent?.(doc,'click',event=>this.onReadingClick(event));
+    owner.registerDomEvent?.(doc,'dblclick',event=>this.onReadingDblClick(event));
+    owner.registerDomEvent?.(doc,'keydown',event=>this.onReadingKey(event));
+    if(doc.defaultView)owner.registerDomEvent?.(doc.defaultView,'resize',()=>this.clampAll());
+  }
+  clampAll(){
+    this.app?.workspace?.iterateAllLeaves?.(leaf=>{
+      const el=leaf?.view?.contentEl;
+      if(el)scheduleClamp(el);
+    });
+  }
+  rememberStyle(spec){
+    const next={};
+    for(const k of STYLE_KEYS)if(spec[k]!==undefined)next[k]=spec[k];
+    this.lastStyle=next;
   }
   // Reading view: Obsidian renders ==text== as <mark>; the {note} is the text right after it.
-  process(el){
+  process(el,ctx){
+    const counts=new Map();
     for(const mark of el.querySelectorAll('mark')){
       const next=mark.nextSibling;
       if(!next||next.nodeType!==3)continue;
@@ -2205,17 +2358,144 @@ class Annotations extends Component{
       for(const name of targetClasses(found,mark.textContent))mark.classList.add(name);
       tint(mark,found);
       const note=noteNode(el.ownerDocument,found),where=placement(found);
+      if(ctx){
+        const holder=where==='pin'?note.children[1]:note;
+        const textEl=note.querySelector?.('.aw-annot-text')??[...(holder?.children||[])].find(c=>c.className==='aw-annot-text');
+        textEl?.setAttribute?.('tabindex','0');
+        textEl?.setAttribute?.('role','button');
+        const key=`${mark.textContent}\0${formatAnnotation(found)}`,ordinal=counts.get(key)||0;
+        counts.set(key,ordinal+1);
+        this.noteMeta.set(note,{el,ctx,target:mark.textContent,spec:{...found},ordinal});
+      }
       if(where==='pin')mark.appendChild(note);
       else mark.parentNode.insertBefore(note,where==='before'?mark:next);
     }
+    scheduleClamp(el);
   }
-  // The annotation under the cursor, or overlapping the selection, with its line; or null.
+  readingTextOf(target){
+    return target?.closest?.('.markdown-reading-view .aw-annot .aw-annot-text')??null;
+  }
+  toggleMask(textEl){
+    if(!textEl?.classList)return;
+    if(this.recall){textEl.classList.toggle('is-revealed');textEl.classList.remove?.('is-masked');}
+    else{textEl.classList.toggle('is-masked');textEl.classList.remove?.('is-revealed');}
+  }
+  toggleRecall(){
+    this.recall=!this.recall;
+    for(const doc of this.documents.keys()){
+      for(const el of doc.querySelectorAll?.('.aw-annot-text.is-masked,.aw-annot-text.is-revealed')||[]){
+        el.classList.remove('is-masked','is-revealed');
+      }
+    }
+    this.plugin.applyAppearanceEverywhere?.();
+    new Notice(this.recall?'已开启标注自测遮罩：阅读视图中点击标注可显隐核对，双击可编辑。':'已关闭标注自测遮罩。');
+    return this.recall;
+  }
+  onReadingClick(event){
+    const textEl=this.readingTextOf(event.target);
+    if(!textEl)return;
+    event.preventDefault();event.stopPropagation();
+    if(event.detail===1){
+      textEl._awPre={masked:textEl.classList.contains('is-masked'),revealed:textEl.classList.contains('is-revealed')};
+      this.toggleMask(textEl);
+    }
+  }
+  onReadingDblClick(event){
+    const textEl=this.readingTextOf(event.target);
+    if(!textEl)return;
+    event.preventDefault();event.stopPropagation();
+    textEl.ownerDocument?.defaultView?.getSelection?.()?.removeAllRanges?.();
+    if(textEl._awPre){
+      textEl.classList.toggle('is-masked',textEl._awPre.masked);
+      textEl.classList.toggle('is-revealed',textEl._awPre.revealed);
+    }
+    const note=textEl.closest?.('.aw-annot');
+    if(note)this.editReading(note);
+  }
+  onReadingKey(event){
+    const textEl=this.readingTextOf(event.target);
+    if(!textEl)return;
+    if(event.key==='Enter'&&event.shiftKey){
+      event.preventDefault();
+      const note=textEl.closest?.('.aw-annot');
+      if(note)this.editReading(note);
+    }else if(event.key===' '||event.key==='Enter'){
+      event.preventDefault();this.toggleMask(textEl);
+    }
+  }
+  viewOf(node){
+    if(node?.closest?.('.markdown-embed,.hover-popover'))return null;
+    return this.app?.workspace?.getLeavesOfType?.('markdown')?.map(l=>l.view).find(v=>v?.containerEl?.contains?.(node))??null;
+  }
+  editReading(note){
+    if(note?.closest?.('.markdown-embed,.hover-popover')){new Notice('嵌入笔记或悬浮预览中的标注请到原笔记中修改。');return;}
+    const meta=this.noteMeta.get(note),view=this.viewOf(note);
+    const info=meta?.ctx?.getSectionInfo?.(meta.el),file=view?.file;
+    const isFile=TFile?file instanceof TFile:Boolean(file?.path);
+    if(!meta||!info||!isFile){new Notice('无法定位这条标注的源码，请在编辑视图中修改。');return;}
+    this.openModal(meta.spec,{
+      title:'编辑标注',action:'保存',
+      onRemove:()=>void this.rewriteReading(file,info,meta,''),
+    },spec=>{
+      this.rememberStyle(spec);
+      void this.rewriteReading(file,info,meta,formatAnnotation(spec));
+    });
+  }
+  async rewriteReading(file,info,meta,replacement){
+    try{
+      const shownLines=String(info.text??'').split(/\r?\n/);
+      const expected=shownLines.slice(info.lineStart,info.lineEnd+1).join('\n');
+      await this.app.vault.process(file,data=>{
+        const eol=data.includes('\r\n')?'\r\n':'\n',lines=data.split(eol);
+        const actual=lines.slice(info.lineStart,info.lineEnd+1).join('\n');
+        if(actual!==expected)throw Error('笔记内容已变化，请稍后重试。');
+        const updated=replaceSectionAnnotation(actual,meta.target,meta.spec,meta.ordinal,replacement).split('\n');
+        lines.splice(info.lineStart,info.lineEnd-info.lineStart+1,...updated);
+        return lines.join(eol);
+      });
+      return true;
+    }catch(error){new Notice(error?.message||'修改标注失败。');return false;}
+  }
+  activeMarkdownView(){
+    if(MarkdownView&&typeof this.app?.workspace?.getActiveViewOfType==='function'){
+      const active=this.app.workspace.getActiveViewOfType(MarkdownView);
+      if(active)return active;
+    }
+    return this.app?.workspace?.getLeavesOfType?.('markdown')?.[0]?.view??null;
+  }
+  async openSummary(){
+    const view=this.activeMarkdownView(),file=view?.file;
+    if(!view||!file){new Notice('请先打开一篇 Markdown 笔记。');return;}
+    const raw=view.getMode?.()==='source'&&view.editor?view.editor.getValue():await this.app.vault.cachedRead(file);
+    const title=file.basename||file.name?.replace(/\.md$/i,'')||'当前笔记';
+    const items=collectNoteAnnotations(raw);
+    const jump=item=>{
+      if(view.getMode?.()==='source'&&view.editor){
+        const pos={line:item.lineIndex,ch:item.markFrom},end={line:item.lineIndex,ch:item.to};
+        view.editor.setCursor(pos);
+        view.editor.scrollIntoView?.({from:pos,to:end},true);
+        view.editor.focus?.();
+      }else{
+        view.currentMode?.applyScroll?.(item.lineIndex);
+      }
+    };
+    const copy=async()=>{
+      const md=formatAnnotationSummary(title,items);
+      const clip=this.app?.workspace?.containerEl?.ownerDocument?.defaultView?.navigator?.clipboard??globalThis.navigator?.clipboard;
+      if(!clip?.writeText){new Notice('当前环境不支持剪贴板写入。');return;}
+      await clip.writeText(md);
+      new Notice(`已复制 ${items.length} 条标注汇总。`);
+    };
+    this.openSummaryModal({title,items,onJump:jump,onCopy:()=>void copy()});
+  }
+  openSummaryModal(props){new AnnotationSummaryModal(this.app,props).open();}
+  // The annotation under the cursor, or overlapping the selection, with its row; or null.
   annotationAt(editor){
     const from=editor.getCursor('from'),to=editor.getCursor('to');
     if(from.line!==to.line)return null;
     const empty=from.ch===to.ch;
     const found=findAnnotations(editor.getLine(from.line),0).find(a=>empty?a.markFrom<=from.ch&&from.ch<=a.to:a.markFrom<to.ch&&from.ch<a.to);
-    return found?{...found,line:from.line}:null;
+    return found?{...found,row:from.line}:null;
   }
   // Right-click: edit / remove the annotation under the cursor or selection (a selection inside
   // one would otherwise nest a second annotation in it), or add one to selected text.
@@ -2228,19 +2508,26 @@ class Annotations extends Component{
     }
     menu.addItem(item=>item.setTitle('编辑标注').setIcon('message-square-text').onClick(()=>this.edit(editor,at)));
     menu.addItem(item=>item.setTitle('删除标注').setIcon('message-square-x').onClick(()=>
-      editor.replaceRange('',{line:at.line,ch:at.from},{line:at.line,ch:at.to})));
+      editor.replaceRange('',{line:at.row,ch:at.from},{line:at.row,ch:at.to})));
   }
   add(editor){
     const selected=editor.getSelection(),lead=selected.match(/^\s*/)[0],trail=selected.match(/\s*$/)[0];
     // Already highlighted text keeps one pair of ==.
     const target=selected.trim().replace(/^==([\s\S]*)==$/,'$1');
     if(!target||target.includes('==')){new Notice('请选择一段不含 == 的文字。');return;}
-    this.openModal({note:''},{title:'添加标注',action:'添加标注'},spec=>
-      editor.replaceSelection(`${lead}==${target}==${formatAnnotation(spec)}${trail}`));
+    this.openModal({...Format.DEFAULTS,...this.lastStyle,note:''},{title:'添加标注',action:'添加标注'},spec=>{
+      this.rememberStyle(spec);
+      editor.replaceSelection(`${lead}==${target}==${formatAnnotation(spec)}${trail}`);
+    });
   }
   edit(editor,at){
-    this.openModal(at,{title:'编辑标注',action:'保存'},spec=>
-      editor.replaceRange(formatAnnotation(spec),{line:at.line,ch:at.from},{line:at.line,ch:at.to}));
+    this.openModal(at,{
+      title:'编辑标注',action:'保存',
+      onRemove:()=>editor.replaceRange('',{line:at.row,ch:at.from},{line:at.row,ch:at.to}),
+    },spec=>{
+      this.rememberStyle(spec);
+      editor.replaceRange(formatAnnotation(spec),{line:at.row,ch:at.from},{line:at.row,ch:at.to});
+    });
   }
   openModal(spec,labels,submit){new AnnotationModal(this.app,spec,labels,submit).open();}
   displaySettings(container){
@@ -2251,7 +2538,7 @@ class Annotations extends Component{
       }));
   }
 }
-module.exports={Annotations,AnnotationModal,noteNode,placement,targetClasses};
+module.exports={Annotations,AnnotationModal,AnnotationSummaryModal,noteNode,clampNotes,placement,targetClasses};
 
 },
 "features/annotation-format.js":(module,exports,__awRequire)=>{
@@ -2261,7 +2548,7 @@ module.exports={Annotations,AnnotationModal,noteNode,placement,targetClasses};
 // after the last "|" set where the note sits, its colour and its line:
 //   position  右下 (default) 下 左下 右 左 右上 上 左上, or the arrows ↘ ↓ ↙ → ← ↗ ↑ ↖
 //   colour    蓝 (default) 中性 琥珀 橙 绿 红 紫 彩虹, or #rgb / #rrggbb
-//   line      双线 (default) 虚线
+//   line      双线 (default) 虚线 实线 波浪 螺旋
 //   无高亮     the target keeps no tinted background
 // Text after a "|" that isn't all options belongs to the note. Nothing here touches the DOM.
 const MAX_NOTE=80;
@@ -2275,8 +2562,13 @@ const COLORS=[
   {id:'blue',label:'蓝'},{id:'green',label:'绿'},{id:'red',label:'红'},
   {id:'purple',label:'紫'},{id:'rainbow',label:'彩虹'},
 ];
-const LINES=[{id:'double',label:'双线'},{id:'dashed',label:'虚线'}];
+const LINES=[
+  {id:'double',label:'双线'},{id:'dashed',label:'虚线'},{id:'solid',label:'实线'},
+  {id:'wavy',label:'波浪'},{id:'spiral',label:'螺旋'},
+];
 const DEFAULTS={dir:'se',color:'blue',custom:null,line:'double',highlight:true};
+const SPEC_KEYS=['note','dir','color','custom','line','highlight'];
+const sameSpec=(a,b)=>Boolean(a&&b)&&SPEC_KEYS.every(k=>a[k]===b[k]);
 const HEX=/^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i;
 const NO_HIGHLIGHT=['无高亮','不高亮'];
 
@@ -2358,24 +2650,89 @@ function targetClasses(spec,target){
   const pin=placement(spec)==='pin',keep=pin&&target!=null&&[...String(target)].length<=KEEP;
   return ['aw-annot-target','aw-annot-c-'+spec.color].concat(spec.highlight?[]:['aw-annot-plain'],pin?['aw-annot-holds']:[],keep?['aw-annot-keep']:[]);
 }
+// Visual width in the note's own em; pinned notes wrap at 13.5em and reserve room per line.
+function noteLines(note){
+  let em=0;
+  for(const ch of String(note||''))em+=ch.codePointAt(0)>0x2e7f?1:0.56;
+  return Math.min(6,Math.max(1,Math.ceil(em/13)));
+}
+const LEADER_PATHS={
+  double:['M3.8 4.7 Q17.5 6.7 31.5 4.5','M4.2 7.3 Q17.8 9.3 31.5 7.2'],
+  dashed:['M3.4 5.9 Q17.5 8.1 31.5 5.8'],
+  solid:['M3.4 5.9 Q17.5 8.1 31.5 5.8'],
+  wavy:['M3.6 6 C7.2 2.9,10.6 9.1,14.2 6 C17.8 2.9,21.2 9.1,24.8 6 C27.4 3.8,29.6 7.5,31.5 6'],
+  spiral:['M3.5 6 C9.5 6.8,16.5 8.8,19.2 6.8 C21.4 5.1,20.4 1.6,17.2 1.6 C14 1.6,13.2 5.4,15.8 7.5 C19.2 10.1,26.2 7.4,31.5 5.9'],
+};
 // The note as a plain tree ({tag, cls, attrs, text, children, svg}); the plugin turns it into
 // DOM and the preview script into HTML, so both draw the same thing.
 function noteTree(spec){
-  const where=placement(spec);
+  const where=placement(spec),lines=where==='pin'?noteLines(spec.note):1;
+  const strokes=LEADER_PATHS[spec.line]||LEADER_PATHS.double;
   const leader={tag:'svg',svg:true,attrs:{class:'aw-annot-arrow',viewBox:'0 0 32 12','aria-hidden':'true'},children:[
-    {tag:'path',svg:true,attrs:{d:'M8 2 L2 6 L8 10',class:'aw-annot-head'}},
-    ...(spec.line==='double'?[4.6,7.4]:[6]).map(y=>({tag:'line',svg:true,attrs:{x1:'4',y1:String(y),x2:'32',y2:String(y),class:'aw-annot-line'}})),
+    {tag:'path',svg:true,attrs:{d:'M8.6 2.3 Q5.3 4.2 2.3 5.8 Q5.2 7.7 8.2 10',class:'aw-annot-head'}},
+    ...strokes.map(d=>({tag:'path',svg:true,attrs:{d,class:'aw-annot-line'}})),
   ]};
   const text={tag:'span',cls:'aw-annot-text',text:spec.note};
   let children;
   if(where==='pin')children=[{tag:'span',cls:'aw-annot-room',attrs:{'aria-hidden':'true'}},{tag:'span',cls:'aw-annot-pin',children:[leader,text]}];
   else children=where==='before'?[text,leader]:[leader,text];
+  const cls=['aw-annot','aw-annot-'+spec.dir,'aw-annot-'+spec.line,'aw-annot-c-'+spec.color,where==='pin'?'aw-annot-pinned':'aw-annot-flow'];
+  if(lines>1)cls.push('aw-annot-l'+lines);
   // A pinned note starts with a word joiner (U+2060): no line break between the target's last
   // character and the note's room block, so the room stays on the target's line.
-  return {tag:'span',text:where==='pin'?'\u2060':null,cls:['aw-annot','aw-annot-'+spec.dir,'aw-annot-'+spec.line,'aw-annot-c-'+spec.color,where==='pin'?'aw-annot-pinned':'aw-annot-flow'].join(' '),
+  return {tag:'span',text:where==='pin'?'\u2060':null,cls:cls.join(' '),
     attrs:{title:'标注：'+spec.note},color:spec.color==='custom'?spec.custom:null,children};
 }
-module.exports={parseAnnotation,findAnnotations,formatAnnotation,parseBody,placement,targetClasses,noteTree,DIRECTIONS,COLORS,LINES,DEFAULTS,MAX_NOTE,KEEP};
+// Replace inline code, inline math and comments with equal-length spaces so character offsets stay exact.
+function maskVerbatimInLine(line){
+  return line.replace(/(`+)[^`]*?\1|\$\$[^$]+?\$\$|\$(?!\s)[^$\n]+?(?<!\s)\$|%%.*?%%|<!--.*?-->/g,m=>' '.repeat(m.length));
+}
+// Scan a Markdown document (or section), skipping YAML front matter, fenced code and $$ math blocks.
+function collectNoteAnnotations(markdown,{allowFrontMatter=true}={}){
+  const lines=String(markdown||'').split(/\r?\n/),out=[];
+  let i=0,fence=null,mathBlock=false;
+  if(allowFrontMatter&&lines[0]?.trim()==='---'){
+    let end=1;while(end<lines.length&&!/^(?:---|\.\.\.)\s*$/.test(lines[end]))end++;
+    if(end<lines.length)i=end+1;
+  }
+  for(;i<lines.length;i++){
+    const raw=lines[i];
+    if(fence){
+      if(new RegExp(`^\\s*${fence[0]}{${fence.length},}\\s*$`).test(raw))fence=null;
+      continue;
+    }
+    const open=/^\s*(`{3,}|~{3,})/.exec(raw);
+    if(open){fence=open[1];continue;}
+    if(/^\s*\$\$\s*$/.test(raw)){mathBlock=!mathBlock;continue;}
+    if(mathBlock)continue;
+    for(const a of findAnnotations(maskVerbatimInLine(raw),0)){
+      out.push({...a,lineIndex:i,target:raw.slice(a.targetFrom,a.targetTo)});
+    }
+  }
+  return out;
+}
+// Rewrite or remove one annotation inside a Markdown section after verifying target and spec match.
+function replaceSectionAnnotation(sectionText,target,oldSpec,ordinal,replacement){
+  const eol=sectionText.includes('\r\n')?'\r\n':'\n',lines=sectionText.split(eol);
+  const hits=collectNoteAnnotations(lines.join('\n'),{allowFrontMatter:false})
+    .filter(a=>a.target===target&&sameSpec(a,oldSpec));
+  const hit=hits[ordinal]??(hits.length===1?hits[0]:null);
+  if(!hit)throw Error('笔记内容已变化，请稍后重试。');
+  const line=lines[hit.lineIndex];
+  lines[hit.lineIndex]=line.slice(0,hit.from)+replacement+line.slice(hit.to);
+  return lines.join(eol);
+}
+// Markdown list of all annotations in a note for copying or review.
+function formatAnnotationSummary(title,items){
+  const heading=`## 标注汇总：${String(title||'当前笔记').trim()||'当前笔记'}`;
+  if(!items?.length)return `${heading}\n\n（暂无标注）`;
+  const rows=items.map((a,idx)=>{
+    const dir=DIRECTIONS.find(d=>d.id===a.dir)?.label||DIRECTIONS[7].label;
+    return `${idx+1}. **${a.target}**（${dir}）：${a.note} *(第 ${a.lineIndex+1} 行)*`;
+  });
+  return `${heading}\n\n${rows.join('\n')}`;
+}
+module.exports={parseAnnotation,findAnnotations,formatAnnotation,parseBody,placement,targetClasses,noteLines,noteTree,collectNoteAnnotations,replaceSectionAnnotation,formatAnnotationSummary,sameSpec,DIRECTIONS,COLORS,LINES,DEFAULTS,MAX_NOTE,KEEP};
 
 },
 "features/scroll-ruler.js":(module,exports,__awRequire)=>{

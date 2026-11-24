@@ -12,6 +12,9 @@ test('annotation syntax: {note} or {note|options} right after the highlight; def
   assert.deepEqual(p('{冗长代码|右下 橙 虚线}x'),{note:'冗长代码',dir:'se',color:'orange',custom:null,line:'dashed',highlight:true,rest:'x'});
   assert.deepEqual(p('{饱和区|↗ #D0428A 无高亮}'),{note:'饱和区',dir:'ne',color:'custom',custom:'#d0428a',line:'double',highlight:false,rest:''});
   assert.equal(p('{看这里|虚线 红色}').line,'dashed');assert.equal(p('{看这里|虚线 红色}').color,'red');
+  assert.equal(p('{平滑连线|实线}').line,'solid');
+  assert.equal(p('{波动提醒|波浪 橙}').line,'wavy');
+  assert.equal(p('{重点圈注|螺旋 紫}').line,'spiral');
   assert.equal(p('{旧写法|内联}').note,'旧写法|内联','the inline line style is gone: 内联 is just text now');
   // A "|" followed by words that aren't all options belongs to the note.
   assert.equal(p('{a|b}').note,'a|b');assert.equal(p('{输入|输出 右}').note,'输入|输出 右');
@@ -34,7 +37,7 @@ test('annotation braces are written with defaults left out, and read back the sa
   assert.equal(f({note:'饱和区',dir:'ne',color:'custom',custom:'#D0428A',highlight:false}),'{饱和区|右上 #d0428a 无高亮}');
   assert.equal(f({note:'换{行}\n了'}),'{换 行 了}','braces and line breaks never leak into the note');
   assert.equal(f({note:'输入|红'}),'{输入|红|右下}','a note that looks like options gets the default position spelled out');
-  for(const spec of [{note:'输入|红'},{note:'a|b',dir:'n'},{note:'看',color:'rainbow',line:'dashed'},{note:'x',color:'custom',custom:'#abc'}]){
+  for(const spec of [{note:'输入|红'},{note:'输入|螺旋'},{note:'a|b',dir:'n'},{note:'看',color:'rainbow',line:'dashed'},{note:'实',line:'solid'},{note:'浪',line:'wavy'},{note:'圈',line:'spiral'},{note:'x',color:'custom',custom:'#abc'}]){
     const back=A.parseAnnotation(f(spec));
     for(const k of Object.keys(spec))assert.equal(back[k],spec[k],`${k} of ${JSON.stringify(spec)}`);
   }
@@ -88,14 +91,21 @@ test('reading view: an annotation tints its target and pins the note to it; 右 
   assert.match(note.className,/aw-annot aw-annot-se aw-annot-double aw-annot-c-blue aw-annot-pinned/);
   assert.deepEqual(note.children.map(c=>c.className),['aw-annot-room','aw-annot-pin']);
   const pin=note.children[1];
-  assert.equal(pin.children[0].attrs.class,'aw-annot-arrow');assert.equal(pin.children[0].children.filter(c=>c.tag==='line').length,2,'double leader');
+  assert.equal(pin.children[0].attrs.class,'aw-annot-arrow');
+  const doubleStrokes=pin.children[0].children.filter(c=>c.attrs.class==='aw-annot-line');
+  assert.equal(doubleStrokes.length,2,'double curved leader');assert.match(doubleStrokes[0].attrs.d,/Q/,'organic curve');
   assert.equal(pin.children[1].textContent,'标注');assert.equal(note.attrs.title,'标注：标注');
   assert.equal(text(p),'前文 decryption method标注。中间 只是高亮 后文','the braces are gone, the rest of the text stays');
   assert.equal(plain.className,'','a plain highlight is left alone');
   const right=readingView('==a=={右边|右 虚线}后'),left=readingView('前==b=={左边|左 无高亮}');
   const [ra]=right.querySelectorAll('mark'),[lb]=left.querySelectorAll('mark');
   assert.equal(ra.nextSibling.className.split(' ').includes('aw-annot-flow'),true,'右: the note follows the target');
-  assert.equal(ra.nextSibling.children[0].children.filter(c=>c.tag==='line').length,1,'dashed leader');
+  assert.equal(ra.nextSibling.children[0].children.filter(c=>c.attrs.class==='aw-annot-line').length,1,'dashed leader');
+  const spiral=readingView('==s=={圈注|螺旋}').querySelectorAll('mark')[0].children.at(-1);
+  assert.match(spiral.className,/aw-annot-spiral/);
+  assert.match(spiral.children[1].children[0].children.find(c=>c.attrs.class==='aw-annot-line').attrs.d,/C.*C.*C/,'spiral loop cubic segments');
+  const wrapped=readingView('==m=={当批注文字超过十几个字时会自动折成多行并预留空间}');
+  assert.match(wrapped.querySelectorAll('mark')[0].children.at(-1).className,/aw-annot-l[2-6]/,'multi-line note reserves extra vertical room');
   assert.equal(left.children[1].className.includes('aw-annot-w'),true,'左: the note comes before the target');
   assert.match(lb.className,/aw-annot-plain/);assert.doesNotMatch(lb.className,/aw-annot-holds|aw-annot-keep/,'flow notes need no anchor box');
   assert.equal(ra.nextSibling.textContent,'','no word joiner in a flow note');
@@ -393,4 +403,107 @@ test('ruler remembers measured Reading view sections across virtualization, expo
   assert.equal(r.ruler.fractions(r.view,r.scroller,rhs)[1],990/2000);
   sections[3].el=null; // Virtualized out of DOM after scrolling further down.
   assert.equal(r.ruler.fractions(r.view,r.scroller,rhs)[1],990/2000,'remembered anchor prevents jump-back');
+});
+
+test('annotation summary, section rewrite, style memory, recall toggle and edge anti-clipping work without touching code blocks',async()=>{
+  // 1. Markdown summary & verbatim skipping (YAML, fenced code, inline code, $$ math, %% comment)
+  const doc=[
+    '---',
+    'note: "==front=={忽略}"',
+    '---',
+    '正文前 `==code=={行内忽略}` 与 %%==comment=={注释忽略}%% 和 ==目标一=={第一条|右上 橙 螺旋}。',
+    '```md',
+    '==fenced=={代码块忽略}',
+    '```',
+    '$$',
+    '==math=={公式忽略}',
+    '$$',
+    '第二段 ==目标一=={重复目标第一处|下} 与 ==目标一=={第一条|右上 橙 螺旋}。',
+  ].join('\n');
+  const items=A.collectNoteAnnotations(doc);
+  assert.deepEqual(items.map(i=>[i.target,i.note,i.line,i.lineIndex]),[
+    ['目标一','第一条','spiral',3],
+    ['目标一','重复目标第一处','double',10],
+    ['目标一','第一条','spiral',10],
+  ]);
+  const summary=A.formatAnnotationSummary('Attention 笔记',items);
+  assert.match(summary,/## 标注汇总：Attention 笔记/);
+  assert.match(summary,/1\. \*\*目标一\*\*（右上）：第一条 \*\(第 4 行\)\*/);
+  assert.equal(A.formatAnnotationSummary('空笔记',[]),'## 标注汇总：空笔记\n\n（暂无标注）');
+
+  // 2. Reading-view section rewrite updates only the matching ordinal and preserves CRLF & code spans
+  const section='前文 `==目标一=={第一条|右上 橙 螺旋}` 真一 ==目标一=={第一条|右上 橙 螺旋}\r\n真二 ==目标一=={第一条|右上 橙 螺旋}';
+  const spec=A.parseAnnotation('{第一条|右上 橙 螺旋}');
+  const edited=A.replaceSectionAnnotation(section,'目标一',spec,1,'{改后第二处|波浪}');
+  assert.equal(edited,'前文 `==目标一=={第一条|右上 橙 螺旋}` 真一 ==目标一=={第一条|右上 橙 螺旋}\r\n真二 ==目标一=={改后第二处|波浪}');
+  const deleted=A.replaceSectionAnnotation(edited,'目标一',A.parseAnnotation('{改后第二处|波浪}'),0,'');
+  assert.equal(deleted,'前文 `==目标一=={第一条|右上 橙 螺旋}` 真一 ==目标一=={第一条|右上 橙 螺旋}\r\n真二 ==目标一==');
+  assert.throws(()=>A.replaceSectionAnnotation(section,'不存在',spec,0,'{x}'),/已变化/);
+
+  // 3. Consecutive add() remembers the user's last style; Reading-view edit & recall toggle work cleanly
+  const notices=[];
+  const {Annotations,clampNotes}=loadModule('annotations.js',{
+    obsidian:{...obsidianStub,Notice:class{constructor(m){notices.push(m);}}},
+    '@codemirror/view':{},'@codemirror/language':{},
+  });
+  let applied=0;
+  const a=new Annotations({app:{workspace:{on(){}},vault:{}},data:{settings:{}},applyAppearanceEverywhere(){applied++;}});
+  let line='alpha beta',sel={from:0,to:5};
+  const editor={getSelection:()=>line.slice(sel.from,sel.to),replaceSelection(t){line=line.slice(sel.from)+t;}};
+  const seenSpecs=[];
+  a.openModal=(s,_l,submit)=>{seenSpecs.push({...s});submit({...s,note:'首条',dir:'nw',color:'purple',line:'wavy',highlight:false});};
+  a.add(editor);
+  a.openModal=(s)=>{seenSpecs.push({...s});};
+  line='beta';sel={from:0,to:4};a.add(editor);
+  assert.equal(seenSpecs[0].dir,'se');
+  assert.deepEqual({dir:seenSpecs[1].dir,color:seenSpecs[1].color,line:seenSpecs[1].line,highlight:seenSpecs[1].highlight},
+    {dir:'nw',color:'purple',line:'wavy',highlight:false},'second add reuses last chosen style');
+  assert.equal(a.toggleRecall(),true);assert.equal(a.recall,true);assert.equal(applied,1);
+  assert.equal(a.toggleRecall(),false);assert.equal(a.recall,false);assert.equal(applied,2);
+  // annotationAt on row 5 preserves spec.line ('spiral') instead of clobbering it with row number
+  const row5Editor={getCursor:()=>({line:5,ch:4}),getLine:()=>'==x=={圈|螺旋}'};
+  const at5=a.annotationAt(row5Editor);
+  assert.equal(at5.row,5);assert.equal(at5.line,'spiral');
+
+  // 4. Edge anti-clipping nudges row-start left-leaning and row-end right-leaning notes inside bounds
+  const mkText=(left,right)=>{
+    const el={dataset:{},props:{},style:{setProperty(k,v){el.props[k]=v;},removeProperty(k){delete el.props[k];}},
+      getBoundingClientRect:()=>{const d=parseFloat(el.dataset.awNudge||'0')||0;return {left:left+d,right:right+d,width:right-left};}};
+    return el;
+  };
+  const leftClip=mkText(80,150),okMid=mkText(200,260),rightClip=mkText(470,540);
+  const container={
+    getBoundingClientRect:()=>({left:100,right:500,width:400}),
+    querySelectorAll:()=>[leftClip,okMid,rightClip],
+  };
+  clampNotes(container);
+  assert.equal(leftClip.props['--aw-annot-nudge'],'28px','nudged right to 100 + 8 = 108');
+  assert.equal(okMid.props['--aw-annot-nudge'],undefined,'in-bounds note untouched');
+  assert.equal(rightClip.props['--aw-annot-nudge'],'-48px','nudged left to 500 - 8 = 492');
+  // Widening the container clears the nudge cleanly
+  container.getBoundingClientRect=()=>({left:0,right:700,width:700});
+  clampNotes(container);
+  assert.equal(leftClip.props['--aw-annot-nudge'],undefined);
+  assert.equal(rightClip.props['--aw-annot-nudge'],undefined);
+
+  // 5. Reading-view post-processor with ctx handles HTMLCollection-like children and rewrites file via vault.process
+  const rdoc=fakeDocument(),p=rdoc.createElement('p'),m=rdoc.createElement('mark');
+  m.appendChild(rdoc.createTextNode('目标'));m.textContent='目标';p.appendChild(m);p.appendChild(rdoc.createTextNode('{原注|波浪}。'));
+  let fileContent='标题\n\n前文 ==目标=={原注|波浪}。';
+  const file={path:'n.md',extension:'md'};
+  const ra=new Annotations({
+    app:{
+      workspace:{on(){},getLeavesOfType:()=>[{view:{file,containerEl:{contains:()=>true}}}]},
+      vault:{async process(_f,fn){fileContent=fn(fileContent);}},
+    },
+    data:{settings:{}},
+  });
+  const ctx={getSectionInfo:()=>({lineStart:2,lineEnd:2,text:fileContent})};
+  ra.process({ownerDocument:rdoc,querySelectorAll:sel=>p.querySelectorAll(sel)},ctx);
+  const noteNodeEl=m.children.at(-1),pinText=noteNodeEl.children[1].children[1];
+  assert.equal(pinText.attrs.tabindex,'0');assert.equal(pinText.attrs.role,'button');
+  ra.openModal=(s,labels,submit)=>{assert.equal(s.line,'wavy');assert.equal(typeof labels.onRemove,'function');submit({...s,note:'新注',line:'spiral'});};
+  ra.editReading(noteNodeEl);
+  await new Promise(r=>setImmediate(r));
+  assert.equal(fileContent,'标题\n\n前文 ==目标=={新注|螺旋}。');
 });

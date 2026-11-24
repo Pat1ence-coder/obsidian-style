@@ -273,14 +273,15 @@ test('enabling the plugin in a running app (layout already ready) loads cleanly,
 });
 
 test('annotation font: a named face reaches every window as a CSS variable, unsafe characters stripped',async()=>{
-  const {plugin,workspace}=fixture();const main=workspace.containerEl.ownerDocument;
+  const {plugin,workspace,classes}=fixture();const main=workspace.containerEl.ownerDocument;
   plugin.initialData={...Core.emptyData(),settings:{...Core.DEFAULT_SETTINGS,openOnStartup:false,annotFont:'"LXGW WenKai"; } body{x:1'}};
   await plugin.onload();
   assert.equal(plugin.data.settings.annotFont,'"LXGW WenKai"  bodyx:1','; { } are removed when settings load');
   assert.equal(main.props.get('--aw-annot-font'),'"LXGW WenKai"  bodyx:1');
   plugin.data.settings.annotFont='';plugin.applyAppearanceEverywhere();assert.equal(main.props.has('--aw-annot-font'),false);
   plugin.data.settings.annotFont='KaiTi';plugin.applyAppearanceEverywhere();
-  plugin.onunload();assert.equal(main.props.size,0);await plugin.saveQueue;
+  plugin.annotations.toggleRecall();assert.ok(classes.has('aw-annot-recall'));
+  plugin.onunload();assert.equal(main.props.size,0);assert.deepEqual([...classes],['theme-light']);await plugin.saveQueue;
 });
 test('typing statistics are saved every 10 s, settings soon after a change, and what waits is saved on quit',async()=>{
   const {plugin,update,timers,delays,handlers}=fixture();await plugin.onload();await plugin.flush();

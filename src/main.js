@@ -14,7 +14,7 @@ const {WindowGlass}=require('./features/window-glass');
 const {Library}=require('./features/library');
 const {MarkdownPaste}=require('./features/markdown-paste');
 // aw-palette-* and aw-style-* are listed so classes left by earlier versions are cleaned up.
-const APPEARANCE=/^aw-(?:palette|style|caption|glass-fog)-|^aw-(?:figure-tools-off|glass)$/;
+const APPEARANCE=/^aw-(?:palette|style|caption|glass-fog)-|^aw-(?:figure-tools-off|glass|annot-recall)$/;
 // A created note counts as new when it is opened within this time.
 const NEW_NOTE_OPEN_MS=10000;
 // Settings are saved soon after a change; statistics gathered while typing wait longer, so
@@ -233,7 +233,7 @@ class WorkbenchPlugin extends Plugin {
   // Appearance settings are body classes read by both stylesheets.
   appearanceClasses(){
     const s=this.data.settings;
-    return ['aw-caption-'+s.captionSize].concat(s.figureTools?[]:['aw-figure-tools-off'],this.windowGlass?.classes()??[]);
+    return ['aw-caption-'+s.captionSize].concat(s.figureTools?[]:['aw-figure-tools-off'],this.windowGlass?.classes()??[],this.annotations?.recall?['aw-annot-recall']:[]);
   }
   applyAppearance(doc){
     if(!doc?.body)return;
