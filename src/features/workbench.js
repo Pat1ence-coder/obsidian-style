@@ -70,12 +70,20 @@ function overview(data,now=new Date()){
   return {score:number(s.score),characters:number(s.characters),active:number(s.active),
     streak:number(Core.currentStreak(data,now)),minutes:hours(s.minutes),focus:hours(s.focus),longest:s.longest};
 }
+// Spreadsheet apps evaluate cells starting with =, +, - or @ as formulas; a leading apostrophe
+// keeps text literal, while commas, quotes and line breaks are RFC 4180 quoted.
+function csvCell(value){
+  if(typeof value==='number'&&Number.isFinite(value))return String(value);
+  let text=String(value??'');
+  if(/^[=+\-@\t\r]/.test(text))text="'"+text;
+  return /[",\r\n]/.test(text)?`"${text.replace(/"/g,'""')}"`:text;
+}
 function csv(data){
   const rows=[['日期','贡献分','新增字数','编辑分钟','专注分钟','新建笔记','完成任务']];
   for(const date of Object.keys(data.days).sort()){
     const day=data.days[date];rows.push([date,Core.dayScore(day),...Core.METRICS.slice(1).map(m=>Core.metricValue(day,m.key))]);
   }
-  return '\ufeff'+rows.map(r=>r.join(',')).join('\n')+'\n';
+  return '\ufeff'+rows.map(r=>r.map(csvCell).join(',')).join('\n')+'\n';
 }
 function months(data,now=new Date()){
   const list=[];
@@ -442,4 +450,4 @@ class WorkbenchView extends ItemView{
     try{await this.app.workspace.getLeaf('tab').openFile(file);}catch{new Notice('无法打开这篇笔记。');}
   }
 }
-module.exports={WorkbenchView,VIEW,NAME,viewIcon,overview,modifiedLabel,csv,months};
+module.exports={WorkbenchView,VIEW,NAME,viewIcon,overview,modifiedLabel,csv,csvCell,months};

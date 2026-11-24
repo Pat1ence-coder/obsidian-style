@@ -60,6 +60,9 @@ test('calendar is Monday-first, includes today, crosses years and leap day',()=>
   assert.equal(new Set(days).size,days.length);
 });
 test('corrupt/newer data is rejected rather than silently overwritten',()=>{
+  assert.equal(C.loadState(null,new Date(2026,9,12,12)).version,2,'missing data.json (null) starts fresh');
+  assert.throws(()=>C.loadState(undefined),/格式/,'unparseable data.json (undefined) must never start fresh');
+  assert.throws(()=>C.loadState('corrupt'),/格式/);assert.throws(()=>C.loadState([]),/格式/);
   assert.throws(()=>C.loadState({version:3}));assert.throws(()=>C.loadState({version:2}));
   const d=setup();d.days[day]={characters:3,files:{'a.md':4}};assert.throws(()=>C.loadState(d));
 });
@@ -165,5 +168,24 @@ test('scroll ruler and decoration settings validate; a style saved by an older v
   // The window glass no longer takes a picture: it is on by default and a saved path is dropped.
   assert.equal(d.settings.glass,true);assert.equal(load({glass:false}).glass,false);assert.equal(load({glass:'no'}).glass,true);
   assert.equal(d.settings.pasteSource,true);assert.equal(load({pasteSource:false}).pasteSource,false);assert.equal(load({pasteSource:'x'}).pasteSource,true);
+  assert.equal(d.settings.rulerMemory,true);assert.equal(load({rulerMemory:false}).rulerMemory,false);assert.equal(load({rulerMemory:'x'}).rulerMemory,true);
   assert.equal(load({glassImage:'assets/wall.jpg'}).glassImage,undefined);assert.equal(load({glassFog:'strong'}).glassFog,'strong');
+});
+
+test('reading position memory loads safely, caps at 200 entries, clears near ends and follows renames',()=>{
+  const raw={...JSON.parse(JSON.stringify(setup())),reading:{
+    'a/note.md':{p:0.45678,line:12,text:'推导',hp:0.4,at:10},
+    'bad.md':{p:1.5,at:20},
+    'zero.md':{p:0,at:30}
+  }};
+  const d=C.loadState(raw,new Date(2026,9,12,12));
+  assert.deepEqual({...d.reading},{'a/note.md':{p:0.4568,line:12,text:'推导',hp:0.4,at:10}});
+  assert.equal(C.setReading(d.reading,'a/note.md',{p:0.457,line:12,text:'推导',at:15}),false,'tiny scroll delta ignored');
+  assert.equal(C.setReading(d.reading,'a/note.md',{p:0.99,at:20}),true,'reaching the end clears memory');
+  assert.equal(d.reading['a/note.md'],undefined);
+  for(let i=0;i<205;i++)C.setReading(d.reading,`n/${i}.md`,{p:0.5,at:i+1});
+  assert.equal(Object.keys(d.reading).length,200);
+  assert.equal(d.reading['n/0.md'],undefined);assert.ok(d.reading['n/204.md']);
+  C.renamePath(d,'n/204.md','moved/204.md');
+  assert.ok(d.reading['moved/204.md']);assert.equal(d.reading['n/204.md'],undefined);
 });

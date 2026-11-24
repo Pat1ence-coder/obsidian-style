@@ -20,6 +20,21 @@ const NEW_NOTE_OPEN_MS=10000;
 // Settings are saved soon after a change; statistics gathered while typing wait longer, so
 // data.json (and any sync of it) is not rewritten several times a second.
 const SAVE_MS=750,TYPING_SAVE_MS=10000;
+function backupStamp(d){
+  const p=n=>String(n).padStart(2,'0');
+  return `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+}
+// Copies an unreadable or invalid data.json aside before aborting, so user history is never lost.
+async function preserveUnreadableData(adapter,dataPath,now=new Date()){
+  if(!adapter||typeof adapter.exists!=='function'||typeof adapter.read!=='function'||typeof adapter.write!=='function')
+    return {state:'unavailable'};
+  try{
+    if(!(await adapter.exists(dataPath)))return {state:'missing'};
+    const backupPath=`${dataPath}.unreadable-${backupStamp(now)}`;
+    await adapter.write(backupPath,await adapter.read(dataPath));
+    return {state:'preserved',backupPath};
+  }catch(error){return {state:'failed',error};}
+}
 
 class WorkbenchSettings extends PluginSettingTab {
   constructor(app,plugin){super(app,plugin);this.plugin=plugin;}
@@ -57,9 +72,22 @@ class WorkbenchPlugin extends Plugin {
     this.saveQueue=Promise.resolve(); this.saving=false; this.saveRequested=false;
     this.documentCounts=new WeakMap(); this.recordDay=Core.dayKey(); this.session={last:null,span:0};
     // Created first: features added below may already ask for the appearance to be applied.
-    this.stopped=false; this.saveError=false; this.appearanceDocs=new Set();
-    try {this.data=Core.loadState(await this.loadData());}
-    catch(error){new Notice('工作台统计数据无法读取，已停止加载，原文件未改动。请先备份 data.json。',10000);throw error;}
+    this.stopped=false; this.readOnly=false; this.saveError=false; this.appearanceDocs=new Set();
+    const adapter=this.app?.vault?.adapter;
+    const dataPath=`${this.app?.vault?.configDir||'.obsidian'}/plugins/${this.manifest?.id||'algorithm-workbench'}/data.json`;
+    let raw=await this.loadData();
+    // An empty or literal-"null" file on disk is a truncated data.json, not a fresh install.
+    if(raw===null&&typeof adapter?.exists==='function'){
+      try{if(await adapter.exists(dataPath))raw=undefined;}catch{raw=undefined;}
+    }
+    try {this.data=Core.loadState(raw);}
+    catch(error){
+      this.stopped=true;this.readOnly=true;
+      const backup=await preserveUnreadableData(adapter,dataPath);
+      const detail=backup.state==='preserved'?`已自动备份为 ${backup.backupPath.split('/').pop()}，原文件未改动。`:'原文件未改动，请先备份 data.json。';
+      new Notice(`工作台统计数据无法读取，已停止加载；${detail}`,10000);
+      throw error;
+    }
     this.folderNotes=this.addChild(new FolderNotes(this));
     this.markdownPaste=this.addChild(new MarkdownPaste(this));
     this.figures=this.addChild(new Figures(this));
@@ -85,7 +113,13 @@ class WorkbenchPlugin extends Plugin {
     // Quitting closes the window without unloading plugins: save what is still waiting.
     this.registerEvent(this.app.workspace.on('quit',tasks=>{if(this.saveTimer||this.saving)tasks.add(()=>this.flush());}));
     for(const event of ['create','modify','delete']) this.registerEvent(this.app.vault.on(event,file=>{
-      if(event==='delete'&&file instanceof TFile){delete this.data.records[file.path];this.scheduleSave();}
+      if(event==='delete'&&file){
+        if(file instanceof TFile)delete this.data.records[file.path];
+        if(this.data.reading){
+          for(const p of Object.keys(this.data.reading))if(p===file.path||p.startsWith(file.path+'/'))delete this.data.reading[p];
+        }
+        this.scheduleSave();
+      }
       this.scheduleRefresh();
     }));
     this.registerEvent(this.app.vault.on('rename',(file,oldPath)=>{Core.renamePath(this.data,oldPath,file.path);this.changed();}));
@@ -150,7 +184,7 @@ class WorkbenchPlugin extends Plugin {
     if(Core.pruneRecords(this.data,date))this.scheduleSave();
   }
   scheduleSave(delay=SAVE_MS){
-    if(this.stopped)return;
+    if(this.stopped||this.readOnly||!this.data)return;
     if(this.saving){this.saveRequested=true;return;}
     // A sooner save replaces a later one already waiting.
     const due=Date.now()+delay;
@@ -159,6 +193,7 @@ class WorkbenchPlugin extends Plugin {
     this.saveTimer=setTimeout(()=>{this.saveTimer=null;void this.flush();},delay);
   }
   flush(){
+    if(this.readOnly||!this.data)return this.saveQueue;
     this.saveRequested=true;
     if(this.saving)return this.saveQueue;
     clearTimeout(this.saveTimer); this.saveTimer=null; this.saving=true;
@@ -221,6 +256,10 @@ class WorkbenchPlugin extends Plugin {
     this.data.settings.captionSize=id;
     this.applyAppearanceEverywhere();
     this.changed();
+  }
+  saveReading(path,item){
+    if(this.stopped||this.readOnly||!this.data?.reading)return;
+    if(Core.setReading(this.data.reading,path,item))this.scheduleSave(TYPING_SAVE_MS);
   }
   changed(){this.scheduleSave();this.scheduleRefresh();}
   onunload(){

@@ -332,3 +332,65 @@ test('the ruler schedules its frames in its own window, so a popout keeps updati
   assert.deepEqual(calls,['frame'],'one frame at a time, from the ruler\'s window');
   f.ruler.detach(f.view);assert.deepEqual(calls,['frame',7],'cancelled in the same window');
 });
+
+test('ruler cleans Markdown, links, comments and annotations from headings while keeping inline code',()=>{
+  const {cleanHeading}=loadModule('scroll-ruler.js',{obsidian:{Component:class{},MarkdownView:class{}}});
+  assert.equal(cleanHeading('1. 函数 `calc_loss(x_i)` 与 **==饱和区=={防梯度消失|右上}**'),'1. 函数 calc_loss(x_i) 与 饱和区');
+  assert.equal(cleanHeading('参见 [[研究/Attention#前向|Attention 推导]] 与 [论文](https://ex.com/a(1)) %%TODO%%'),'参见 Attention 推导 与 论文');
+  assert.equal(cleanHeading('***粗斜*** ~~旧版~~ __强调__ _变量_ ==高亮=={ann note="原版语法"}'),'粗斜 旧版 强调 变量 高亮');
+  assert.equal(cleanHeading('%%只有注释%%'),'');
+  const f=rulerFixture({headings:[
+    {heading:'1. **加粗** 与 `a_b`',level:1,position:{start:{line:0}}},
+    {heading:'%%隐藏%%',level:2,position:{start:{line:20}}},
+    {heading:'2. ==温度系数=={可学习|右下}',level:2,position:{start:{line:50}}},
+  ]});
+  f.ruler.update(f.view);
+  assert.deepEqual(f.marks().map(m=>m.text),['1. 加粗 与 a_b','2. 温度系数']);
+});
+
+test('ruler remembers measured Reading view sections across virtualization, exposes dense headings in a panel, cleans up cancelled drags, and anchors reading memory',()=>{
+  const {waveOffset,resolveResume,makeMemory}=loadModule('scroll-ruler.js',{obsidian:{Component:class{},MarkdownView:class{}}});
+  assert.ok(waveOffset(0)>waveOffset(20)&&waveOffset(20)>0);assert.equal(waveOffset(200),0);
+  // Semantic reading memory shifts with its heading when lines are added above it.
+  const hs=[{text:'Intro',level:1,line:0},{text:'Softmax',level:2,line:40}],fs1=[0.05,0.40],fs2=[0.05,0.52];
+  const saved=makeMemory(0.45,hs,fs1,1,1000);
+  assert.deepEqual({...saved},{p:0.45,line:40,text:'Softmax',hp:0.4,at:1000});
+  assert.equal(makeMemory(0.01,hs,fs1,0),null);assert.equal(makeMemory(0.99,hs,fs1,1),null);
+  assert.ok(Math.abs(resolveResume(saved,hs,fs2)-0.57)<1e-6,'follows moved heading');
+  // Dense outline: XOR (line 40) and Close (line 41) clash on the margin, yet all 4 appear in the hover panel.
+  const f=rulerFixture();
+  let savedMem=null;
+  f.ruler.plugin.data.reading={'note.md':{p:0.25,line:0,text:'Intro',hp:0,at:1}};
+  f.ruler.plugin.saveReading=(p,m)=>{savedMem=[p,m];};
+  f.ruler.update(f.view);
+  assert.equal(f.entry.el['is-dense'],true);
+  assert.deepEqual(f.entry.panel.children.map(i=>i.textContent),['Intro','XOR','Close','End']);
+  assert.equal(f.entry.resume.hidden,false);assert.equal(f.entry.resume.style.top,'25.00%');
+  assert.equal(savedMem[0],'note.md');assert.equal(savedMem[1].text,'Close');
+  // Clicking the resume diamond jumps back to 25% of the 1500px scroll range (375px).
+  const resumeClick=f.listeners.find(l=>l.node===f.entry.resume&&l.type==='pointerdown');
+  resumeClick.fn({button:0,preventDefault(){},stopPropagation(){}});
+  assert.equal(f.scroller.scrollTop,375);
+  // Dragging cleans up on pointercancel so is-dragging never sticks.
+  const docEvents=new Map();
+  f.entry.el.ownerDocument.addEventListener=(t,fn)=>docEvents.set(t,fn);
+  f.entry.el.ownerDocument.removeEventListener=t=>docEvents.delete(t);
+  let draggedCls=false;
+  f.entry.el.classList.add=c=>{if(c==='is-dragging')draggedCls=true;};
+  f.entry.el.classList.remove=c=>{if(c==='is-dragging')draggedCls=false;};
+  f.ruler.drag(f.view,{button:0,clientY:266,preventDefault(){}});
+  assert.equal(draggedCls,true);assert.ok(docEvents.has('pointercancel'));
+  docEvents.get('pointercancel')();
+  assert.equal(draggedCls,false);assert.equal(docEvents.size,0);
+  // Virtualized Reading view: once section 3 is measured at 990px, scrolling it off-screen keeps 990px.
+  const at=(a,b)=>({start:{line:a,col:0,offset:0},end:{line:b,col:0,offset:0}});
+  const header={...at(0,0),height:20},footer={...at(0,0),height:300};
+  const sections=[header,{...at(0,0),height:50},{...at(1,39),height:900},{...at(40,40),height:40},{...at(41,41),height:40},{...at(42,100),height:900},footer];
+  const r=rulerFixture({mode:'preview',sections});
+  r.view.previewMode.renderer.header=header;r.view.previewMode.renderer.footer=footer;
+  const rhs=r.ruler.headings(r.view);
+  sections[3].el={isConnected:true,offsetParent:{},getBoundingClientRect:()=>({top:50-1000+990})};
+  assert.equal(r.ruler.fractions(r.view,r.scroller,rhs)[1],990/2000);
+  sections[3].el=null; // Virtualized out of DOM after scrolling further down.
+  assert.equal(r.ruler.fractions(r.view,r.scroller,rhs)[1],990/2000,'remembered anchor prevents jump-back');
+});

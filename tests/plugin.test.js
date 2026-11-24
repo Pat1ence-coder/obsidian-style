@@ -84,9 +84,24 @@ test('writes are serialized and a failed write can recover',async()=>{
   assert.equal(max,1);assert.equal(plugin.saveError,false);assert.equal(plugin.saved.length,1);
   plugin.onunload();await plugin.saveQueue;
 });
-test('invalid existing data aborts loading without replacing it',async()=>{
+test('invalid existing data aborts loading without replacing it, and backs up unreadable files on disk',async()=>{
   const {plugin,notices}=fixture();plugin.initialData={version:3};
   await assert.rejects(()=>plugin.onload());assert.equal(plugin.saved.length,0);assert.equal(notices.length,1);
+  await plugin.flush();assert.equal(plugin.saved.length,0,'read-only lock prevents later writes');
+  // Unparseable JSON on disk: Obsidian's loadData() returns undefined; adapter backs it up aside.
+  const u=fixture(),disk=new Map([['.obsidian/plugins/algorithm-workbench/data.json','<<<<<<< HEAD\n{"days":']] );
+  u.plugin.loadData=async()=>undefined;
+  u.plugin.app.vault.adapter={exists:async p=>disk.has(p),read:async p=>disk.get(p),write:async(p,v)=>{disk.set(p,v);}};
+  await assert.rejects(()=>u.plugin.onload());
+  assert.equal(u.plugin.saved.length,0,'broken data.json is never overwritten');
+  const backups=[...disk.keys()].filter(k=>k.includes('.unreadable-'));
+  assert.equal(backups.length,1);assert.equal(disk.get(backups[0]),'<<<<<<< HEAD\n{"days":');
+  assert.match(u.notices[0],/unreadable-/);
+  // A 0-byte truncated file where loadData() returned null is also caught when the file exists on disk.
+  const z=fixture(),zdisk=new Map([['.obsidian/plugins/algorithm-workbench/data.json','']]);
+  z.plugin.app.vault.adapter={exists:async p=>zdisk.has(p),read:async p=>zdisk.get(p),write:async(p,v)=>{zdisk.set(p,v);}};
+  await assert.rejects(()=>z.plugin.onload());assert.equal(z.plugin.saved.length,0);
+  assert.equal([...zdisk.keys()].filter(k=>k.includes('.unreadable-')).length,1);
 });
 
 test('10,000 save requests during a stalled write coalesce into one latest snapshot',async()=>{

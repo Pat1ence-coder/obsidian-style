@@ -1,6 +1,6 @@
 'use strict';
 const Library = require('./features/library-data');
-const DEFAULT_SETTINGS = { nameScreenshots: true, folderNotes: true, openOnStartup: true, tracking: true, recentLimit: 8, range: 90, metric: 'score', captionSize: 'normal', figureTools: true, scrollRuler: true, rulerHeadings: true, pasteSource: true, decorImage: '', glass: true, glassFog: 'normal', annotFont: '', excludedFolders: ['Templates', 'templates'] };
+const DEFAULT_SETTINGS = { nameScreenshots: true, folderNotes: true, openOnStartup: true, tracking: true, recentLimit: 8, range: 90, metric: 'score', captionSize: 'normal', figureTools: true, scrollRuler: true, rulerHeadings: true, rulerMemory: true, pasteSource: true, decorImage: '', glass: true, glassFog: 'normal', annotFont: '', excludedFolders: ['Templates', 'templates'] };
 const RANGES = [30, 90, 180, 365];
 // Figure and table caption sizes; body class aw-caption-<id>, defined in figures.css.
 const CAPTION_SIZES = [{id:'small', label:'小'}, {id:'normal', label:'标准'}, {id:'large', label:'大'}];
@@ -53,19 +53,56 @@ function pruneRecords(data, date) {
   }
   return changed;
 }
+const MAX_READING = 200;
+function loadReading(raw) {
+  const out = dict();
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
+  const entries = [];
+  for (const [path, item] of Object.entries(raw)) {
+    if (!path || !item || typeof item !== 'object') continue;
+    const p = Number(item.p), at = Number.isFinite(item.at) ? Math.trunc(item.at) : 0;
+    if (!(p > 0 && p < 1)) continue;
+    const rec = { p: Math.round(p * 10000) / 10000, at };
+    if (Number.isInteger(item.line) && item.line >= 0) rec.line = item.line;
+    if (typeof item.text === 'string' && item.text.trim()) rec.text = item.text.trim().slice(0, 120);
+    if (Number.isFinite(item.hp) && item.hp >= 0 && item.hp <= 1) rec.hp = Math.round(item.hp * 10000) / 10000;
+    entries.push([path, rec]);
+  }
+  entries.sort((a, b) => b[1].at - a[1].at);
+  for (const [path, rec] of entries.slice(0, MAX_READING)) out[path] = rec;
+  return out;
+}
+function setReading(reading, path, item) {
+  if (!reading || !path) return false;
+  if (!item || !(item.p > 0.03 && item.p < 0.98)) {
+    if (!own(reading, path)) return false;
+    delete reading[path]; return true;
+  }
+  const prev = own(reading, path) ? reading[path] : null;
+  if (prev && Math.abs(prev.p - item.p) < 0.002 && prev.line === item.line && prev.text === item.text) return false;
+  reading[path] = item;
+  const keys = Object.keys(reading);
+  if (keys.length > MAX_READING) {
+    keys.sort((a, b) => (reading[a]?.at || 0) - (reading[b]?.at || 0));
+    for (const k of keys.slice(0, keys.length - MAX_READING)) delete reading[k];
+  }
+  return true;
+}
 function emptyData(now = new Date()) {
-  return { version: 2, started: dayKey(now), activityStarted: dayKey(now), settings: {...DEFAULT_SETTINGS}, days: dict(), records: dict(), library: Library.emptyLibrary() };
+  return { version: 2, started: dayKey(now), activityStarted: dayKey(now), settings: {...DEFAULT_SETTINGS}, days: dict(), records: dict(), library: Library.emptyLibrary(), reading: dict() };
 }
 function validCount(n) { return Number.isSafeInteger(n) && n >= 0; }
 function loadState(raw, now = new Date()) {
-  if (raw == null) return emptyData(now);
+  if (raw === null) return emptyData(now);
+  // Obsidian returns null when data.json is absent, and undefined when an existing file fails JSON.parse.
+  if (raw === undefined || typeof raw !== 'object' || Array.isArray(raw)) throw Error('无法识别统计文件格式');
   if (![1,2].includes(raw.version) || !raw.days || !raw.records || !DATE.test(raw.started)) throw Error('无法识别统计文件格式');
   // Version 1 only tracked characters; the other activity counters start at migration.
   if (raw.version === 2 && !DATE.test(raw.activityStarted)) throw Error('无法识别统计文件格式');
   const d = emptyData(now); d.started = raw.started;
   if (raw.version === 2) d.activityStarted = raw.activityStarted;
   const s = raw.settings || {};
-  for (const name of ['openOnStartup', 'tracking', 'folderNotes', 'nameScreenshots', 'figureTools', 'scrollRuler', 'rulerHeadings', 'glass', 'pasteSource']) if (typeof s[name] === 'boolean') d.settings[name] = s[name];
+  for (const name of ['openOnStartup', 'tracking', 'folderNotes', 'nameScreenshots', 'figureTools', 'scrollRuler', 'rulerHeadings', 'rulerMemory', 'glass', 'pasteSource']) if (typeof s[name] === 'boolean') d.settings[name] = s[name];
   if (RANGES.includes(s.range)) d.settings.range = s.range;
   if (METRICS.some(m => m.key === s.metric)) d.settings.metric = s.metric;
   if (CAPTION_SIZES.some(x => x.id === s.captionSize)) d.settings.captionSize = s.captionSize;
@@ -94,8 +131,9 @@ function loadState(raw, now = new Date()) {
     if ((r.taskNet !== undefined && !Number.isSafeInteger(r.taskNet)) || (r.taskPeak !== undefined && !validCount(r.taskPeak))) throw Error('任务基线损坏');
     if (r.day === dayKey(now)) d.records[path] = {...r};
   }
-  // Ratings and tags of the image library: optional, and anything malformed is dropped.
+  // Ratings and tags of the image library, plus per-note reading positions: optional, malformed dropped.
   d.library = Library.loadLibrary(raw.library);
+  d.reading = loadReading(raw.reading);
   return d;
 }
 function isExcluded(path, folders) {
@@ -219,6 +257,10 @@ function renamePath(data, oldPath, newPath) {
     day.files[next] = (own(day.files,next) ? day.files[next] : 0)+n; delete day.files[path];
   }
   if (data.library) Library.renameInLibrary(data.library, oldPath, newPath);
+  if (data.reading) for (const [path, rec] of Object.entries(data.reading)) {
+    const next = renamed(path); if (!next || next === path) continue;
+    data.reading[next] = rec; delete data.reading[path];
+  }
 }
 function recentFiles(files, settings) {
   return files.filter(f=>!isExcluded(f.path,settings.excludedFolders)).sort((a,b)=>b.stat.mtime-a.stat.mtime || a.path.localeCompare(b.path)).slice(0,settings.recentLimit);
@@ -228,5 +270,5 @@ function calendarDays(now, weeks) {
   const start = shiftDay(monday,-7*(weeks-1));
   return Array.from({length:weeks*7},(_,i)=>dayKey(shiftDay(start,i)));
 }
-module.exports = {transactionCounts,pruneRecords,DEFAULT_SETTINGS,RANGES,METRICS,CAPTION_SIZES,GLASS_FOGS,dayKey,shiftDay,countCharacters,emptyData,loadState,isExcluded,recordChange,
+module.exports = {transactionCounts,pruneRecords,DEFAULT_SETTINGS,RANGES,METRICS,CAPTION_SIZES,GLASS_FOGS,dayKey,shiftDay,countCharacters,emptyData,loadState,loadReading,setReading,isExcluded,recordChange,
   recordActivity,taskDelta,recordTasks,recordNote,dayScore,metricValue,lastDays,summary,currentStreak,activeValues,intensity,percentile,renamePath,recentFiles,calendarDays};

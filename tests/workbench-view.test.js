@@ -67,6 +67,12 @@ test('CSV export writes every recorded day into a new vault file without overwri
   assert.equal(lines[0],'日期,贡献分,新增字数,编辑分钟,专注分钟,新建笔记,完成任务');
   assert.equal(lines[1],`${f.Core.dayKey()},12.9,1286,0,0,0,0`);
   assert.match(f.created[0][0],/^写作工作台-\d{8}\.csv$/);assert.match(f.created[1][0],/^写作工作台-\d{8}-2\.csv$/);
+  const {csvCell}=f;
+  assert.equal(csvCell(12.9),'12.9');assert.equal(csvCell(-5),'-5');
+  assert.equal(csvCell('=CMD()'),"'=CMD()");assert.equal(csvCell('+1+2'),"'+1+2");
+  assert.equal(csvCell('-1+2'),"'-1+2");assert.equal(csvCell('@SUM(A1)'),"'@SUM(A1)");
+  assert.equal(csvCell('含,逗号与"引号"'),'"含,逗号与""引号"""');
+  assert.equal(csvCell('=带逗号,公式'),'"\'=带逗号,公式"');
 });
 test('empty vault, exclusion settings and malicious-looking filenames render as text',()=>{
   const f=fixture();f.files.splice(0);f.view.render();assert.equal(f.content.querySelectorAll('.aw-file-row').length,0);assert.ok(f.content.querySelector('.aw-new-note'));
