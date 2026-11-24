@@ -25,21 +25,21 @@ body {
   --bold-color: var(--ds-heading);
   --bold-weight: 600;
   --italic-color: inherit;
-  --link-color: var(--ds-accent);
-  --link-color-hover: var(--ds-accent-hover);
-  --link-external-color: var(--ds-accent);
-  --link-external-color-hover: var(--ds-accent-hover);
-  --link-decoration: underline;
+  --link-color: var(--ds-warm);
+  --link-color-hover: color-mix(in srgb, var(--ds-warm) 82%, var(--ds-heading));
+  --link-external-color: var(--ds-warm);
+  --link-external-color-hover: color-mix(in srgb, var(--ds-warm) 82%, var(--ds-heading));
+  --link-decoration: none;
   --link-decoration-hover: underline;
   --link-decoration-thickness: 1px;
-  --link-unresolved-color: rgb(var(--ds-tone-3));
-  --link-unresolved-opacity: .75;
-  --list-marker-color: rgba(var(--ds-tone-accent),.55);
-  --list-marker-color-hover: rgb(var(--ds-tone-accent));
-  --list-marker-color-collapsed: rgb(var(--ds-tone-accent));
-  --text-highlight-bg: rgba(var(--ds-tone-4),.22);
-  --text-highlight-bg-active: rgba(var(--ds-tone-4),.4);
-  --hr-color: var(--ds-rule);
+  --link-unresolved-color: var(--ds-muted);
+  --link-unresolved-opacity: 1;
+  --list-marker-color: rgba(var(--ds-tone-amber),.72);
+  --list-marker-color-hover: var(--ds-warm);
+  --list-marker-color-collapsed: var(--ds-warm);
+  --text-highlight-bg: rgba(var(--ds-tone-amber),.24);
+  --text-highlight-bg-active: rgba(var(--ds-tone-amber),.38);
+  --hr-color: var(--ds-border);
 }
 .markdown-preview-view,
 .markdown-source-view.mod-cm6 {font-family: var(--ds-font-body);font-size: var(--ds-body-size);line-height: var(--ds-body-leading);}
@@ -53,7 +53,7 @@ body {
 .markdown-rendered li {padding-inline-start: .15em;}
 .markdown-rendered li > :is(ul,ol) {margin-block: .25em 0;}
 .markdown-rendered strong {font-family: inherit;font-weight: var(--bold-weight);color: var(--bold-color);}
-:is(.markdown-rendered,.markdown-source-view) :is(a.internal-link,a.external-link,.cm-hmd-internal-link .cm-underline,.cm-link .cm-underline) {text-decoration-color: rgba(var(--ds-tone-accent),.32);text-underline-offset: 3px;}
+:is(.markdown-rendered,.markdown-source-view) :is(a.internal-link,a.external-link,.cm-hmd-internal-link .cm-underline,.cm-link .cm-underline) {text-decoration-color: rgba(var(--ds-tone-amber),.36);text-underline-offset: 3px;}
 :is(.markdown-rendered,.markdown-source-view) :is(a.internal-link,a.external-link):hover {text-decoration-color: currentColor;}
 .markdown-rendered mark {border-radius: 3px;padding: 0 .12em;color: inherit;}
 .markdown-rendered .footnotes {font-size: var(--ds-caption-size);color: var(--ds-muted);}

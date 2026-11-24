@@ -23,9 +23,7 @@
   justify-content: center;
   border: 2px dashed var(--ds-accent, var(--interactive-accent));
   border-radius: 14px;
-  background: color-mix(in srgb, var(--ds-paper, var(--background-primary)) 84%, transparent);
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
+  background: color-mix(in srgb, var(--ds-paper, var(--background-primary)) 94%, transparent);
   font-size: 14px;
   font-weight: 600;
   color: var(--ds-accent, var(--interactive-accent));
@@ -172,9 +170,7 @@
   border-radius: 6px;
   font: 600 10px/1.4 var(--ds-font-mono, var(--font-monospace));
   color: #fff;
-  background: rgba(16,24,40,.52);
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
+  background: rgba(16,24,40,.68);
 }
 .aw-lib-badges > .aw-lib-kind-gif {background: rgba(var(--ds-tone-4,236,136,52),.92);}
 .aw-lib-badges > .aw-lib-kind-svg {background: rgba(var(--ds-tone-3,139,108,240),.9);}
@@ -186,9 +182,7 @@
   gap: 3px;
   padding: 3px 5px;
   border-radius: 999px;
-  background: rgba(16,24,40,.42);
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
+  background: rgba(16,24,40,.58);
   opacity: 0;
   pointer-events: none;
   transition: opacity 140ms ease;
@@ -297,9 +291,8 @@ body.theme-dark .aw-lib .aw-lib-stars:hover .aw-lib-star {color: rgb(var(--ds-to
   padding: 0;
   border-radius: 50%;
   border: 1px solid var(--ds-border, var(--background-modifier-border));
-  background: color-mix(in srgb, var(--ds-paper, var(--background-primary)) 88%, transparent);
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
+  background: var(--ds-paper, var(--background-primary));
+  box-shadow: var(--ds-elev-1, 0 1px 3px rgba(0,0,0,.12));
   color: var(--ds-heading, var(--text-normal));
   transform: translateY(-50%);
   cursor: pointer;

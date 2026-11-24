@@ -29,14 +29,16 @@ function fixture(options={}) {
   const workspace={containerEl:{ownerDocument:main},on(name,fn){(handlers['workspace:'+name]??=[]).push(fn);return {};},iterateAllLeaves(fn){leaves.forEach(fn);},
     onLayoutReady(fn){if(options.layoutReady){fn();return;}(this.readyFns??=[]).push(fn);this.ready=()=>this.readyFns.forEach(f=>f());},getLeavesOfType(){return [];},detachLeavesOfType(){this.detached=true;}};
   const mod={exports:{}};
+  let vaultTheme=options.vaultTheme??'moonstone';
   const context={module:mod,require:name=>{
-    if(name==='obsidian')return {Plugin,Component,TFile,TFolder:class{},Platform:{isMacOS:true},Modal:class{},FuzzySuggestModal:class{},ItemView:class{},PluginSettingTab:class{},Setting:class{},Notice:class{constructor(text){notices.push(text);}},setIcon(){},MarkdownView:class{},editorInfoField:'info'};
+    if(name==='obsidian')return {Plugin,Component,TFile,TFolder:class{},Platform:{isDesktopApp:true,isMacOS:options.isMacOS!==false},Modal:class{},FuzzySuggestModal:class{},ItemView:class{},PluginSettingTab:class{},Setting:class{},Notice:class{constructor(text){notices.push(text);}},setIcon(){},MarkdownView:class{},editorInfoField:'info'};
+    if(name==='@electron/remote'){if(options.nativeTheme)return {nativeTheme:options.nativeTheme};throw Error('no remote');}
     if(name==='@codemirror/language')return {syntaxTree:()=>({resolveInner:()=>({type:{name:'Document'}})})};
     if(name==='@codemirror/view')return {EditorView:{updateListener:{of:fn=>fn}},ViewPlugin:{fromClass:(cls,spec)=>({cls,spec})},Decoration:{none:[],set:list=>list,mark:spec=>({spec,range:(from,to)=>({from,to,spec})}),replace:spec=>({spec,range:(from,to)=>({from,to,spec})})},WidgetType:class{}};
     throw Error(name);
   },window:{setInterval:()=>1},setTimeout:(fn,ms)=>{timers.set(++timerId,fn);delays.set(timerId,ms);return timerId;},clearTimeout:id=>timers.delete(id),console,Intl,Date};
   vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../dist/algorithm-workbench/main.js'),'utf8'),context);
-  const plugin=new mod.exports();plugin.saved=[];plugin.app={workspace,metadataCache:{on:(name,fn)=>{(handlers['metadata:'+name]??=[]).push(fn);return {};},getFileCache:()=>null},vault:{getAbstractFileByPath:()=>null,on:(name,fn)=>{(handlers[name]??=[]).push(fn);return {};}}};
+  const plugin=new mod.exports();plugin.saved=[];plugin.app={workspace,metadataCache:{on:(name,fn)=>{(handlers['metadata:'+name]??=[]).push(fn);return {};},getFileCache:()=>null},vault:{getAbstractFileByPath:()=>null,getConfig:key=>key==='theme'?vaultTheme:undefined,setTheme:v=>{vaultTheme=v;(handlers['config-changed']||[]).forEach(fn=>fn('theme'));},on:(name,fn)=>{(handlers[name]??=[]).push(fn);return {};}}};
   const docs=new Map();
   const doc=text=>{
     if(!docs.has(text))docs.set(text,{length:text.length,scans:0,toString(){this.scans++;return text;},sliceString:(a,b)=>text.slice(a,b),
@@ -272,6 +274,22 @@ test('window glass: on by default without any picture, in every window, switchab
   plugin.data.settings.glass=true;plugin.applyAppearanceEverywhere();assert.ok(popout.classes.has('aw-glass'));
   plugin.onunload();
   for(const doc of [main,popout]){assert.deepEqual([...doc.classes],['theme-light']);assert.equal(doc.props.size,0);}
+  await plugin.saveQueue;
+});
+
+test('window glass syncs Electron nativeTheme on macOS and restores it on unload',async()=>{
+  const nativeTheme={themeSource:'system'};
+  const {plugin}=fixture({nativeTheme,vaultTheme:'obsidian'});
+  await plugin.onload();
+  assert.equal(nativeTheme.themeSource,'dark','obsidian theme maps to dark vibrancy');
+  plugin.app.vault.setTheme('moonstone');
+  assert.equal(nativeTheme.themeSource,'light','moonstone theme maps to light vibrancy');
+  plugin.data.settings.glass=false;plugin.windowGlass.syncNativeTheme();
+  assert.equal(nativeTheme.themeSource,'system','disabling glass falls back to system');
+  plugin.data.settings.glass=true;plugin.windowGlass.syncNativeTheme();
+  assert.equal(nativeTheme.themeSource,'light');
+  plugin.onunload();
+  assert.equal(nativeTheme.themeSource,'system','unload restores original themeSource');
   await plugin.saveQueue;
 });
 

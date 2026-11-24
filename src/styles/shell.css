@@ -1,4 +1,5 @@
-/* App surfaces. Document metrics are owned by typography/content, not body. */
+/* App surfaces: one flat, borderless window sheet. Sidebars, tab strip and note sit on the
+   same continuous plane with no floating card frames or permanent vertical dividers. */
 body:is(.theme-light,.theme-dark) {
   --font-interface-theme: var(--ds-font-ui);
   --font-interface: var(--ds-font-ui);
@@ -6,7 +7,7 @@ body:is(.theme-light,.theme-dark) {
   --font-text: var(--ds-font-body);
   --font-monospace-theme: var(--ds-font-mono);
   --font-monospace: var(--ds-font-mono);
-  --background-primary: var(--ds-paper);
+  --background-primary: var(--ds-bg);
   --background-primary-alt: var(--ds-surface);
   --background-secondary: var(--ds-bg);
   --background-secondary-alt: var(--ds-surface);
@@ -17,8 +18,8 @@ body:is(.theme-light,.theme-dark) {
   --text-normal: var(--ds-text);
   --text-muted: var(--ds-muted);
   --text-faint: var(--ds-faint);
-  --text-accent: var(--ds-accent);
-  --text-accent-hover: var(--ds-accent-hover);
+  --text-accent: var(--ds-warm);
+  --text-accent-hover: color-mix(in srgb, var(--ds-warm) 82%, var(--ds-heading));
   --text-selection: var(--ds-selection);
   --interactive-normal: var(--ds-paper);
   --interactive-hover: var(--ds-surface-hover);
@@ -30,19 +31,19 @@ body:is(.theme-light,.theme-dark) {
   --radius-l: var(--ds-radius-card);
   --input-radius: var(--ds-radius-control);
   --tab-radius-active: var(--ds-radius-control);
-  --tag-color: var(--ds-accent);
-  --tag-background: var(--ds-accent-soft);
+  --tag-color: var(--ds-warm);
+  --tag-background: rgba(var(--ds-tone-amber),.1);
   --scrollbar-thumb-bg: color-mix(in srgb, var(--ds-muted) 24%, transparent);
   --scrollbar-active-thumb-bg: color-mix(in srgb, var(--ds-muted) 42%, transparent);
 }
-/* Chrome: opaque frosted panels on a near-white floor; the open note is a frosted card. */
+/* Chrome: quiet flat bars, borderless status pill, resize handles invisible until hovered. */
 body:is(.theme-light,.theme-dark) {
   --titlebar-background: transparent;
   --titlebar-background-focused: transparent;
   --ribbon-background: transparent;
   --ribbon-background-collapsed: transparent;
   --tab-container-background: transparent;
-  --tab-background-active: var(--ds-glass-strong);
+  --tab-background-active: var(--ds-surface-hover);
   --tab-text-color: var(--ds-muted);
   --tab-text-color-focused: var(--ds-muted);
   --tab-text-color-focused-active: var(--ds-heading);
@@ -53,104 +54,92 @@ body:is(.theme-light,.theme-dark) {
   --tab-radius: var(--ds-radius-control);
   --status-bar-background: transparent;
   --status-bar-border-color: transparent;
+  --status-bar-border-width: 0px;
   --status-bar-text-color: var(--ds-muted);
-  --divider-color: var(--ds-glass-line);
-  --nav-item-color: var(--ds-text);
+  --divider-color: transparent;
+  --divider-color-hover: var(--ds-rule);
+  --nav-item-color: var(--ds-muted);
   --nav-item-color-hover: var(--ds-heading);
   --icon-color: var(--ds-muted);
   --icon-color-hover: var(--ds-heading);
-  --icon-color-active: var(--ds-accent);
+  --icon-color-active: var(--ds-heading);
   --modal-radius: var(--ds-radius-card);
-  --modal-border-color: var(--ds-glass-line);
-  --checkbox-radius: 5px;
-  --checkbox-color: var(--ds-accent);
-  --checkbox-color-hover: var(--ds-accent-hover);
+  --modal-border-color: var(--ds-glass-edge);
+  --checkbox-radius: 4px;
+  --checkbox-color: var(--ds-warm);
+  --checkbox-color-hover: color-mix(in srgb, var(--ds-warm) 82%, var(--ds-heading));
   --checkbox-border-color: var(--ds-rule);
   --checklist-done-color: var(--ds-faint);
   --tag-radius: 6px;
-  --tag-padding-x: .5em;
-  --tag-padding-y: .15em;
+  --tag-padding-x: .45em;
+  --tag-padding-y: .12em;
   --tag-weight: 500;
-  --tag-background: rgba(var(--ds-tone-accent),.1);
-  --tag-background-hover: rgba(var(--ds-tone-accent),.16);
-  --tag-border-color: rgba(var(--ds-tone-accent),.14);
-  --tag-border-width: 1px;
+  --tag-background: rgba(var(--ds-tone-amber),.1);
+  --tag-background-hover: rgba(var(--ds-tone-amber),.16);
+  --tag-border-color: transparent;
+  --tag-border-width: 0px;
 }
-/* Window floor: plain near-white. Panels stand on it through hairlines and soft shadows. */
-.workspace {background: var(--ds-bg);}
-/* The page itself is never see-through. Title bars are transparent so the main window's
-   floor shows through them; windows without a workspace (the separate settings window) would
-   otherwise show Electron's black backdrop behind the title. Opaque even with the window glass
-   on, which paints its own layer inside .app-container. */
+/* Opaque floor for non-translucent and detached modal windows so titlebars never flash black. */
 body:is(.theme-light,.theme-dark) {background-color: var(--ds-bg);}
+.workspace {background: var(--ds-bg);}
 .workspace .workspace-ribbon.mod-left,
-.workspace .workspace-ribbon.mod-left:not(.is-collapsed) {border-right-color: transparent;box-shadow: none;}
-/* Sidebars: the icon row stays on the window floor next to the macOS traffic lights, like the
-   main tab bar; below it the content is an opaque frosted panel whose top lines up with the
-   note card. */
-.workspace .workspace-split.mod-sidedock,
-.workspace .workspace-split.mod-sidedock > .workspace-tabs {background: transparent;border: 0;box-shadow: none;}
-.workspace .workspace-split.mod-sidedock .workspace-tabs > .workspace-tab-container {
-  margin: 0 0 8px;
-  border: 1px solid var(--ds-glass-edge);
-  border-radius: 16px;
-  background: var(--ds-frost);
-  box-shadow: var(--ds-glass-highlight), var(--ds-elev-3);
-  overflow: hidden;
-}
-/* 8px on both sides: from the window edge, and from the native divider (matching the 8px between the divider and the note card). */
-.workspace .workspace-split.mod-left-split .workspace-tabs > .workspace-tab-container {margin-left: 8px;margin-right: 8px;}
-.workspace .workspace-split.mod-right-split .workspace-tabs > .workspace-tab-container {margin-right: 8px;margin-left: 8px;}
-.workspace .workspace-split.mod-sidedock.is-collapsed .workspace-tabs > .workspace-tab-container {margin: 0;border: 0;}
-.workspace-split.mod-sidedock :is(.workspace-leaf,.workspace-leaf-content,.workspace-tab-header-container,.view-content,.workspace-sidedock-vault-profile) {background-color: transparent;}
+.workspace .workspace-ribbon.mod-left:not(.is-collapsed) {border: 0;border-right-color: transparent;box-shadow: none;}
 .workspace-sidedock-vault-profile {border-top: 0;}
+/* Split resize handles act as drag affordances only; at rest there is no vertical line. */
+.workspace-leaf-resize-handle {border-color: transparent;}
+.workspace-leaf-resize-handle:is(:hover,:active) {border-color: var(--ds-rule);}
+/* Sidebars and root note share the window sheet without card frames, gutters or shadows. */
+.workspace .workspace-split.mod-sidedock,
+.workspace .workspace-split.mod-sidedock > .workspace-tabs,
+.workspace .workspace-split.mod-sidedock .workspace-tabs > .workspace-tab-container {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.workspace-split.mod-sidedock :is(.workspace-leaf,.workspace-leaf-content,.workspace-tab-header-container,.view-content,.workspace-sidedock-vault-profile) {background-color: transparent;}
 .workspace-split.mod-root,
-.workspace-split.mod-root :is(.workspace-tabs,.workspace-leaf,.workspace-tab-header-container) {background-color: transparent;}
-.workspace-split.mod-root .workspace-tab-container {padding: 0 8px 8px;}
-/* The note card: opaque frost. Inside it the page colour is transparent, so the editor and the
-   reading view show the card's frost instead of painting flat white over it. */
+.workspace-split.mod-root :is(.workspace-tabs,.workspace-tab-container,.workspace-leaf,.workspace-leaf-content,.workspace-tab-header-container,.view-header,.view-content) {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
 .workspace-split.mod-root {--background-primary: transparent;}
-.workspace-split.mod-root .workspace-leaf-content {
-  border: 1px solid var(--ds-glass-edge);
-  border-radius: var(--ds-radius-card);
-  background: var(--ds-frost);
-  box-shadow: var(--ds-glass-highlight), var(--ds-elev-3);
-  overflow: hidden;
+.workspace-split.mod-root .view-header {height: var(--header-height, 40px);padding-inline: 10px;border-bottom: 0;}
+@media (hover: hover) {
+  .workspace-split.mod-root .view-header-title-container {opacity: 0;transition: opacity 140ms ease;}
+  .workspace-split.mod-root .view-header:is(:hover,:focus-within) .view-header-title-container {opacity: 1;}
 }
 .workspace-tab-header-container {border-bottom: 0;}
-/* Note tabs are pills centred in the header row, clear of the window top and the card below. */
+/* Note tabs: lightweight flat lens chips centred in the header row, never heavy white blocks. */
 .workspace .mod-root .workspace-tab-header-container-inner {margin-block: 0;padding-block: 0;align-items: center;}
-.workspace .mod-root .workspace-tab-header {align-self: center;height: calc(var(--header-height, 40px) - 12px);border-radius: 10px;}
-.workspace .mod-root .workspace-tab-header:not(.is-active):hover {background: rgba(var(--ds-ink-rgb),.045);}
+.workspace .mod-root .workspace-tab-header {align-self: center;height: calc(var(--header-height, 40px) - 12px);border-radius: 8px;box-shadow: none;}
+.workspace .mod-root .workspace-tab-header:not(.is-active):hover {background: var(--ds-surface-hover);}
 .workspace .mod-root .workspace-tab-header.is-active::before,
 .workspace .mod-root .workspace-tab-header.is-active::after {display: none;}
-.workspace-tab-header.is-active {background: var(--ds-paper);box-shadow: var(--ds-glass-highlight), 0 0 0 1px var(--ds-glass-edge), var(--ds-elev-1);}
-.workspace-tab-header.is-active .workspace-tab-header-inner-title {font-weight: 600;}
-.workspace-leaf-content[data-type="file-explorer"] .nav-header {padding-block: 8px;}
+.workspace-tab-header.is-active {background: var(--ds-surface-hover);box-shadow: inset 0 0 0 1px var(--ds-border);}
+.workspace-tab-header.is-active .workspace-tab-header-inner-title {font-weight: 550;}
+.workspace-leaf-content[data-type="file-explorer"] .nav-header {padding: 8px 12px;}
 .workspace-leaf-content[data-type="file-explorer"] .nav-folder-title,
 .workspace-leaf-content[data-type="file-explorer"] .nav-file-title {font-family: var(--ds-font-ui);}
-.workspace-leaf-content[data-type="file-explorer"] .nav-folder-title {font-weight: 500;}
-.status-bar {font-family: var(--ds-font-numeric);font-size: 11.5px;border: 1px solid var(--ds-glass-edge);border-radius: 10px 0 0 0;background: var(--ds-frost);box-shadow: var(--ds-glass-highlight), var(--ds-elev-1);}
-/* Floating surfaces (menus, sheets, popovers) are the highest layer: opaque frost, deepest shadow. */
+.workspace-leaf-content[data-type="file-explorer"] .nav-folder-title {font-weight: 600;}
+.status-bar {font-family: var(--ds-font-numeric);font-size: 11.5px;border: 0;background: transparent;box-shadow: none;color: var(--ds-muted);}
+/* Floating surfaces (menus, sheets, popovers, dialogs) stay opaque with a crisp rim and shadow; no CSS blur. */
 :is(.menu,.suggestion-container,.prompt,.popover.hover-popover,.modal,.notice) {
   border: 1px solid var(--ds-glass-edge);
   background: var(--ds-frost);
   box-shadow: var(--ds-glass-highlight), var(--ds-elev-3);
 }
 .modal {border-radius: var(--ds-radius-card);}
-/* Notices are white cards here, so their text takes the normal ink (Obsidian's default is light text on a dark toast). */
 .notice {color: var(--ds-text);}
 .notice :is(a,.notice-message) {color: inherit;}
 :is(.menu,.suggestion-container,.prompt) {border-radius: 12px;}
-.vertical-tab-header {background: var(--ds-shell);}
-.modal-container .modal-bg {background-color: rgba(var(--ds-ink-rgb),.18);}
-@supports ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))) {
-  .modal-container .modal-bg {-webkit-backdrop-filter: blur(3px);backdrop-filter: blur(3px);}
-}
+.vertical-tab-header {background: var(--ds-shell);border-right: 1px solid var(--ds-border);}
+.modal-container .modal-bg {background-color: rgba(var(--ds-ink-rgb),.24);}
 @media (forced-colors:active) {
-  .workspace .workspace-split.mod-sidedock .workspace-tabs > .workspace-tab-container,
-  .workspace-split.mod-root .workspace-leaf-content,
-  .status-bar,
-  :is(.menu,.suggestion-container,.prompt,.popover.hover-popover,.notice) {background: Canvas;}
+  :is(.menu,.suggestion-container,.prompt,.popover.hover-popover,.modal,.notice) {background: Canvas;}
 }
-

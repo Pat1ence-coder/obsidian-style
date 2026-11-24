@@ -70,7 +70,7 @@ body:is(.theme-light,.theme-dark) .aw-view .aw-panel {border-color: var(--aw-g-e
 .aw-view .aw-kpi-icon {display: inline-flex;align-items: center;justify-content: center;width: 32px;height: 32px;border-radius: 10px;flex-shrink: 0;color: rgb(var(--aw-hue));background: rgba(255,255,255,.9);box-shadow: 0 0 0 1px rgba(var(--ds-ink-rgb),.06), 0 4px 10px -4px rgba(var(--aw-hue),.5);}
 .aw-view .aw-kpi-icon svg {width: 17px;height: 17px;stroke-width: 1.9;}
 .aw-view .aw-kpi-label {flex: 1 0 auto;margin: 0;font-size: 14px;font-weight: 600;color: var(--ds-heading);white-space: nowrap;}
-.aw-view .aw-kpi .aw-badge {border: 0;border-radius: 999px;padding: 3px 10px;font-size: 12px;color: var(--ds-heading);background: rgba(255,255,255,.78);box-shadow: 0 0 0 1px rgba(var(--ds-ink-rgb),.06);-webkit-backdrop-filter: blur(8px);backdrop-filter: blur(8px);}
+.aw-view .aw-kpi .aw-badge {border: 0;border-radius: 999px;padding: 3px 10px;font-size: 12px;color: var(--ds-heading);background: rgba(255,255,255,.88);box-shadow: 0 0 0 1px rgba(var(--ds-ink-rgb),.06);}
 .aw-view .aw-kpi-value {display: flex;align-items: baseline;gap: 8px;margin-top: auto;padding-top: 20px;white-space: nowrap;}
 .aw-view .aw-kpi-value strong {font-family: var(--ds-font-numeric);font-size: 38px;font-weight: 500;line-height: 1.05;letter-spacing: -.03em;font-variant-numeric: tabular-nums;color: var(--ds-heading);}
 .aw-view .aw-kpi-value .aw-unit {font-size: 13px;color: var(--ds-muted);}

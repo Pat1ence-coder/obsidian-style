@@ -115,19 +115,20 @@ test('each metric owns a companion hue shared by its tab, dot and heatmap card',
   assert.equal(f.content.querySelector('.aw-card-pulse').style.values['--aw-hue'],'var(--ds-tone-5)');
   assert.equal(f.content.querySelector('.aw-ambient'),null,'no blurred banner glow behind the cards');
 });
-test('document snippet ships glass chrome with fallbacks and a screen-only figure size guard',()=>{
+test('document snippet ships flat borderless chrome with opaque floats and a screen-only figure size guard',()=>{
   const root=path.resolve(__dirname,'..'),css=fs.readFileSync(path.join(root,'dist/snippets/style.css'),'utf8');
-  assert.match(css,/mod-sidedock \.workspace-tabs > \.workspace-tab-container \{[^}]*border-radius: 16px[^}]*background: var\(--ds-frost\)[^}]*var\(--ds-elev-3\)/,'sidebar panels are opaque frost on the top elevation');
-  assert.match(css,/\.workspace-split\.mod-root \.workspace-leaf-content \{[^}]*background: var\(--ds-frost\)/,'the note card is opaque frost');
-  assert.match(css,/--ds-frost: var\(--ds-grain\), var\(--ds-glass-sheen\), var\(--ds-paper\);/,'frost ends on an opaque paper layer');
+  assert.match(css,/mod-sidedock \.workspace-tabs > \.workspace-tab-container \{\s*margin: 0;\s*border: 0;\s*border-radius: 0;\s*background: transparent;\s*box-shadow: none;/,'sidebars sit flat on the window sheet');
+  assert.match(css,/\.workspace-split\.mod-root,\s*\.workspace-split\.mod-root :is\([^)]*\.workspace-leaf-content[^)]*\) \{\s*margin: 0;\s*padding: 0;\s*border: 0;\s*border-radius: 0;\s*background: transparent;\s*box-shadow: none;/,'the note sits flat on the window sheet without a separate white card');
+  assert.match(css,/--divider-color: transparent;/,'no permanent vertical divider line');
+  assert.match(css,/\.workspace-leaf-resize-handle \{border-color: transparent;\}/);
+  assert.match(css,/--ds-frost: var\(--ds-grain\), var\(--ds-glass-sheen\), var\(--ds-paper\);/,'floating surfaces end on an opaque paper layer');
   assert.match(css,/--ds-grain: url\("data:image\/svg\+xml;utf8,<svg [^\n]*<\/svg>"\);\n/,'the grain is one intact declaration');
   assert.match(css,/\.mod-root \.workspace-tab-header \{align-self: center;/,'note tabs clear the window top');
   assert.match(css,/\.notice \{color: var\(--ds-text\);\}/,'notices are white cards, so their text must be dark to be readable');
-  assert.match(css,/body:is\(\.theme-light,\.theme-dark\) \{background-color: var\(--ds-bg\);\}/,'the page is opaque, so a window without a workspace never shows a black title bar');
-  assert.match(css,/\.workspace \{background: var\(--ds-bg\);\}/,'the window floor is plain, no wallpaper or gradient');
+  assert.match(css,/body:is\(\.theme-light,\.theme-dark\) \{background-color: var\(--ds-bg\);\}/,'non-translucent and detached windows never show a black title bar');
+  assert.match(css,/\.workspace \{background: var\(--ds-bg\);\}/,'the default window floor is plain, no wallpaper or gradient');
   assert.doesNotMatch(css,/--ds-wallpaper|radial-gradient\(\d+px/,'no wallpaper and no ambient blooms');
-  const chrome=css.slice(css.indexOf('Source: src/styles/shell.css'),css.indexOf('Source: src/styles/print.css'));
-  assert.equal((chrome.match(/backdrop-filter: /g)||[]).length,2,'only the modal scrim blurs; panels are opaque');
+  assert.doesNotMatch(css,/backdrop-filter:\s*blur/,'no CSS backdrop blur anywhere in the snippet');
   assert.doesNotMatch(css,/url\(["']?https?:/);
   assert.match(css,/@media screen \{\s*\.callout\[data-callout="figure"\] \{--aw-figure-max-width: 720px/);
   assert.match(css,/img:not\(\[width\]\) \{max-width:min\(100%, var\(--aw-figure-max-width\)\);\}/);
@@ -243,45 +244,34 @@ test('the view icon is probed once',()=>{
   f.view.render();f.view.getIcon();f.view.getIcon();f.view.render();
   assert.equal(probes,1);
 });
-test('window glass: frosted glass over a drawn sheet of grey paper, only when the plugin asks',()=>{
+test('window glass: warm-paper whole-window fallback and single-tint anti-ghosting native translucency',()=>{
   const root=path.resolve(__dirname,'..'),css=fs.readFileSync(path.join(root,'dist/snippets/style.css'),'utf8');
   const src=fs.readFileSync(path.join(root,'src/styles/window-glass.css'),'utf8').replace(/\/\*[\s\S]*?\*\//g,'');
-  // The glass layers never tint: fog, wash, divider, field and hover are neutral greys.
-  const colours=src.match(/rgba\([^)]*\)/g);
-  assert.ok(colours.length>=12);
-  for(const c of colours){const [r,g,b]=c.slice(5,-1).split(',').map(Number);assert.ok(r===g&&g===b,`${c} is neutral`);}
-  assert.doesNotMatch(src,/#[0-9a-f]{3,6}\b|gradient|base64|\.(png|jpe?g|webp|avif)\b/i,'no tint, no wallpaper, no picture file');
-  // The paper is fractal noise read as grey: one channel becomes lighter and darker clouds,
-  // written to red, green and blue alike, so it carries no hue at all.
-  const papers=[...src.matchAll(/--ds-glass-paper-texture: (url\("data:image\/svg\+xml;utf8,<svg [^\n]*<\/svg>"\));\n/g)].map(m=>m[1]);
-  assert.equal(papers.length,2,'a light and a dark paper, each one intact declaration');
-  for(const [i,paper] of papers.entries()){
-    assert.match(paper,/<feTurbulence type='fractalNoise'[^>]*stitchTiles='stitch'\/>/,'tiles without seams');
-    const m=paper.match(/<feColorMatrix values='([^']*)'/)[1].split(' ').map(Number);
-    const row=k=>m.slice(k*5,k*5+5).join(' ');
-    assert.deepEqual(m.slice(15),[0,0,0,0,1],'opaque');
-    assert.ok(row(0)===row(1)&&row(1)===row(2),`paper ${i} is neutral: the same recipe for red, green and blue`);
-    const [r,g,b,a,c]=m.slice(0,5),mean=b*.5+c;
-    assert.ok(r===0&&g===0&&a===0&&b>0,'only the lightness clouds');
-    assert.ok(i===0?mean>.8&&mean<.88:mean>.08&&mean<.16,'a pale grey, or a deep one in dark mode');
-  }
-  assert.match(css,/body\.aw-glass \.app-container::before \{background: var\(--ds-glass-paper-texture\) 0 0 \/ var\(--ds-glass-paper-tile\) var\(--ds-glass-paper-tile\) repeat;\}/);
-  assert.match(css,/body\.aw-glass \.app-container::after \{background: var\(--ds-glass-grain\) 0 0 \/ 180px 180px repeat, var\(--ds-glass-fog\);\}/);
-  // Every rule hangs off the plugin's body class, so without a picture the opaque white look stays.
-  for(const rule of src.match(/^[^@{}\n][^{}]*\{/gm))assert.match(rule,/body(\.theme-dark)?\.aw-glass/,rule);
-  assert.doesNotMatch(css,/is-translucent/,"Obsidian's own translucent window is left alone (it ghosts on macOS)");
-  assert.match(css,/body\.aw-glass \.workspace-split\.mod-root \.workspace-leaf-content \{[^}]*background: var\(--ds-glass-wash\);[^}]*box-shadow: none;/);
+  assert.doesNotMatch(src,/base64|\.(png|jpe?g|webp|avif)\b|url\(["']?https?:/i,'no external or raster image files');
+  const grains=[...src.matchAll(/--ds-glass-paper-grain: (url\("data:image\/svg\+xml;utf8,<svg [^\n]*<\/svg>"\));\n/g)].map(m=>m[1]);
+  assert.equal(grains.length,2,'light and dark fine paper fibre grains');
+  for(const grain of grains)assert.match(grain,/<feTurbulence type='fractalNoise'[^>]*stitchTiles='stitch'\/>/,'tiles without seams');
+  assert.match(css,/body\.aw-glass:not\(\.is-translucent\):not\(\.is-popout-modal\) \{[^}]*--ds-bg: #fbf8ef;/);
+  assert.match(css,/body\.theme-dark\.aw-glass:not\(\.is-translucent\):not\(\.is-popout-modal\) \{[^}]*--ds-bg: #191816;/);
+  assert.match(css,/body\.aw-glass:not\(\.is-translucent\):not\(\.is-popout-modal\) \.app-container::before \{/);
+  // Anti-ghosting native macOS translucency guardrails.
+  assert.match(css,/body\.is-translucent:not\(\.is-popout-window\):not\(\.is-popout-modal\) \{[^}]*--aw-trans-shell: rgba\(255,255,255,\.05\);[^}]*background: transparent !important;/);
+  assert.match(css,/body\.is-translucent:not\(\.is-popout-window\):not\(\.is-popout-modal\) \.workspace-split\.mod-root \{\s*background: var\(--aw-trans-shell\) !important;\s*contain: paint;/);
+  assert.match(css,/body\.is-translucent:not\(\.is-popout-window\) \.workspace \*[\s\S]*?backdrop-filter: none !important;\s*will-change: auto !important;/);
+  assert.match(css,/body\.is-translucent:not\(\.is-popout-window\) :is\(\.workspace-split,\.workspace-tabs,\.workspace-tab-container,\.workspace-leaf,\.workspace-tab-header\) \{\s*transition: none !important;/);
+  assert.match(css,/body:is\(\.is-popout-window,\.is-popout-modal\) \{[\s\S]*?background: var\(--ds-bg\) !important;/);
   assert.match(css,/@media \(prefers-reduced-transparency: reduce\)/);
   assert.ok(css.indexOf('Source: src/styles/window-glass.css')<css.indexOf('Source: src/styles/print.css'),'print rules still load last');
   const plugin=fs.readFileSync(path.join(root,'dist/algorithm-workbench/styles.css'),'utf8');
-  assert.match(plugin,/body\.aw-glass \.aw-view \{background:transparent;\}/,'the dashboard cards float on the glass');
+  assert.doesNotMatch(plugin,/backdrop-filter:\s*blur/,'plugin stylesheet uses zero backdrop blur');
+  assert.match(plugin,/body:is\(\.aw-glass,\.is-translucent\) \.aw-view \{background:transparent;\}/,'the dashboard cards sit directly on the window surface');
 });
-test('small fixes stay: search text clears its buttons, one divider on glass, no frame around figures, ruler hides the scrollbar',()=>{
+test('small fixes stay: search text clears its buttons, no permanent divider, no frame around figures, ruler hides the scrollbar',()=>{
   const root=path.resolve(__dirname,'..');
   const css=fs.readFileSync(path.join(root,'dist/snippets/style.css'),'utf8'),plugin=fs.readFileSync(path.join(root,'dist/algorithm-workbench/styles.css'),'utf8');
   assert.match(css,/\.search-input-container input \{padding-inline-end: 32px;text-overflow: ellipsis;\}/);
   assert.match(css,/\.search-input-container:has\(\.input-right-decorator\) input \{padding-inline-end: 64px;\}/,'room for the Aa match-case toggle');
-  assert.match(css,/body\.aw-glass \{[^}]*--divider-color: transparent;/,'on glass only the note hairline separates sidebar and note');
+  assert.match(css,/body:is\(\.theme-light,\.theme-dark\) \{[^}]*--divider-color: transparent;/,'no permanent vertical divider line');
   assert.match(plugin,/\.cm-embed-block:has\(> \.callout\[data-callout="figure"\]\):hover \{box-shadow:none;\}/);
   // Newer Chromium ignores ::-webkit-scrollbar once scrollbar-color is set, so the standard property must be there.
   assert.match(plugin,/\.aw-has-ruler :is\(\.cm-scroller,\.markdown-preview-view\) \{scrollbar-width: none;\}/);

@@ -12,22 +12,22 @@ body {
   --ds-font-heading: var(--ds-font-ui);
   /* One scale, respecting Obsidian's overall text-size preference. */
   --ds-body-size: var(--font-text-size, 16px);
-  --ds-title-size: calc(var(--ds-body-size) * 2);
-  --ds-h1-size: calc(var(--ds-body-size) * 1.75);
-  --ds-h2-size: calc(var(--ds-body-size) * 1.5);
-  --ds-h3-size: calc(var(--ds-body-size) * 1.25);
-  --ds-h4-size: calc(var(--ds-body-size) * 1.125);
+  --ds-title-size: calc(var(--ds-body-size) * 1.75);
+  --ds-h1-size: calc(var(--ds-body-size) * 1.55);
+  --ds-h2-size: calc(var(--ds-body-size) * 1.32);
+  --ds-h3-size: calc(var(--ds-body-size) * 1.15);
+  --ds-h4-size: calc(var(--ds-body-size) * 1.05);
   --ds-h5-size: var(--ds-body-size);
-  --ds-h6-size: var(--ds-body-size);
+  --ds-h6-size: calc(var(--ds-body-size) * .95);
   --ds-table-size: calc(var(--ds-body-size) * .875);
   --ds-caption-size: calc(var(--ds-body-size) * .8125);
   --ds-code-size: calc(var(--ds-body-size) * .875);
-  --ds-body-leading: 1.7;
+  --ds-body-leading: 1.72;
   --ds-heading-leading: 1.3;
   --ds-code-leading: 1.55;
-  --ds-paragraph-gap: .8em;
-  --ds-page-width: 1000px;
-  --ds-page-inset: 24px;
+  --ds-paragraph-gap: .95em;
+  --ds-page-width: 820px;
+  --ds-page-inset: 28px;
   --ds-space-1: 4px;
   --ds-space-2: 8px;
   --ds-space-3: 12px;
@@ -35,124 +35,116 @@ body {
   --ds-space-6: 24px;
   --ds-space-8: 32px;
   --ds-radius-control: 8px;
-  --ds-radius-content: 12px;
-  --ds-radius-card: 18px;
-  /* One clean palette: white panels on a cool, near-white floor; a bright blue accent with
-     orange and green companions. Tones are RGB triplets used as rgb(var(--ds-tone-x)) /
-     rgba(var(--ds-tone-x), a). The six metric hues were checked for colour-vision separation;
-     orange and green sit at the floor, so they always appear next to a text label. */
-  --ds-tone-accent: 52,128,246;
-  --ds-tone-1: 20,163,192;
-  --ds-tone-2: 31,148,97;
-  --ds-tone-3: 139,108,240;
-  --ds-tone-4: 236,136,52;
-  --ds-tone-5: 229,96,94;
-  --ds-tone-neutral: 112,122,140;
-  --ds-tone-amber: 184,134,22;
-  --ds-ink-rgb: 16,24,40;
-  --ds-bg: #f6f7f9;
+  --ds-radius-content: 10px;
+  --ds-radius-card: 16px;
+  /* Quiet low-saturation palette: muted indigo UI accent, warm amber reading emphasis,
+     and softened companion hues for metrics and callouts. */
+  --ds-tone-accent: 72,86,175;
+  --ds-tone-1: 24,142,168;
+  --ds-tone-2: 46,136,92;
+  --ds-tone-3: 126,98,196;
+  --ds-tone-4: 204,108,42;
+  --ds-tone-5: 208,88,86;
+  --ds-tone-neutral: 112,118,132;
+  --ds-tone-amber: 180,83,9;
+  --ds-ink-rgb: 20,24,33;
+  --ds-bg: #f5f6f8;
   --ds-paper: #ffffff;
-  /* Inside a pane (the dashboard): a hair off white, so white cards still separate. */
-  --ds-canvas: #fbfbfc;
-  --ds-shell: #f9fafb;
-  --ds-surface: #f4f5f7;
-  --ds-surface-hover: #eceef2;
-  --ds-text: #1f2633;
-  --ds-heading: #111827;
-  --ds-muted: #667085;
-  --ds-faint: #8d96a8;
+  --ds-canvas: #f5f6f8;
+  --ds-shell: #eff1f4;
+  --ds-surface: #eceef2;
+  --ds-surface-hover: rgba(20,24,33,.05);
+  --ds-text: #22252a;
+  --ds-heading: #16181d;
+  --ds-muted: #555b66;
+  --ds-faint: #8b919d;
   --ds-on-accent: #ffffff;
-  --ds-warm: rgb(var(--ds-tone-4));
-  --ds-border: #e8eaee;
-  --ds-rule: #d0d5dd;
-  --ds-code-bg: #f7f8fa;
-  --ds-heat-0: #eef0f4;
-  /* The window floor is plain near-white; no ambient blooms or wallpaper. Kept as no-op layers
-     so older rules that list them stay valid. */
+  --ds-warm: rgb(var(--ds-tone-amber));
+  /* Translucent hairlines read softly over paper and native window glass alike. */
+  --ds-border: rgba(20,24,33,.09);
+  --ds-rule: rgba(20,24,33,.15);
+  --ds-code-bg: rgba(20,24,33,.038);
+  --ds-heat-0: rgba(20,24,33,.055);
   --ds-ambient: linear-gradient(transparent, transparent);
   --ds-ambient-base: linear-gradient(var(--ds-bg), var(--ds-bg));
   /* Derived roles. */
   --ds-accent: rgb(var(--ds-tone-accent));
   --ds-accent-hover: color-mix(in srgb, rgb(var(--ds-tone-accent)) 82%, #000);
-  --ds-accent-soft: rgba(var(--ds-tone-accent), .1);
-  --ds-selection: rgba(var(--ds-tone-accent), .16);
+  --ds-accent-soft: rgba(var(--ds-tone-accent), .13);
+  --ds-selection: rgba(var(--ds-tone-amber), .22);
   --ds-shadow: var(--ds-elev-2);
   --ds-shadow-soft: var(--ds-elev-1);
-  /* Surfaces are opaque. "Frost" is how they read as frosted glass without showing through:
-     a faint grain, a slight top-to-bottom sheen, a bright top rim, a hairline edge and soft
-     layered shadows. Three elevations: controls (1), cards (2), panels and floating layers (3).
-     Recessed things (tracks, search fields) use the inset pair. The --ds-glass-* names remain
-     as aliases of these opaque values. */
-  --ds-elev-1: 0 1px 2px rgba(var(--ds-ink-rgb),.06), 0 2px 4px -2px rgba(var(--ds-ink-rgb),.06);
-  --ds-elev-2: 0 1px 2px rgba(var(--ds-ink-rgb),.05), 0 6px 14px -6px rgba(var(--ds-ink-rgb),.08), 0 18px 36px -18px rgba(var(--ds-ink-rgb),.14);
-  --ds-elev-3: 0 2px 4px rgba(var(--ds-ink-rgb),.04), 0 12px 24px -10px rgba(var(--ds-ink-rgb),.1), 0 32px 64px -28px rgba(var(--ds-ink-rgb),.2);
-  --ds-inset-bg: #f1f2f5;
-  --ds-inset: inset 0 1px 2px rgba(var(--ds-ink-rgb),.07), inset 0 0 0 1px rgba(var(--ds-ink-rgb),.045);
+  /* Floating surfaces (menus, dialogs, dashboard cards) remain opaque with subtle top rim and shadow. */
+  --ds-elev-1: 0 1px 2px rgba(var(--ds-ink-rgb),.05), 0 2px 4px -2px rgba(var(--ds-ink-rgb),.05);
+  --ds-elev-2: 0 1px 2px rgba(var(--ds-ink-rgb),.04), 0 6px 16px -6px rgba(var(--ds-ink-rgb),.07);
+  --ds-elev-3: 0 1px 3px rgba(var(--ds-ink-rgb),.06), 0 16px 36px -10px rgba(var(--ds-ink-rgb),.14);
+  --ds-inset-bg: rgba(20,24,33,.045);
+  --ds-inset: inset 0 0 0 1px rgba(var(--ds-ink-rgb),.065);
   --ds-frost: var(--ds-grain), var(--ds-glass-sheen), var(--ds-paper);
   --ds-glass: var(--ds-paper);
   --ds-glass-strong: var(--ds-paper);
   --ds-glass-paper: var(--ds-paper);
   --ds-glass-solid: var(--ds-paper);
-  --ds-glass-rim: #ffffff;
-  --ds-glass-line: rgba(var(--ds-ink-rgb),.075);
-  --ds-glass-highlight: inset 0 1px 0 #ffffff, inset 0 0 0 1px rgba(255,255,255,.65);
+  --ds-glass-rim: rgba(255,255,255,.8);
+  --ds-glass-line: rgba(var(--ds-ink-rgb),.07);
+  --ds-glass-highlight: inset 0 1px 0 rgba(255,255,255,.82);
   --ds-glass-shadow: var(--ds-elev-3);
-  /* Frost sheen: the faintest darkening towards the bottom of a surface. */
-  --ds-glass-sheen: linear-gradient(180deg, rgba(255,255,255,0), rgba(var(--ds-ink-rgb),.018));
-  --ds-glass-edge: rgba(var(--ds-ink-rgb),.07);
-  --ds-grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .5 0 0 0 0 .5 0 0 0 0 .5 0 0 0 .035 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  --ds-glass-sheen: linear-gradient(180deg, rgba(255,255,255,0), rgba(var(--ds-ink-rgb),.012));
+  --ds-glass-edge: rgba(var(--ds-ink-rgb),.08);
+  --ds-grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .5 0 0 0 0 .5 0 0 0 0 .5 0 0 0 .025 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
 }
 body.theme-dark {
-  --ds-tone-accent: 76,142,247;
-  --ds-tone-1: 30,159,186;
-  --ds-tone-2: 33,135,90;
-  --ds-tone-3: 139,118,232;
-  --ds-tone-4: 212,122,48;
-  --ds-tone-5: 224,95,93;
-  --ds-tone-neutral: 150,158,175;
-  --ds-tone-amber: 212,162,64;
+  --ds-tone-accent: 132,146,228;
+  --ds-tone-1: 62,168,190;
+  --ds-tone-2: 76,166,118;
+  --ds-tone-3: 164,140,226;
+  --ds-tone-4: 222,138,74;
+  --ds-tone-5: 222,108,106;
+  --ds-tone-neutral: 150,156,168;
+  --ds-tone-amber: 226,163,54;
   --ds-ink-rgb: 0,0,0;
-  --ds-bg: #0f1013;
-  --ds-canvas: #131519;
-  --ds-paper: #1a1c21;
-  --ds-shell: #14161a;
-  --ds-surface: #202228;
-  --ds-surface-hover: #272a31;
-  --ds-text:#e4e7ec;
-  --ds-heading:#f5f7fa;
-  --ds-muted:#a0a8b8;
-  --ds-faint:#7d8596;
-  --ds-on-accent:#ffffff;
-  --ds-border: #2a2d34;
-  --ds-rule:#3d4450;
-  --ds-code-bg: #1e2026;
-  --ds-heat-0: #24272e;
-  --ds-accent-hover: color-mix(in srgb, rgb(var(--ds-tone-accent)) 80%, #fff);
-  --ds-accent-soft: rgba(var(--ds-tone-accent), .16);
-  --ds-selection: rgba(var(--ds-tone-accent), .26);
+  --ds-bg: #18191c;
+  --ds-canvas: #18191c;
+  --ds-paper: #212328;
+  --ds-shell: #1c1e22;
+  --ds-surface: #262930;
+  --ds-surface-hover: rgba(255,255,255,.055);
+  --ds-text: #e6e8ec;
+  --ds-heading: #f3f4f6;
+  --ds-muted: #a1a6b2;
+  --ds-faint: #777c88;
+  --ds-on-accent: #14161b;
+  --ds-border: rgba(255,255,255,.09);
+  --ds-rule: rgba(255,255,255,.15);
+  --ds-code-bg: rgba(255,255,255,.042);
+  --ds-heat-0: rgba(255,255,255,.06);
+  --ds-accent-hover: color-mix(in srgb, rgb(var(--ds-tone-accent)) 84%, #fff);
+  --ds-accent-soft: rgba(var(--ds-tone-accent), .18);
+  --ds-selection: rgba(var(--ds-tone-amber), .24);
   --ds-shadow: var(--ds-elev-2);
   --ds-shadow-soft: var(--ds-elev-1);
   --ds-ambient: linear-gradient(transparent, transparent);
   --ds-ambient-base: linear-gradient(var(--ds-bg), var(--ds-bg));
-  --ds-elev-1: 0 1px 2px rgba(0,0,0,.4);
-  --ds-elev-2: 0 1px 2px rgba(0,0,0,.35), 0 12px 28px -12px rgba(0,0,0,.6);
-  --ds-elev-3: 0 2px 4px rgba(0,0,0,.35), 0 24px 56px -20px rgba(0,0,0,.7);
-  --ds-inset-bg: #131418;
-  --ds-inset: inset 0 1px 2px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.04);
+  --ds-elev-1: 0 1px 2px rgba(0,0,0,.35);
+  --ds-elev-2: 0 1px 3px rgba(0,0,0,.32), 0 10px 24px -10px rgba(0,0,0,.5);
+  --ds-elev-3: 0 2px 4px rgba(0,0,0,.35), 0 20px 48px -16px rgba(0,0,0,.65);
+  --ds-inset-bg: rgba(255,255,255,.05);
+  --ds-inset: inset 0 0 0 1px rgba(255,255,255,.065);
   --ds-glass: var(--ds-paper);
   --ds-glass-strong: var(--ds-paper);
   --ds-glass-paper: var(--ds-paper);
   --ds-glass-solid: var(--ds-paper);
-  --ds-glass-rim: rgba(255,255,255,.06);
+  --ds-glass-rim: rgba(255,255,255,.08);
   --ds-glass-line: rgba(255,255,255,.07);
-  --ds-glass-highlight: inset 0 1px 0 rgba(255,255,255,.06), inset 0 0 0 1px rgba(255,255,255,.02);
+  --ds-glass-highlight: inset 0 1px 0 rgba(255,255,255,.07);
   --ds-glass-shadow: var(--ds-elev-3);
-  --ds-glass-sheen: linear-gradient(180deg, rgba(255,255,255,.025), rgba(255,255,255,0));
-  --ds-glass-edge: rgba(255,255,255,.08);
+  --ds-glass-sheen: linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,0));
+  --ds-glass-edge: rgba(255,255,255,.085);
 }
 
 /* Source: src/styles/shell.css */
-/* App surfaces. Document metrics are owned by typography/content, not body. */
+/* App surfaces: one flat, borderless window sheet. Sidebars, tab strip and note sit on the
+   same continuous plane with no floating card frames or permanent vertical dividers. */
 body:is(.theme-light,.theme-dark) {
   --font-interface-theme: var(--ds-font-ui);
   --font-interface: var(--ds-font-ui);
@@ -160,7 +152,7 @@ body:is(.theme-light,.theme-dark) {
   --font-text: var(--ds-font-body);
   --font-monospace-theme: var(--ds-font-mono);
   --font-monospace: var(--ds-font-mono);
-  --background-primary: var(--ds-paper);
+  --background-primary: var(--ds-bg);
   --background-primary-alt: var(--ds-surface);
   --background-secondary: var(--ds-bg);
   --background-secondary-alt: var(--ds-surface);
@@ -171,8 +163,8 @@ body:is(.theme-light,.theme-dark) {
   --text-normal: var(--ds-text);
   --text-muted: var(--ds-muted);
   --text-faint: var(--ds-faint);
-  --text-accent: var(--ds-accent);
-  --text-accent-hover: var(--ds-accent-hover);
+  --text-accent: var(--ds-warm);
+  --text-accent-hover: color-mix(in srgb, var(--ds-warm) 82%, var(--ds-heading));
   --text-selection: var(--ds-selection);
   --interactive-normal: var(--ds-paper);
   --interactive-hover: var(--ds-surface-hover);
@@ -184,19 +176,19 @@ body:is(.theme-light,.theme-dark) {
   --radius-l: var(--ds-radius-card);
   --input-radius: var(--ds-radius-control);
   --tab-radius-active: var(--ds-radius-control);
-  --tag-color: var(--ds-accent);
-  --tag-background: var(--ds-accent-soft);
+  --tag-color: var(--ds-warm);
+  --tag-background: rgba(var(--ds-tone-amber),.1);
   --scrollbar-thumb-bg: color-mix(in srgb, var(--ds-muted) 24%, transparent);
   --scrollbar-active-thumb-bg: color-mix(in srgb, var(--ds-muted) 42%, transparent);
 }
-/* Chrome: opaque frosted panels on a near-white floor; the open note is a frosted card. */
+/* Chrome: quiet flat bars, borderless status pill, resize handles invisible until hovered. */
 body:is(.theme-light,.theme-dark) {
   --titlebar-background: transparent;
   --titlebar-background-focused: transparent;
   --ribbon-background: transparent;
   --ribbon-background-collapsed: transparent;
   --tab-container-background: transparent;
-  --tab-background-active: var(--ds-glass-strong);
+  --tab-background-active: var(--ds-surface-hover);
   --tab-text-color: var(--ds-muted);
   --tab-text-color-focused: var(--ds-muted);
   --tab-text-color-focused-active: var(--ds-heading);
@@ -207,199 +199,168 @@ body:is(.theme-light,.theme-dark) {
   --tab-radius: var(--ds-radius-control);
   --status-bar-background: transparent;
   --status-bar-border-color: transparent;
+  --status-bar-border-width: 0px;
   --status-bar-text-color: var(--ds-muted);
-  --divider-color: var(--ds-glass-line);
-  --nav-item-color: var(--ds-text);
+  --divider-color: transparent;
+  --divider-color-hover: var(--ds-rule);
+  --nav-item-color: var(--ds-muted);
   --nav-item-color-hover: var(--ds-heading);
   --icon-color: var(--ds-muted);
   --icon-color-hover: var(--ds-heading);
-  --icon-color-active: var(--ds-accent);
+  --icon-color-active: var(--ds-heading);
   --modal-radius: var(--ds-radius-card);
-  --modal-border-color: var(--ds-glass-line);
-  --checkbox-radius: 5px;
-  --checkbox-color: var(--ds-accent);
-  --checkbox-color-hover: var(--ds-accent-hover);
+  --modal-border-color: var(--ds-glass-edge);
+  --checkbox-radius: 4px;
+  --checkbox-color: var(--ds-warm);
+  --checkbox-color-hover: color-mix(in srgb, var(--ds-warm) 82%, var(--ds-heading));
   --checkbox-border-color: var(--ds-rule);
   --checklist-done-color: var(--ds-faint);
   --tag-radius: 6px;
-  --tag-padding-x: .5em;
-  --tag-padding-y: .15em;
+  --tag-padding-x: .45em;
+  --tag-padding-y: .12em;
   --tag-weight: 500;
-  --tag-background: rgba(var(--ds-tone-accent),.1);
-  --tag-background-hover: rgba(var(--ds-tone-accent),.16);
-  --tag-border-color: rgba(var(--ds-tone-accent),.14);
-  --tag-border-width: 1px;
+  --tag-background: rgba(var(--ds-tone-amber),.1);
+  --tag-background-hover: rgba(var(--ds-tone-amber),.16);
+  --tag-border-color: transparent;
+  --tag-border-width: 0px;
 }
-/* Window floor: plain near-white. Panels stand on it through hairlines and soft shadows. */
-.workspace {background: var(--ds-bg);}
-/* The page itself is never see-through. Title bars are transparent so the main window's
-   floor shows through them; windows without a workspace (the separate settings window) would
-   otherwise show Electron's black backdrop behind the title. Opaque even with the window glass
-   on, which paints its own layer inside .app-container. */
+/* Opaque floor for non-translucent and detached modal windows so titlebars never flash black. */
 body:is(.theme-light,.theme-dark) {background-color: var(--ds-bg);}
+.workspace {background: var(--ds-bg);}
 .workspace .workspace-ribbon.mod-left,
-.workspace .workspace-ribbon.mod-left:not(.is-collapsed) {border-right-color: transparent;box-shadow: none;}
-/* Sidebars: the icon row stays on the window floor next to the macOS traffic lights, like the
-   main tab bar; below it the content is an opaque frosted panel whose top lines up with the
-   note card. */
-.workspace .workspace-split.mod-sidedock,
-.workspace .workspace-split.mod-sidedock > .workspace-tabs {background: transparent;border: 0;box-shadow: none;}
-.workspace .workspace-split.mod-sidedock .workspace-tabs > .workspace-tab-container {
-  margin: 0 0 8px;
-  border: 1px solid var(--ds-glass-edge);
-  border-radius: 16px;
-  background: var(--ds-frost);
-  box-shadow: var(--ds-glass-highlight), var(--ds-elev-3);
-  overflow: hidden;
-}
-/* 8px on both sides: from the window edge, and from the native divider (matching the 8px between the divider and the note card). */
-.workspace .workspace-split.mod-left-split .workspace-tabs > .workspace-tab-container {margin-left: 8px;margin-right: 8px;}
-.workspace .workspace-split.mod-right-split .workspace-tabs > .workspace-tab-container {margin-right: 8px;margin-left: 8px;}
-.workspace .workspace-split.mod-sidedock.is-collapsed .workspace-tabs > .workspace-tab-container {margin: 0;border: 0;}
-.workspace-split.mod-sidedock :is(.workspace-leaf,.workspace-leaf-content,.workspace-tab-header-container,.view-content,.workspace-sidedock-vault-profile) {background-color: transparent;}
+.workspace .workspace-ribbon.mod-left:not(.is-collapsed) {border: 0;border-right-color: transparent;box-shadow: none;}
 .workspace-sidedock-vault-profile {border-top: 0;}
+/* Split resize handles act as drag affordances only; at rest there is no vertical line. */
+.workspace-leaf-resize-handle {border-color: transparent;}
+.workspace-leaf-resize-handle:is(:hover,:active) {border-color: var(--ds-rule);}
+/* Sidebars and root note share the window sheet without card frames, gutters or shadows. */
+.workspace .workspace-split.mod-sidedock,
+.workspace .workspace-split.mod-sidedock > .workspace-tabs,
+.workspace .workspace-split.mod-sidedock .workspace-tabs > .workspace-tab-container {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.workspace-split.mod-sidedock :is(.workspace-leaf,.workspace-leaf-content,.workspace-tab-header-container,.view-content,.workspace-sidedock-vault-profile) {background-color: transparent;}
 .workspace-split.mod-root,
-.workspace-split.mod-root :is(.workspace-tabs,.workspace-leaf,.workspace-tab-header-container) {background-color: transparent;}
-.workspace-split.mod-root .workspace-tab-container {padding: 0 8px 8px;}
-/* The note card: opaque frost. Inside it the page colour is transparent, so the editor and the
-   reading view show the card's frost instead of painting flat white over it. */
+.workspace-split.mod-root :is(.workspace-tabs,.workspace-tab-container,.workspace-leaf,.workspace-leaf-content,.workspace-tab-header-container,.view-header,.view-content) {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
 .workspace-split.mod-root {--background-primary: transparent;}
-.workspace-split.mod-root .workspace-leaf-content {
-  border: 1px solid var(--ds-glass-edge);
-  border-radius: var(--ds-radius-card);
-  background: var(--ds-frost);
-  box-shadow: var(--ds-glass-highlight), var(--ds-elev-3);
-  overflow: hidden;
+.workspace-split.mod-root .view-header {height: var(--header-height, 40px);padding-inline: 10px;border-bottom: 0;}
+@media (hover: hover) {
+  .workspace-split.mod-root .view-header-title-container {opacity: 0;transition: opacity 140ms ease;}
+  .workspace-split.mod-root .view-header:is(:hover,:focus-within) .view-header-title-container {opacity: 1;}
 }
 .workspace-tab-header-container {border-bottom: 0;}
-/* Note tabs are pills centred in the header row, clear of the window top and the card below. */
+/* Note tabs: lightweight flat lens chips centred in the header row, never heavy white blocks. */
 .workspace .mod-root .workspace-tab-header-container-inner {margin-block: 0;padding-block: 0;align-items: center;}
-.workspace .mod-root .workspace-tab-header {align-self: center;height: calc(var(--header-height, 40px) - 12px);border-radius: 10px;}
-.workspace .mod-root .workspace-tab-header:not(.is-active):hover {background: rgba(var(--ds-ink-rgb),.045);}
+.workspace .mod-root .workspace-tab-header {align-self: center;height: calc(var(--header-height, 40px) - 12px);border-radius: 8px;box-shadow: none;}
+.workspace .mod-root .workspace-tab-header:not(.is-active):hover {background: var(--ds-surface-hover);}
 .workspace .mod-root .workspace-tab-header.is-active::before,
 .workspace .mod-root .workspace-tab-header.is-active::after {display: none;}
-.workspace-tab-header.is-active {background: var(--ds-paper);box-shadow: var(--ds-glass-highlight), 0 0 0 1px var(--ds-glass-edge), var(--ds-elev-1);}
-.workspace-tab-header.is-active .workspace-tab-header-inner-title {font-weight: 600;}
-.workspace-leaf-content[data-type="file-explorer"] .nav-header {padding-block: 8px;}
+.workspace-tab-header.is-active {background: var(--ds-surface-hover);box-shadow: inset 0 0 0 1px var(--ds-border);}
+.workspace-tab-header.is-active .workspace-tab-header-inner-title {font-weight: 550;}
+.workspace-leaf-content[data-type="file-explorer"] .nav-header {padding: 8px 12px;}
 .workspace-leaf-content[data-type="file-explorer"] .nav-folder-title,
 .workspace-leaf-content[data-type="file-explorer"] .nav-file-title {font-family: var(--ds-font-ui);}
-.workspace-leaf-content[data-type="file-explorer"] .nav-folder-title {font-weight: 500;}
-.status-bar {font-family: var(--ds-font-numeric);font-size: 11.5px;border: 1px solid var(--ds-glass-edge);border-radius: 10px 0 0 0;background: var(--ds-frost);box-shadow: var(--ds-glass-highlight), var(--ds-elev-1);}
-/* Floating surfaces (menus, sheets, popovers) are the highest layer: opaque frost, deepest shadow. */
+.workspace-leaf-content[data-type="file-explorer"] .nav-folder-title {font-weight: 600;}
+.status-bar {font-family: var(--ds-font-numeric);font-size: 11.5px;border: 0;background: transparent;box-shadow: none;color: var(--ds-muted);}
+/* Floating surfaces (menus, sheets, popovers, dialogs) stay opaque with a crisp rim and shadow; no CSS blur. */
 :is(.menu,.suggestion-container,.prompt,.popover.hover-popover,.modal,.notice) {
   border: 1px solid var(--ds-glass-edge);
   background: var(--ds-frost);
   box-shadow: var(--ds-glass-highlight), var(--ds-elev-3);
 }
 .modal {border-radius: var(--ds-radius-card);}
-/* Notices are white cards here, so their text takes the normal ink (Obsidian's default is light text on a dark toast). */
 .notice {color: var(--ds-text);}
 .notice :is(a,.notice-message) {color: inherit;}
 :is(.menu,.suggestion-container,.prompt) {border-radius: 12px;}
-.vertical-tab-header {background: var(--ds-shell);}
-.modal-container .modal-bg {background-color: rgba(var(--ds-ink-rgb),.18);}
-@supports ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))) {
-  .modal-container .modal-bg {-webkit-backdrop-filter: blur(3px);backdrop-filter: blur(3px);}
-}
+.vertical-tab-header {background: var(--ds-shell);border-right: 1px solid var(--ds-border);}
+.modal-container .modal-bg {background-color: rgba(var(--ds-ink-rgb),.24);}
 @media (forced-colors:active) {
-  .workspace .workspace-split.mod-sidedock .workspace-tabs > .workspace-tab-container,
-  .workspace-split.mod-root .workspace-leaf-content,
-  .status-bar,
-  :is(.menu,.suggestion-container,.prompt,.popover.hover-popover,.notice) {background: Canvas;}
+  :is(.menu,.suggestion-container,.prompt,.popover.hover-popover,.modal,.notice) {background: Canvas;}
 }
-
 
 /* Source: src/styles/controls.css */
-/* Controls: sidebar navigation and buttons. Selected things are solid blue with white
-   content (sidebar tab, current note, primary buttons); everything else is quiet until
-   hovered, when it takes a pale blue tile. Shared by both interface styles. */
+/* Controls: quiet sidebar navigation, subtle low-saturation selection, and clean fields. */
 body:is(.theme-light,.theme-dark) {
-  --clickable-icon-radius: 9px;
-  --button-radius: 10px;
-  --input-radius: 10px;
-  --input-shadow: 0 0 0 1px var(--ds-border), 0 1px 2px rgba(var(--ds-ink-rgb),.05);
-  --input-shadow-hover: 0 0 0 1px var(--ds-rule), 0 2px 6px rgba(var(--ds-ink-rgb),.08);
-  --nav-item-radius: 10px;
-  --nav-item-padding: 6px 10px 6px 24px;
-  --nav-item-background-hover: rgba(var(--ds-tone-neutral),.09);
-  --nav-item-background-active: rgb(var(--ds-tone-accent));
-  --nav-item-color-active: #fff;
-  --nav-item-weight-active: 600;
-  --nav-indentation-guide-color: rgba(var(--ds-tone-neutral),.22);
-  --nav-indentation-guide-width: 1.5px;
-  --ds-hover-tile: rgba(var(--ds-tone-accent),.1);
-  --ds-select-glow: 0 1px 2px rgba(var(--ds-tone-accent),.35), 0 8px 18px -8px rgba(var(--ds-tone-accent),.85);
+  --clickable-icon-radius: 8px;
+  --button-radius: 8px;
+  --input-radius: 8px;
+  --input-shadow: inset 0 0 0 1px var(--ds-border);
+  --input-shadow-hover: inset 0 0 0 1px var(--ds-rule);
+  --nav-item-radius: 8px;
+  --nav-item-padding: 6px 12px 6px 22px;
+  --nav-item-background-hover: var(--ds-surface-hover);
+  --nav-item-background-active: var(--ds-accent-soft);
+  --nav-item-background-selected: var(--ds-accent-soft);
+  --nav-item-color-active: var(--ds-heading);
+  --nav-item-weight-active: 550;
+  --nav-indentation-guide-color: var(--ds-border);
+  --nav-indentation-guide-width: 1px;
 }
 
-/* Icon buttons everywhere: a pale blue tile on hover. */
-.clickable-icon:hover {background-color: var(--ds-hover-tile);color: var(--ds-accent);}
-.clickable-icon:hover svg {color: var(--ds-accent);}
+/* Icon buttons: quiet neutral wash on hover, no bright accent tint. */
+.clickable-icon:hover {background-color: var(--ds-surface-hover);color: var(--ds-heading);}
+.clickable-icon:hover svg {color: var(--ds-heading);}
 
-/* Left icon rail: roomy rounded tiles. */
-.workspace-ribbon.mod-left .side-dock-ribbon-action {width: 36px;height: 36px;padding: 0;border-radius: 11px;}
-.workspace-ribbon.mod-left :is(.side-dock-actions,.side-dock-settings) {gap: 8px;}
-.workspace-ribbon.mod-left .side-dock-ribbon-action svg {width: 19px;height: 19px;}
+/* Left icon rail: compact, unframed tiles. */
+.workspace-ribbon.mod-left .side-dock-ribbon-action {width: 32px;height: 32px;padding: 0;border-radius: 8px;}
+.workspace-ribbon.mod-left :is(.side-dock-actions,.side-dock-settings) {gap: 4px;}
+.workspace-ribbon.mod-left .side-dock-ribbon-action svg {width: 18px;height: 18px;}
 
-/* Sidebar view switcher (files / search / bookmarks): the open one is a solid blue tile. */
-.workspace-split.mod-sidedock .workspace-tab-header {border-radius: 10px;}
-.workspace-split.mod-sidedock .workspace-tab-header-inner {padding: 6px 7px;}
-.workspace-split.mod-sidedock .workspace-tab-header:not(.is-active):hover {background: var(--ds-hover-tile);}
-.workspace-split.mod-sidedock .workspace-tab-header:not(.is-active):hover .workspace-tab-header-inner-icon {color: var(--ds-accent);}
-.workspace .workspace-split.mod-sidedock .workspace-tab-header.is-active {background: var(--ds-accent);box-shadow: var(--ds-select-glow);}
+/* Sidebar view switcher (files / search / bookmarks / library): subtle tile, no solid pill. */
+.workspace-split.mod-sidedock .workspace-tab-header {border-radius: 8px;}
+.workspace-split.mod-sidedock .workspace-tab-header-inner {padding: 5px 6px;}
+.workspace-split.mod-sidedock .workspace-tab-header:not(.is-active):not(:hover) .workspace-tab-header-inner-icon {color: var(--ds-faint);}
+.workspace-split.mod-sidedock .workspace-tab-header:not(.is-active):hover {background: var(--ds-surface-hover);}
+.workspace-split.mod-sidedock .workspace-tab-header:not(.is-active):hover .workspace-tab-header-inner-icon {color: var(--ds-heading);}
+.workspace .workspace-split.mod-sidedock .workspace-tab-header.is-active {background: var(--ds-surface-hover);box-shadow: none;}
 .workspace-split.mod-sidedock .workspace-tab-header.is-active .workspace-tab-header-inner-icon,
-.workspace-split.mod-sidedock .workspace-tab-header.is-active .workspace-tab-header-inner-icon svg {color: #fff;}
+.workspace-split.mod-sidedock .workspace-tab-header.is-active .workspace-tab-header-inner-icon svg {color: var(--ds-heading);}
 .workspace-split.mod-sidedock .workspace-tab-header::before,
 .workspace-split.mod-sidedock .workspace-tab-header::after {display: none;}
 
-/* File tree: bold folders, a small ring before each note, the current note a blue pill. */
+/* File tree: bold folders, clean plain rows, low-saturation wash for the active note. */
 .nav-files-container .nav-folder-title {color: var(--ds-heading);font-weight: 600;}
 .nav-files-container .nav-folder-title .collapse-icon {color: var(--ds-faint);}
-.nav-files-container .nav-file-title-content {display: inline-flex;align-items: flex-start;gap: 9px;}
-.nav-files-container .nav-file-title-content::before {
-  content: "";
-  flex-shrink: 0;
-  width: 8px;
-  height: 8px;
-  box-sizing: border-box;
-  border: 1.5px solid currentColor;
-  border-radius: 50%;
-  opacity: .42;
-  /* Centred on the first line when a long title wraps. */
-  margin-top: calc(.5lh - 4px);
-}
-.nav-files-container .nav-file-title {transition: background-color 120ms ease, box-shadow 120ms ease;}
-.nav-files-container .nav-file-title.is-active {box-shadow: var(--ds-select-glow);}
-.nav-files-container .nav-file-title.is-active .nav-file-title-content::before {border-color: #fff;background: #fff;opacity: 1;}
-.nav-files-container .nav-file-title.is-active :is(.nav-file-tag,.tree-item-flair) {color: #fff;background: rgba(255,255,255,.22);}
-.nav-files-container .nav-file-title:not(.is-active):hover .nav-file-title-content::before {border-color: var(--ds-accent);opacity: 1;}
+.nav-files-container .nav-file-title {transition: background-color 120ms ease, color 120ms ease;box-shadow: none;}
+.nav-files-container .nav-file-title.is-active {background: var(--ds-accent-soft);color: var(--ds-heading);box-shadow: none;}
+.nav-files-container .nav-file-title :is(.nav-file-tag,.tree-item-flair) {color: var(--ds-muted);background: transparent;}
 
-/* Explorer toolbar and search: tiles and a recessed rounded field. */
-.nav-header .nav-action-button {width: 30px;height: 30px;padding: 0;border-radius: 9px;}
+/* Explorer toolbar and search: quiet buttons and a flush hairline search field. */
+.nav-header .nav-action-button {width: 28px;height: 28px;padding: 0;border-radius: 8px;}
 .nav-header .nav-action-button.is-active {background: var(--ds-accent-soft);color: var(--ds-accent);}
 .workspace-split.mod-sidedock .search-input-container input {
-  height: 36px;
-  padding-inline-start: 34px;
+  height: 34px;
+  padding-inline-start: 32px;
   border: 0;
-  border-radius: 12px;
+  border-radius: 9px;
   background: var(--ds-inset-bg);
   box-shadow: var(--ds-inset);
 }
-/* Room on the right for the clear button, and for the "Aa" match-case toggle where there is one,
-   so the text never runs underneath them. */
+/* Room on the right for the clear button and the "Aa" match-case toggle. */
 .workspace-split.mod-sidedock .search-input-container input {padding-inline-end: 32px;text-overflow: ellipsis;}
 .workspace-split.mod-sidedock .search-input-container:has(.input-right-decorator) input {padding-inline-end: 64px;}
-/* Recessed until focused; then it lifts to white with a blue ring. */
-.workspace-split.mod-sidedock .search-input-container input:focus {background: var(--ds-paper);box-shadow: 0 0 0 1px rgba(var(--ds-tone-accent),.6), 0 0 0 4px rgba(var(--ds-tone-accent),.14);}
+.workspace-split.mod-sidedock .search-input-container input:focus {background: var(--ds-paper);box-shadow: inset 0 0 0 1px var(--ds-accent), 0 0 0 3px var(--ds-accent-soft);}
 
-/* Buttons: primary is solid blue with a soft glow; the rest are white with a hairline. */
+/* Primary action buttons: muted indigo fill with adaptive label contrast, no neon glow. */
 button.mod-cta {
   border: 0;
   border-radius: var(--button-radius);
-  color: #fff;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--ds-accent) 90%, #fff), var(--ds-accent));
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.25), var(--ds-select-glow);
+  color: var(--ds-on-accent);
+  background: var(--ds-accent);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.2), var(--ds-elev-1);
 }
-button.mod-cta:hover {background: linear-gradient(180deg, color-mix(in srgb, var(--ds-accent) 80%, #fff), color-mix(in srgb, var(--ds-accent) 92%, #fff));}
+button.mod-cta:hover {background: var(--ds-accent-hover);}
 button:not(.mod-cta,.mod-warning,.clickable-icon):focus-visible,button.mod-cta:focus-visible {outline: 2px solid var(--ds-accent);outline-offset: 2px;}
 
 /* Source: src/styles/typography.css */
@@ -430,21 +391,21 @@ body {
   --bold-color: var(--ds-heading);
   --bold-weight: 600;
   --italic-color: inherit;
-  --link-color: var(--ds-accent);
-  --link-color-hover: var(--ds-accent-hover);
-  --link-external-color: var(--ds-accent);
-  --link-external-color-hover: var(--ds-accent-hover);
-  --link-decoration: underline;
+  --link-color: var(--ds-warm);
+  --link-color-hover: color-mix(in srgb, var(--ds-warm) 82%, var(--ds-heading));
+  --link-external-color: var(--ds-warm);
+  --link-external-color-hover: color-mix(in srgb, var(--ds-warm) 82%, var(--ds-heading));
+  --link-decoration: none;
   --link-decoration-hover: underline;
   --link-decoration-thickness: 1px;
-  --link-unresolved-color: rgb(var(--ds-tone-3));
-  --link-unresolved-opacity: .75;
-  --list-marker-color: rgba(var(--ds-tone-accent),.55);
-  --list-marker-color-hover: rgb(var(--ds-tone-accent));
-  --list-marker-color-collapsed: rgb(var(--ds-tone-accent));
-  --text-highlight-bg: rgba(var(--ds-tone-4),.22);
-  --text-highlight-bg-active: rgba(var(--ds-tone-4),.4);
-  --hr-color: var(--ds-rule);
+  --link-unresolved-color: var(--ds-muted);
+  --link-unresolved-opacity: 1;
+  --list-marker-color: rgba(var(--ds-tone-amber),.72);
+  --list-marker-color-hover: var(--ds-warm);
+  --list-marker-color-collapsed: var(--ds-warm);
+  --text-highlight-bg: rgba(var(--ds-tone-amber),.24);
+  --text-highlight-bg-active: rgba(var(--ds-tone-amber),.38);
+  --hr-color: var(--ds-border);
 }
 .markdown-preview-view,
 .markdown-source-view.mod-cm6 {font-family: var(--ds-font-body);font-size: var(--ds-body-size);line-height: var(--ds-body-leading);}
@@ -458,7 +419,7 @@ body {
 .markdown-rendered li {padding-inline-start: .15em;}
 .markdown-rendered li > :is(ul,ol) {margin-block: .25em 0;}
 .markdown-rendered strong {font-family: inherit;font-weight: var(--bold-weight);color: var(--bold-color);}
-:is(.markdown-rendered,.markdown-source-view) :is(a.internal-link,a.external-link,.cm-hmd-internal-link .cm-underline,.cm-link .cm-underline) {text-decoration-color: rgba(var(--ds-tone-accent),.32);text-underline-offset: 3px;}
+:is(.markdown-rendered,.markdown-source-view) :is(a.internal-link,a.external-link,.cm-hmd-internal-link .cm-underline,.cm-link .cm-underline) {text-decoration-color: rgba(var(--ds-tone-amber),.36);text-underline-offset: 3px;}
 :is(.markdown-rendered,.markdown-source-view) :is(a.internal-link,a.external-link):hover {text-decoration-color: currentColor;}
 .markdown-rendered mark {border-radius: 3px;padding: 0 .12em;color: inherit;}
 .markdown-rendered .footnotes {font-size: var(--ds-caption-size);color: var(--ds-muted);}
@@ -477,8 +438,8 @@ body {
 
 /* Source: src/styles/components.css */
 body {
-  --blockquote-border-color: rgba(var(--ds-tone-accent),.55);
-  --blockquote-border-thickness: 3px;
+  --blockquote-border-color: rgba(var(--ds-tone-amber),.68);
+  --blockquote-border-thickness: 2.5px;
   --blockquote-background-color: transparent;
   --blockquote-color: var(--ds-muted);
   --blockquote-font-style: normal;
@@ -516,10 +477,10 @@ body {
   --table-cell-vertical-alignment: top;
   --table-white-space: normal;
 }
-/* Quote: an accent thread and a faint wash that fades to the right. */
-.markdown-rendered blockquote:not(.callout) {padding: .6em 1em;border-radius: 0 var(--ds-radius-control) var(--ds-radius-control) 0;
-  border-image: linear-gradient(180deg, rgb(var(--ds-tone-accent)), rgba(var(--ds-tone-3),.55)) 1;
-  background: linear-gradient(90deg, rgba(var(--ds-tone-accent),.07), rgba(var(--ds-tone-accent),0) 72%);}
+/* Quote: a warm amber bar with a gentle wash. */
+.markdown-rendered blockquote:not(.callout) {padding: .65em 1.1em;border-radius: 0 var(--ds-radius-control) var(--ds-radius-control) 0;
+  border-inline-start: var(--blockquote-border-thickness) solid var(--blockquote-border-color);
+  background: rgba(var(--ds-tone-amber),.04);}
 .markdown-rendered blockquote:not(.callout) > :last-child {margin-bottom: 0;}
 .callout-content > :last-child {margin-bottom: 0;}
 /* Callout families map onto the companion hues; dark mode lifts them automatically. */
@@ -851,152 +812,277 @@ body.theme-dark .callout[data-callout="diagram"] > .callout-content > ul > li {b
 }
 
 /* Source: src/styles/glass.css */
-/* Document look: the note is an opaque frosted sheet (the shared frost from shell.css) set in a
-   monospace face; links stay blue, code and highlights are warm. Tables, code and images are
-   raised white slabs. Selectors start with body:is(.theme-light,.theme-dark) (dark:
-   body.theme-dark:not(.theme-light)) for one class of weight over the base rules they refine,
-   as the former style class had. Screen only, so print and PDF
-   keep the shared academic contract in print.css. Light and dark blocks set the same names. */
+/* Document reading layer: warm amber inline code and highlights, clean tables, and unframed rounded images.
+   Screen only, so print and PDF keep the academic contract in print.css. */
 @media screen {
   body:is(.theme-light,.theme-dark) {
-    --aw-warm: 204,110,48;
+    --aw-warm: var(--ds-tone-amber);
     --aw-glass-table: var(--ds-paper);
     --aw-glass-table-head: var(--ds-inset-bg);
-    --aw-image-card: #ffffff;
     --ds-font-body: "Maple Mono NF CN", "Maple Mono", "Sarasa Mono SC", "LXGW WenKai Mono", "JetBrains Mono", "SF Mono", Menlo, "PingFang SC", "Microsoft YaHei", monospace;
     --ds-font-heading: var(--ds-font-body);
     --font-interface: var(--ds-font-body);
-    --ds-body-leading: 1.85;
-    --text-highlight-bg: rgba(var(--aw-warm),.2);
-    --text-highlight-bg-active: rgba(var(--aw-warm),.34);
+    --ds-body-leading: 1.8;
+    --text-highlight-bg: rgba(var(--aw-warm),.24);
+    --text-highlight-bg-active: rgba(var(--aw-warm),.38);
   }
   body.theme-dark:not(.theme-light) {
-    --aw-warm: 238,154,98;
+    --aw-warm: var(--ds-tone-amber);
     --aw-glass-table: var(--ds-paper);
     --aw-glass-table-head: var(--ds-inset-bg);
-    --aw-image-card: rgba(255,255,255,.94);
   }
 
-  /* Text: monospace, slightly open, with warm code and highlights. */
-  body:is(.theme-light,.theme-dark) :is(.markdown-preview-view,.markdown-source-view.mod-cm6) {letter-spacing: .01em;}
+  /* Text: monospace rhythm with warm amber inline code and links. */
+  body:is(.theme-light,.theme-dark) :is(.markdown-preview-view,.markdown-source-view.mod-cm6) {letter-spacing: .005em;}
   body:is(.theme-light,.theme-dark) .markdown-rendered :not(pre) > code,
   body:is(.theme-light,.theme-dark) .markdown-source-view.mod-cm6 .cm-inline-code:not(.cm-formatting) {
     color: rgb(var(--aw-warm));
-    background: rgba(var(--aw-warm),.1);
+    background: rgba(var(--aw-warm),.09);
     box-shadow: none;
     border-radius: 4px;
   }
-  body:is(.theme-light,.theme-dark) .markdown-rendered mark {padding: .05em .2em;border-radius: 3px;}
-  body:is(.theme-light,.theme-dark) .markdown-rendered pre {border: 1px solid var(--ds-glass-edge);background: var(--ds-code-bg);box-shadow: var(--ds-inset);}
+  body:is(.theme-light,.theme-dark) .markdown-rendered mark {padding: .05em .22em;border-radius: 3px;}
+  body:is(.theme-light,.theme-dark) .markdown-rendered pre {border: 1px solid var(--ds-border);background: var(--ds-code-bg);box-shadow: none;}
 
-  /* Tables: one raised white slab with hairline rows (the three-line academia table stays).
-     Live Preview's table widget is itself .markdown-rendered inside the note's
-     .markdown-source-view, so an academia note is excluded through its ancestors too. */
+  /* Tables: clean hairline frame with subtle header wash (the three-line academia table stays). */
   body:is(.theme-light,.theme-dark) :is(.markdown-rendered,.markdown-source-view):not(.academia, .academia *) table {
     border-collapse: separate;
     border-spacing: 0;
-    border: 1px solid var(--ds-glass-edge);
-    border-radius: 14px;
+    border: 1px solid var(--ds-border);
+    border-radius: 10px;
     overflow: hidden;
     background: var(--aw-glass-table);
-    box-shadow: var(--ds-glass-highlight), var(--ds-elev-1);
+    box-shadow: none;
     --aw-cell-pad: 12px 16px;
   }
   body:is(.theme-light,.theme-dark) :is(.markdown-rendered,.markdown-source-view):not(.academia, .academia *) table th {background: var(--aw-glass-table-head);color: var(--ds-heading);font-weight: 600;}
-  body:is(.theme-light,.theme-dark) :is(.markdown-rendered,.markdown-source-view):not(.academia, .academia *) table :is(th,td) {border-bottom: 1px solid rgba(var(--ds-ink-rgb),.07);}
+  body:is(.theme-light,.theme-dark) :is(.markdown-rendered,.markdown-source-view):not(.academia, .academia *) table :is(th,td) {border-bottom: 1px solid var(--ds-border);}
   /* experiment keeps its compact cells on the slab too. */
   body:is(.theme-light,.theme-dark) :is(.markdown-rendered,.markdown-source-view).experiment:not(.academia) table {--aw-cell-pad: 8px 12px;}
 
-  /* Images sit on white cards, so diagrams with transparent backgrounds stay legible. */
+  /* Images sit flush with clean rounded corners and a subtle hairline, without a padded white mat. */
   body:is(.theme-light,.theme-dark) :is(.markdown-rendered,.markdown-source-view) :is(.image-embed img,p > img) {
     box-sizing: border-box;
-    padding: 12px;
-    border-radius: 14px;
-    background: var(--aw-image-card);
-    box-shadow: 0 0 0 1px var(--ds-glass-edge), var(--ds-elev-2);
+    border-radius: 10px;
+    box-shadow: 0 0 0 1px var(--ds-border);
   }
 }
 
 /* Source: src/styles/window-glass.css */
-/* Frosted paper window. The plugin's "窗口毛玻璃" setting puts body.aw-glass on the window. The
-   theme then lays a sheet of paper behind the whole window and frosted glass over it; the
-   ribbon, sidebar, tabs and note are one continuous sheet with no opaque panels on it. White
-   cards still float on top: menus, dialogs, tab pills, images, tables, code blocks.
+/* Window surface system:
+   1) Opaque warm-paper whole-window fallback (body.aw-glass when native translucency is off):
+      one continuous ivory sheet with fine paper fibre grain across sidebars, tabs and note.
+   2) Native macOS translucent glass (body.is-translucent on the main window):
+      one shared thin tint over native desktop vibrancy, inner containers transparent so tints
+      never stack, zero CSS backdrop-filter, zero layout transitions, and opaque floats/popouts
+      to prevent Chromium stale-frame ghosting. */
 
-   The paper is drawn here, not chosen by the user: soft lighter and darker clouds of a pale grey
-   (fractal noise, no picture file), plus a fine grain on the glass, so it reads like matte paper
-   seen through frosted glass. Everything is neutral grey: the paper, the fog, the lighter note,
-   dividers and fields carry no hue. The window stays opaque: Obsidian's
-   own "Translucent window" is not used, because on macOS it shows no desktop and ghosts text.
-
-   Without the plugin, or with the setting off, none of this applies and the white look stays. */
-body.aw-glass {
-  /* Paper: one 1400px tile of fractal noise. One noise channel becomes the lighter and darker
-     clouds, written to red, green and blue alike, so the paper is grey with no hue. */
-  --ds-glass-paper-texture: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1400' height='1400'><filter id='p' x='0' y='0' width='100%' height='100%' color-interpolation-filters='sRGB'><feTurbulence type='fractalNoise' baseFrequency='.0055' numOctaves='5' seed='11' stitchTiles='stitch'/><feColorMatrix values='0 0 .2 0 .75 0 0 .2 0 .75 0 0 .2 0 .75 0 0 0 0 1'/></filter><rect width='100%' height='100%' filter='url(%23p)'/></svg>");
-  --ds-glass-paper-tile: 1400px;
-  --ds-glass-grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .5 0 0 0 0 .5 0 0 0 0 .5 0 0 0 .06 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
-  --ds-glass-fog: rgba(255,255,255,.3);
-  /* The note sits a shade lighter than the sidebar so the reading area is calm. */
-  --ds-glass-wash: rgba(255,255,255,.45);
-  --ds-glass-divider: rgba(255,255,255,.45);
-  --ds-glass-field: rgba(255,255,255,.5);
-  --ds-glass-hover: rgba(255,255,255,.42);
-  /* One line between sidebar and note: the note's soft hairline, not the split divider too. */
+/* -------------------------------------------------------------------------- */
+/* 1. Warm paper whole-window fallback (when native translucency is off)      */
+/* -------------------------------------------------------------------------- */
+body.aw-glass:not(.is-translucent):not(.is-popout-modal) {
+  --ds-bg: #fbf8ef;
+  --ds-canvas: #fbf8ef;
+  --ds-paper: #fffdf8;
+  --ds-shell: #f4efe1;
+  --ds-surface: #f2ecdc;
+  --ds-surface-hover: rgba(34,28,18,.055);
+  --ds-text: #221e17;
+  --ds-heading: #17140f;
+  --ds-muted: #5a5346;
+  --ds-faint: #8c8474;
+  --ds-border: rgba(34,28,18,.095);
+  --ds-rule: rgba(34,28,18,.16);
+  --ds-code-bg: rgba(34,28,18,.04);
+  --ds-inset-bg: rgba(34,28,18,.045);
+  --ds-glass-paper-grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='p'><feTurbulence type='fractalNoise' baseFrequency='.7' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .42 0 0 0 0 .34 0 0 0 0 .22 0 0 0 .048 0'/></filter><rect width='100%' height='100%' filter='url(%23p)'/></svg>");
+  --ds-glass-grain-opacity: 1;
   --divider-color: transparent;
-  --background-primary: transparent;
-  --background-secondary: transparent;
-  --background-secondary-alt: transparent;
 }
-body.aw-glass.aw-glass-fog-light {--ds-glass-fog: rgba(255,255,255,.15);}
-body.aw-glass.aw-glass-fog-strong {--ds-glass-fog: rgba(255,255,255,.5);}
-body.theme-dark.aw-glass {
-  --ds-glass-paper-texture: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1400' height='1400'><filter id='p' x='0' y='0' width='100%' height='100%' color-interpolation-filters='sRGB'><feTurbulence type='fractalNoise' baseFrequency='.0055' numOctaves='5' seed='11' stitchTiles='stitch'/><feColorMatrix values='0 0 .08 0 .08 0 0 .08 0 .08 0 0 .08 0 .08 0 0 0 0 1'/></filter><rect width='100%' height='100%' filter='url(%23p)'/></svg>");
-  --ds-glass-fog: rgba(18,18,18,.3);
-  --ds-glass-wash: rgba(255,255,255,.035);
-  --ds-glass-divider: rgba(255,255,255,.08);
-  --ds-glass-field: rgba(255,255,255,.07);
-  --ds-glass-hover: rgba(255,255,255,.07);
+body.aw-glass.aw-glass-fog-light:not(.is-translucent):not(.is-popout-modal) {--ds-glass-grain-opacity: .5;}
+body.aw-glass.aw-glass-fog-strong:not(.is-translucent):not(.is-popout-modal) {--ds-bg: #f8f2e2;--ds-canvas: #f8f2e2;--ds-glass-grain-opacity: 1.35;}
+
+body.theme-dark.aw-glass:not(.is-translucent):not(.is-popout-modal) {
+  --ds-bg: #191816;
+  --ds-canvas: #191816;
+  --ds-paper: #22201d;
+  --ds-shell: #1d1c19;
+  --ds-surface: #272521;
+  --ds-surface-hover: rgba(255,248,235,.055);
+  --ds-text: #e6e1d6;
+  --ds-heading: #f2eee4;
+  --ds-muted: #a69f92;
+  --ds-faint: #7a7468;
+  --ds-border: rgba(255,248,235,.09);
+  --ds-rule: rgba(255,248,235,.15);
+  --ds-code-bg: rgba(255,248,235,.04);
+  --ds-inset-bg: rgba(255,248,235,.048);
+  --ds-glass-paper-grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='p'><feTurbulence type='fractalNoise' baseFrequency='.7' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 .96 0 0 0 0 .9 0 0 0 .032 0'/></filter><rect width='100%' height='100%' filter='url(%23p)'/></svg>");
 }
-body.theme-dark.aw-glass.aw-glass-fog-light {--ds-glass-fog: rgba(18,18,18,.15);}
-body.theme-dark.aw-glass.aw-glass-fog-strong {--ds-glass-fog: rgba(18,18,18,.5);}
+body.theme-dark.aw-glass.aw-glass-fog-strong:not(.is-translucent):not(.is-popout-modal) {--ds-bg: #161512;--ds-canvas: #161512;--ds-glass-grain-opacity: 1.35;}
 
 @media screen {
-  /* The paper, then the frosted glass over it: fog and grain. Both layers sit behind everything
-     in the window and never take the pointer; the paper tile is rasterised once and repeated. */
-  body.aw-glass .app-container {position: relative;isolation: isolate;background: var(--ds-bg);}
-  body.aw-glass .app-container::before,
-  body.aw-glass .app-container::after {content: "";position: fixed;inset: 0;z-index: -1;pointer-events: none;}
-  body.aw-glass .app-container::before {background: var(--ds-glass-paper-texture) 0 0 / var(--ds-glass-paper-tile) var(--ds-glass-paper-tile) repeat;}
-  body.aw-glass .app-container::after {background: var(--ds-glass-grain) 0 0 / 180px 180px repeat, var(--ds-glass-fog);}
-
-  body.aw-glass .workspace {background: transparent;}
-  /* Sidebars: no panel, the files sit straight on the glass. */
-  body.aw-glass .workspace .workspace-split.mod-sidedock .workspace-tabs > .workspace-tab-container {
-    border-color: transparent;
-    background: transparent;
-    box-shadow: none;
+  body.aw-glass:not(.is-translucent):not(.is-popout-modal) .app-container {position: relative;isolation: isolate;background: var(--ds-bg);}
+  body.aw-glass:not(.is-translucent):not(.is-popout-modal) .app-container::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    opacity: var(--ds-glass-grain-opacity);
+    background: var(--ds-glass-paper-grain) 0 0 / 200px 200px repeat;
   }
-  /* The note: the same glass, a touch lighter, with one soft hairline toward the sidebar. */
-  body.aw-glass .workspace-split.mod-root .workspace-leaf-content {
-    border-color: var(--ds-glass-divider);
-    background: var(--ds-glass-wash);
-    box-shadow: none;
-  }
-  body.aw-glass .status-bar {border-color: transparent;background: transparent;box-shadow: none;}
-  /* Fields and hover tiles: frosted white instead of flat grey, so they read on the paper. */
-  body.aw-glass .workspace-split.mod-sidedock .search-input-container input:not(:focus) {background: var(--ds-glass-field);box-shadow: inset 0 0 0 1px var(--ds-glass-divider);}
-  body.aw-glass .workspace .mod-root .workspace-tab-header:not(.is-active):hover {background: var(--ds-glass-hover);}
+  body.aw-glass:not(.is-translucent):not(.is-popout-modal) .workspace {background: transparent;}
 }
-/* Users who ask the system for less transparency get the plain white look. */
+
+/* -------------------------------------------------------------------------- */
+/* 2. Native macOS translucent window (single-tint anti-ghosting glass)       */
+/* -------------------------------------------------------------------------- */
+body.is-translucent:not(.is-popout-window):not(.is-popout-modal) {
+  --aw-trans-shell: rgba(255,255,255,.05);
+  --aw-trans-control: rgba(255,255,255,.22);
+  --aw-trans-rim: rgba(255,255,255,.72);
+  --aw-trans-edge: color-mix(in srgb, var(--ds-text) 12%, transparent);
+  --aw-trans-line: rgba(0,0,0,.065);
+  --workspace-background-translucent: rgba(255,255,255,.005);
+  --titlebar-background: transparent;
+  --titlebar-background-focused: transparent;
+  --divider-color: transparent;
+  background: transparent !important;
+}
+body.is-translucent.aw-glass-fog-light:not(.is-popout-window):not(.is-popout-modal) {--aw-trans-shell: rgba(255,255,255,.02);}
+body.is-translucent.aw-glass-fog-strong:not(.is-popout-window):not(.is-popout-modal) {--aw-trans-shell: rgba(255,255,255,.12);}
+
+body.theme-dark.is-translucent:not(.is-popout-window):not(.is-popout-modal) {
+  --aw-trans-shell: rgba(20,21,27,.05);
+  --aw-trans-control: rgba(255,255,255,.08);
+  --aw-trans-rim: rgba(255,255,255,.14);
+  --aw-trans-line: rgba(255,255,255,.07);
+  --workspace-background-translucent: rgba(17,18,22,.005);
+}
+body.theme-dark.is-translucent.aw-glass-fog-light:not(.is-popout-window):not(.is-popout-modal) {--aw-trans-shell: rgba(20,21,27,.02);}
+body.theme-dark.is-translucent.aw-glass-fog-strong:not(.is-popout-window):not(.is-popout-modal) {--aw-trans-shell: rgba(20,21,27,.12);}
+
+@media screen {
+  #startup-snapshot ~ .app-container {opacity: 0;}
+
+  body.is-translucent:not(.is-popout-window):not(.is-popout-modal) :is(.app-container,.workspace) {
+    background: transparent !important;
+  }
+  /* Paint the single thin tint once on top-level splits and ribbon only. */
+  body.is-translucent:not(.is-popout-window):not(.is-popout-modal):not(.is-fullscreen)
+    :is(.workspace-split.mod-left-split,.workspace-split.mod-right-split,.workspace-ribbon.mod-primary),
+  body.is-translucent:not(.is-popout-window):not(.is-popout-modal)
+    :is(.workspace-ribbon,.titlebar,.workspace-sidedock-vault-profile) {
+    background: var(--aw-trans-shell) !important;
+  }
+  body.is-translucent:not(.is-popout-window):not(.is-popout-modal) .workspace-split.mod-root {
+    background: var(--aw-trans-shell) !important;
+    contain: paint;
+  }
+  /* Clear every inner container so tints never stack into dense bands. */
+  body.is-translucent:not(.is-popout-window):not(.is-popout-modal) :where(
+    .workspace-tab-header-container,
+    .view-header,
+    .status-bar,
+    .workspace-split:not(.mod-root):not(.mod-left-split):not(.mod-right-split),
+    .workspace-tabs,
+    .workspace-tab-container,
+    .workspace-leaf,
+    .workspace-leaf-content,
+    .view-content,
+    .markdown-reading-view,
+    .markdown-source-view.mod-cm6,
+    .markdown-preview-view,
+    .cm-editor,
+    .cm-scroller
+  ) {
+    background: transparent !important;
+  }
+  /* Stacked tabs overlap while scrolling and need an opaque backing. */
+  body.is-translucent:not(.is-popout-window):not(.is-popout-modal) .mod-root .workspace-tabs.mod-stacked .workspace-leaf {
+    background: var(--ds-paper) !important;
+  }
+  body.is-translucent:not(.is-popout-window):not(.is-popout-modal) .mod-root .workspace-tabs.mod-stacked .workspace-tab-header {
+    background: var(--ds-bg) !important;
+  }
+  body.is-translucent:has(.workspace-leaf.mod-active .workspace-leaf-content[data-type="webviewer"]) .workspace-split.mod-left-split {
+    background: var(--ds-bg) !important;
+    transition: none !important;
+  }
+
+  /* Anti-ghosting guardrails: no CSS blur, no promoted layers, and instant layout repaints. */
+  body.is-translucent:not(.is-popout-window) .workspace *,
+  body.is-translucent:not(.is-popout-window) .workspace *::before,
+  body.is-translucent:not(.is-popout-window) .workspace *::after {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    will-change: auto !important;
+  }
+  body.is-translucent:not(.is-popout-window) :is(.workspace-split,.workspace-tabs,.workspace-tab-container,.workspace-leaf,.workspace-tab-header) {
+    transition: none !important;
+  }
+
+  /* Controls on glass: translucent lens active tab and quiet rest buttons. */
+  body.is-translucent:not(.is-popout-window):not(.is-popout-modal) .workspace-tab-header.is-active {
+    background: var(--aw-trans-control) !important;
+    box-shadow: inset 0 1px 0 var(--aw-trans-rim), inset 0 0 0 1px var(--aw-trans-edge) !important;
+  }
+  body.is-translucent:not(.is-popout-window):not(.is-popout-modal)
+    :is(.view-header,.nav-header,.workspace-tab-header-container,.workspace-sidedock-vault-profile)
+    button:not(.mod-cta,.mod-warning,.is-active,[aria-pressed="true"],[aria-disabled="true"],:disabled) {
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+  body.is-translucent:not(.is-popout-window):not(.is-popout-modal)
+    :is(.view-header,.nav-header,.workspace-tab-header-container,.workspace-sidedock-vault-profile)
+    button:not(.mod-cta,.mod-warning,.is-active,[aria-pressed="true"],[aria-disabled="true"],:disabled):hover {
+    background: var(--ds-surface-hover) !important;
+  }
+
+  /* Floats on glass: opaque surface with top rim, zero backdrop-filter. */
+  body.is-translucent:not(.is-popout-window):not(.is-popout-modal)
+    :is(.menu,.suggestion-container,.popover,.hover-popover,.prompt,.notice,.select-dropdown,.modal) {
+    background: var(--ds-paper) !important;
+    border: 1px solid var(--aw-trans-edge) !important;
+    box-shadow: inset 0 1px 0 var(--aw-trans-rim), var(--ds-elev-3) !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+  body.is-translucent:not(.is-popout-window):not(.is-popout-modal) .modal-container .modal-bg {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+
+  /* Popout windows remain 100% opaque so detached panes and settings never flash black. */
+  html:has(body:is(.is-popout-window,.is-popout-modal)) {
+    height: 100% !important;
+    min-height: 100% !important;
+    background-color: var(--ds-bg) !important;
+  }
+  body:is(.is-popout-window,.is-popout-modal) {
+    height: 100% !important;
+    min-height: 100% !important;
+    --workspace-background-translucent: var(--ds-bg);
+    background: var(--ds-bg) !important;
+    color: var(--ds-text) !important;
+  }
+  body:is(.is-popout-window,.is-popout-modal) :is(.app-container,.workspace) {background: var(--ds-bg) !important;}
+  body.is-popout-modal .titlebar {background: transparent !important;}
+}
+
 @media (prefers-reduced-transparency: reduce) {
-  body.aw-glass .app-container::before,
-  body.aw-glass .app-container::after {display: none;}
+  body.aw-glass .app-container::before {display: none;}
 }
 @media (forced-colors:active) {
-  body.aw-glass .app-container::before,
-  body.aw-glass .app-container::after {display: none;}
-  body.aw-glass .workspace-split.mod-root .workspace-leaf-content {background: Canvas;}
+  body.aw-glass .app-container::before {display: none;}
+}
+@media print {
+  html:has(body:is(.is-popout-window,.is-popout-modal)),
+  body:is(.is-popout-window,.is-popout-modal) {
+    height: auto !important;
+    min-height: 0 !important;
+  }
 }
 
 /* Source: src/styles/print.css */
@@ -1026,8 +1112,8 @@ body.theme-dark.aw-glass.aw-glass-fog-strong {--ds-glass-fog: rgba(18,18,18,.5);
     --ds-text:#111; --ds-heading:#111; --ds-muted:#444; --ds-faint:#555;
     /* Tones drive links, code, markers, tags and callouts; print keeps them dark and neutral. */
     --ds-tone-accent:34,34,34; --ds-tone-1:68,68,68; --ds-tone-2:68,68,68; --ds-tone-3:68,68,68;
-    --ds-tone-4:68,68,68; --ds-tone-5:68,68,68; --ds-tone-neutral:90,90,90; --ds-ink-rgb:0,0,0;
-    --ds-shell:#fff; --ds-on-accent:#fff;
+    --ds-tone-4:68,68,68; --ds-tone-5:68,68,68; --ds-tone-neutral:90,90,90; --ds-tone-amber:34,34,34; --ds-ink-rgb:0,0,0;
+    --ds-shell:#fff; --ds-on-accent:#fff; --ds-warm:#222;
     --ds-accent:#222; --ds-accent-hover:#222; --ds-accent-soft:#fff;
     --ds-border:#ccc; --ds-rule:#777; --ds-code-bg:#f5f5f5;
     --ds-shadow:none;

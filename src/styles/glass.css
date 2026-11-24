@@ -1,65 +1,55 @@
-/* Document look: the note is an opaque frosted sheet (the shared frost from shell.css) set in a
-   monospace face; links stay blue, code and highlights are warm. Tables, code and images are
-   raised white slabs. Selectors start with body:is(.theme-light,.theme-dark) (dark:
-   body.theme-dark:not(.theme-light)) for one class of weight over the base rules they refine,
-   as the former style class had. Screen only, so print and PDF
-   keep the shared academic contract in print.css. Light and dark blocks set the same names. */
+/* Document reading layer: warm amber inline code and highlights, clean tables, and unframed rounded images.
+   Screen only, so print and PDF keep the academic contract in print.css. */
 @media screen {
   body:is(.theme-light,.theme-dark) {
-    --aw-warm: 204,110,48;
+    --aw-warm: var(--ds-tone-amber);
     --aw-glass-table: var(--ds-paper);
     --aw-glass-table-head: var(--ds-inset-bg);
-    --aw-image-card: #ffffff;
     --ds-font-body: "Maple Mono NF CN", "Maple Mono", "Sarasa Mono SC", "LXGW WenKai Mono", "JetBrains Mono", "SF Mono", Menlo, "PingFang SC", "Microsoft YaHei", monospace;
     --ds-font-heading: var(--ds-font-body);
     --font-interface: var(--ds-font-body);
-    --ds-body-leading: 1.85;
-    --text-highlight-bg: rgba(var(--aw-warm),.2);
-    --text-highlight-bg-active: rgba(var(--aw-warm),.34);
+    --ds-body-leading: 1.8;
+    --text-highlight-bg: rgba(var(--aw-warm),.24);
+    --text-highlight-bg-active: rgba(var(--aw-warm),.38);
   }
   body.theme-dark:not(.theme-light) {
-    --aw-warm: 238,154,98;
+    --aw-warm: var(--ds-tone-amber);
     --aw-glass-table: var(--ds-paper);
     --aw-glass-table-head: var(--ds-inset-bg);
-    --aw-image-card: rgba(255,255,255,.94);
   }
 
-  /* Text: monospace, slightly open, with warm code and highlights. */
-  body:is(.theme-light,.theme-dark) :is(.markdown-preview-view,.markdown-source-view.mod-cm6) {letter-spacing: .01em;}
+  /* Text: monospace rhythm with warm amber inline code and links. */
+  body:is(.theme-light,.theme-dark) :is(.markdown-preview-view,.markdown-source-view.mod-cm6) {letter-spacing: .005em;}
   body:is(.theme-light,.theme-dark) .markdown-rendered :not(pre) > code,
   body:is(.theme-light,.theme-dark) .markdown-source-view.mod-cm6 .cm-inline-code:not(.cm-formatting) {
     color: rgb(var(--aw-warm));
-    background: rgba(var(--aw-warm),.1);
+    background: rgba(var(--aw-warm),.09);
     box-shadow: none;
     border-radius: 4px;
   }
-  body:is(.theme-light,.theme-dark) .markdown-rendered mark {padding: .05em .2em;border-radius: 3px;}
-  body:is(.theme-light,.theme-dark) .markdown-rendered pre {border: 1px solid var(--ds-glass-edge);background: var(--ds-code-bg);box-shadow: var(--ds-inset);}
+  body:is(.theme-light,.theme-dark) .markdown-rendered mark {padding: .05em .22em;border-radius: 3px;}
+  body:is(.theme-light,.theme-dark) .markdown-rendered pre {border: 1px solid var(--ds-border);background: var(--ds-code-bg);box-shadow: none;}
 
-  /* Tables: one raised white slab with hairline rows (the three-line academia table stays).
-     Live Preview's table widget is itself .markdown-rendered inside the note's
-     .markdown-source-view, so an academia note is excluded through its ancestors too. */
+  /* Tables: clean hairline frame with subtle header wash (the three-line academia table stays). */
   body:is(.theme-light,.theme-dark) :is(.markdown-rendered,.markdown-source-view):not(.academia, .academia *) table {
     border-collapse: separate;
     border-spacing: 0;
-    border: 1px solid var(--ds-glass-edge);
-    border-radius: 14px;
+    border: 1px solid var(--ds-border);
+    border-radius: 10px;
     overflow: hidden;
     background: var(--aw-glass-table);
-    box-shadow: var(--ds-glass-highlight), var(--ds-elev-1);
+    box-shadow: none;
     --aw-cell-pad: 12px 16px;
   }
   body:is(.theme-light,.theme-dark) :is(.markdown-rendered,.markdown-source-view):not(.academia, .academia *) table th {background: var(--aw-glass-table-head);color: var(--ds-heading);font-weight: 600;}
-  body:is(.theme-light,.theme-dark) :is(.markdown-rendered,.markdown-source-view):not(.academia, .academia *) table :is(th,td) {border-bottom: 1px solid rgba(var(--ds-ink-rgb),.07);}
+  body:is(.theme-light,.theme-dark) :is(.markdown-rendered,.markdown-source-view):not(.academia, .academia *) table :is(th,td) {border-bottom: 1px solid var(--ds-border);}
   /* experiment keeps its compact cells on the slab too. */
   body:is(.theme-light,.theme-dark) :is(.markdown-rendered,.markdown-source-view).experiment:not(.academia) table {--aw-cell-pad: 8px 12px;}
 
-  /* Images sit on white cards, so diagrams with transparent backgrounds stay legible. */
+  /* Images sit flush with clean rounded corners and a subtle hairline, without a padded white mat. */
   body:is(.theme-light,.theme-dark) :is(.markdown-rendered,.markdown-source-view) :is(.image-embed img,p > img) {
     box-sizing: border-box;
-    padding: 12px;
-    border-radius: 14px;
-    background: var(--aw-image-card);
-    box-shadow: 0 0 0 1px var(--ds-glass-edge), var(--ds-elev-2);
+    border-radius: 10px;
+    box-shadow: 0 0 0 1px var(--ds-border);
   }
 }

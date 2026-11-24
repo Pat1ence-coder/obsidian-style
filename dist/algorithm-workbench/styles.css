@@ -11,22 +11,22 @@
   --ds-font-heading: var(--ds-font-ui);
   /* One scale, respecting Obsidian's overall text-size preference. */
   --ds-body-size: var(--font-text-size, 16px);
-  --ds-title-size: calc(var(--ds-body-size) * 2);
-  --ds-h1-size: calc(var(--ds-body-size) * 1.75);
-  --ds-h2-size: calc(var(--ds-body-size) * 1.5);
-  --ds-h3-size: calc(var(--ds-body-size) * 1.25);
-  --ds-h4-size: calc(var(--ds-body-size) * 1.125);
+  --ds-title-size: calc(var(--ds-body-size) * 1.75);
+  --ds-h1-size: calc(var(--ds-body-size) * 1.55);
+  --ds-h2-size: calc(var(--ds-body-size) * 1.32);
+  --ds-h3-size: calc(var(--ds-body-size) * 1.15);
+  --ds-h4-size: calc(var(--ds-body-size) * 1.05);
   --ds-h5-size: var(--ds-body-size);
-  --ds-h6-size: var(--ds-body-size);
+  --ds-h6-size: calc(var(--ds-body-size) * .95);
   --ds-table-size: calc(var(--ds-body-size) * .875);
   --ds-caption-size: calc(var(--ds-body-size) * .8125);
   --ds-code-size: calc(var(--ds-body-size) * .875);
-  --ds-body-leading: 1.7;
+  --ds-body-leading: 1.72;
   --ds-heading-leading: 1.3;
   --ds-code-leading: 1.55;
-  --ds-paragraph-gap: .8em;
-  --ds-page-width: 1000px;
-  --ds-page-inset: 24px;
+  --ds-paragraph-gap: .95em;
+  --ds-page-width: 820px;
+  --ds-page-inset: 28px;
   --ds-space-1: 4px;
   --ds-space-2: 8px;
   --ds-space-3: 12px;
@@ -34,120 +34,111 @@
   --ds-space-6: 24px;
   --ds-space-8: 32px;
   --ds-radius-control: 8px;
-  --ds-radius-content: 12px;
-  --ds-radius-card: 18px;
-  /* One clean palette: white panels on a cool, near-white floor; a bright blue accent with
-     orange and green companions. Tones are RGB triplets used as rgb(var(--ds-tone-x)) /
-     rgba(var(--ds-tone-x), a). The six metric hues were checked for colour-vision separation;
-     orange and green sit at the floor, so they always appear next to a text label. */
-  --ds-tone-accent: 52,128,246;
-  --ds-tone-1: 20,163,192;
-  --ds-tone-2: 31,148,97;
-  --ds-tone-3: 139,108,240;
-  --ds-tone-4: 236,136,52;
-  --ds-tone-5: 229,96,94;
-  --ds-tone-neutral: 112,122,140;
-  --ds-tone-amber: 184,134,22;
-  --ds-ink-rgb: 16,24,40;
-  --ds-bg: #f6f7f9;
+  --ds-radius-content: 10px;
+  --ds-radius-card: 16px;
+  /* Quiet low-saturation palette: muted indigo UI accent, warm amber reading emphasis,
+     and softened companion hues for metrics and callouts. */
+  --ds-tone-accent: 72,86,175;
+  --ds-tone-1: 24,142,168;
+  --ds-tone-2: 46,136,92;
+  --ds-tone-3: 126,98,196;
+  --ds-tone-4: 204,108,42;
+  --ds-tone-5: 208,88,86;
+  --ds-tone-neutral: 112,118,132;
+  --ds-tone-amber: 180,83,9;
+  --ds-ink-rgb: 20,24,33;
+  --ds-bg: #f5f6f8;
   --ds-paper: #ffffff;
-  /* Inside a pane (the dashboard): a hair off white, so white cards still separate. */
-  --ds-canvas: #fbfbfc;
-  --ds-shell: #f9fafb;
-  --ds-surface: #f4f5f7;
-  --ds-surface-hover: #eceef2;
-  --ds-text: #1f2633;
-  --ds-heading: #111827;
-  --ds-muted: #667085;
-  --ds-faint: #8d96a8;
+  --ds-canvas: #f5f6f8;
+  --ds-shell: #eff1f4;
+  --ds-surface: #eceef2;
+  --ds-surface-hover: rgba(20,24,33,.05);
+  --ds-text: #22252a;
+  --ds-heading: #16181d;
+  --ds-muted: #555b66;
+  --ds-faint: #8b919d;
   --ds-on-accent: #ffffff;
-  --ds-warm: rgb(var(--ds-tone-4));
-  --ds-border: #e8eaee;
-  --ds-rule: #d0d5dd;
-  --ds-code-bg: #f7f8fa;
-  --ds-heat-0: #eef0f4;
-  /* The window floor is plain near-white; no ambient blooms or wallpaper. Kept as no-op layers
-     so older rules that list them stay valid. */
+  --ds-warm: rgb(var(--ds-tone-amber));
+  /* Translucent hairlines read softly over paper and native window glass alike. */
+  --ds-border: rgba(20,24,33,.09);
+  --ds-rule: rgba(20,24,33,.15);
+  --ds-code-bg: rgba(20,24,33,.038);
+  --ds-heat-0: rgba(20,24,33,.055);
   --ds-ambient: linear-gradient(transparent, transparent);
   --ds-ambient-base: linear-gradient(var(--ds-bg), var(--ds-bg));
   /* Derived roles. */
   --ds-accent: rgb(var(--ds-tone-accent));
   --ds-accent-hover: color-mix(in srgb, rgb(var(--ds-tone-accent)) 82%, #000);
-  --ds-accent-soft: rgba(var(--ds-tone-accent), .1);
-  --ds-selection: rgba(var(--ds-tone-accent), .16);
+  --ds-accent-soft: rgba(var(--ds-tone-accent), .13);
+  --ds-selection: rgba(var(--ds-tone-amber), .22);
   --ds-shadow: var(--ds-elev-2);
   --ds-shadow-soft: var(--ds-elev-1);
-  /* Surfaces are opaque. "Frost" is how they read as frosted glass without showing through:
-     a faint grain, a slight top-to-bottom sheen, a bright top rim, a hairline edge and soft
-     layered shadows. Three elevations: controls (1), cards (2), panels and floating layers (3).
-     Recessed things (tracks, search fields) use the inset pair. The --ds-glass-* names remain
-     as aliases of these opaque values. */
-  --ds-elev-1: 0 1px 2px rgba(var(--ds-ink-rgb),.06), 0 2px 4px -2px rgba(var(--ds-ink-rgb),.06);
-  --ds-elev-2: 0 1px 2px rgba(var(--ds-ink-rgb),.05), 0 6px 14px -6px rgba(var(--ds-ink-rgb),.08), 0 18px 36px -18px rgba(var(--ds-ink-rgb),.14);
-  --ds-elev-3: 0 2px 4px rgba(var(--ds-ink-rgb),.04), 0 12px 24px -10px rgba(var(--ds-ink-rgb),.1), 0 32px 64px -28px rgba(var(--ds-ink-rgb),.2);
-  --ds-inset-bg: #f1f2f5;
-  --ds-inset: inset 0 1px 2px rgba(var(--ds-ink-rgb),.07), inset 0 0 0 1px rgba(var(--ds-ink-rgb),.045);
+  /* Floating surfaces (menus, dialogs, dashboard cards) remain opaque with subtle top rim and shadow. */
+  --ds-elev-1: 0 1px 2px rgba(var(--ds-ink-rgb),.05), 0 2px 4px -2px rgba(var(--ds-ink-rgb),.05);
+  --ds-elev-2: 0 1px 2px rgba(var(--ds-ink-rgb),.04), 0 6px 16px -6px rgba(var(--ds-ink-rgb),.07);
+  --ds-elev-3: 0 1px 3px rgba(var(--ds-ink-rgb),.06), 0 16px 36px -10px rgba(var(--ds-ink-rgb),.14);
+  --ds-inset-bg: rgba(20,24,33,.045);
+  --ds-inset: inset 0 0 0 1px rgba(var(--ds-ink-rgb),.065);
   --ds-frost: var(--ds-grain), var(--ds-glass-sheen), var(--ds-paper);
   --ds-glass: var(--ds-paper);
   --ds-glass-strong: var(--ds-paper);
   --ds-glass-paper: var(--ds-paper);
   --ds-glass-solid: var(--ds-paper);
-  --ds-glass-rim: #ffffff;
-  --ds-glass-line: rgba(var(--ds-ink-rgb),.075);
-  --ds-glass-highlight: inset 0 1px 0 #ffffff, inset 0 0 0 1px rgba(255,255,255,.65);
+  --ds-glass-rim: rgba(255,255,255,.8);
+  --ds-glass-line: rgba(var(--ds-ink-rgb),.07);
+  --ds-glass-highlight: inset 0 1px 0 rgba(255,255,255,.82);
   --ds-glass-shadow: var(--ds-elev-3);
-  /* Frost sheen: the faintest darkening towards the bottom of a surface. */
-  --ds-glass-sheen: linear-gradient(180deg, rgba(255,255,255,0), rgba(var(--ds-ink-rgb),.018));
-  --ds-glass-edge: rgba(var(--ds-ink-rgb),.07);
-  --ds-grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .5 0 0 0 0 .5 0 0 0 0 .5 0 0 0 .035 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  --ds-glass-sheen: linear-gradient(180deg, rgba(255,255,255,0), rgba(var(--ds-ink-rgb),.012));
+  --ds-glass-edge: rgba(var(--ds-ink-rgb),.08);
+  --ds-grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .5 0 0 0 0 .5 0 0 0 0 .5 0 0 0 .025 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
 }
 body.theme-dark .workspace-leaf-content[data-type="algorithm-workbench"], body.theme-dark .aw-view, body.theme-dark .aw-figure-modal, body.theme-dark .aw-lib, body.theme-dark .aw-lib-modal {
-  --ds-tone-accent: 76,142,247;
-  --ds-tone-1: 30,159,186;
-  --ds-tone-2: 33,135,90;
-  --ds-tone-3: 139,118,232;
-  --ds-tone-4: 212,122,48;
-  --ds-tone-5: 224,95,93;
-  --ds-tone-neutral: 150,158,175;
-  --ds-tone-amber: 212,162,64;
+  --ds-tone-accent: 132,146,228;
+  --ds-tone-1: 62,168,190;
+  --ds-tone-2: 76,166,118;
+  --ds-tone-3: 164,140,226;
+  --ds-tone-4: 222,138,74;
+  --ds-tone-5: 222,108,106;
+  --ds-tone-neutral: 150,156,168;
+  --ds-tone-amber: 226,163,54;
   --ds-ink-rgb: 0,0,0;
-  --ds-bg: #0f1013;
-  --ds-canvas: #131519;
-  --ds-paper: #1a1c21;
-  --ds-shell: #14161a;
-  --ds-surface: #202228;
-  --ds-surface-hover: #272a31;
-  --ds-text:#e4e7ec;
-  --ds-heading:#f5f7fa;
-  --ds-muted:#a0a8b8;
-  --ds-faint:#7d8596;
-  --ds-on-accent:#ffffff;
-  --ds-border: #2a2d34;
-  --ds-rule:#3d4450;
-  --ds-code-bg: #1e2026;
-  --ds-heat-0: #24272e;
-  --ds-accent-hover: color-mix(in srgb, rgb(var(--ds-tone-accent)) 80%, #fff);
-  --ds-accent-soft: rgba(var(--ds-tone-accent), .16);
-  --ds-selection: rgba(var(--ds-tone-accent), .26);
+  --ds-bg: #18191c;
+  --ds-canvas: #18191c;
+  --ds-paper: #212328;
+  --ds-shell: #1c1e22;
+  --ds-surface: #262930;
+  --ds-surface-hover: rgba(255,255,255,.055);
+  --ds-text: #e6e8ec;
+  --ds-heading: #f3f4f6;
+  --ds-muted: #a1a6b2;
+  --ds-faint: #777c88;
+  --ds-on-accent: #14161b;
+  --ds-border: rgba(255,255,255,.09);
+  --ds-rule: rgba(255,255,255,.15);
+  --ds-code-bg: rgba(255,255,255,.042);
+  --ds-heat-0: rgba(255,255,255,.06);
+  --ds-accent-hover: color-mix(in srgb, rgb(var(--ds-tone-accent)) 84%, #fff);
+  --ds-accent-soft: rgba(var(--ds-tone-accent), .18);
+  --ds-selection: rgba(var(--ds-tone-amber), .24);
   --ds-shadow: var(--ds-elev-2);
   --ds-shadow-soft: var(--ds-elev-1);
   --ds-ambient: linear-gradient(transparent, transparent);
   --ds-ambient-base: linear-gradient(var(--ds-bg), var(--ds-bg));
-  --ds-elev-1: 0 1px 2px rgba(0,0,0,.4);
-  --ds-elev-2: 0 1px 2px rgba(0,0,0,.35), 0 12px 28px -12px rgba(0,0,0,.6);
-  --ds-elev-3: 0 2px 4px rgba(0,0,0,.35), 0 24px 56px -20px rgba(0,0,0,.7);
-  --ds-inset-bg: #131418;
-  --ds-inset: inset 0 1px 2px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.04);
+  --ds-elev-1: 0 1px 2px rgba(0,0,0,.35);
+  --ds-elev-2: 0 1px 3px rgba(0,0,0,.32), 0 10px 24px -10px rgba(0,0,0,.5);
+  --ds-elev-3: 0 2px 4px rgba(0,0,0,.35), 0 20px 48px -16px rgba(0,0,0,.65);
+  --ds-inset-bg: rgba(255,255,255,.05);
+  --ds-inset: inset 0 0 0 1px rgba(255,255,255,.065);
   --ds-glass: var(--ds-paper);
   --ds-glass-strong: var(--ds-paper);
   --ds-glass-paper: var(--ds-paper);
   --ds-glass-solid: var(--ds-paper);
-  --ds-glass-rim: rgba(255,255,255,.06);
+  --ds-glass-rim: rgba(255,255,255,.08);
   --ds-glass-line: rgba(255,255,255,.07);
-  --ds-glass-highlight: inset 0 1px 0 rgba(255,255,255,.06), inset 0 0 0 1px rgba(255,255,255,.02);
+  --ds-glass-highlight: inset 0 1px 0 rgba(255,255,255,.07);
   --ds-glass-shadow: var(--ds-elev-3);
-  --ds-glass-sheen: linear-gradient(180deg, rgba(255,255,255,.025), rgba(255,255,255,0));
-  --ds-glass-edge: rgba(255,255,255,.08);
+  --ds-glass-sheen: linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,0));
+  --ds-glass-edge: rgba(255,255,255,.085);
 }
 
 /* Source: src/styles/materials.css */
@@ -207,17 +198,16 @@ body.theme-dark .workspace-leaf-content[data-type="algorithm-workbench"], body.t
   .aw-view :is(.aw-card,.aw-panel,.aw-chip,.aw-tab) {box-shadow:none;background:#fff;}
 }
 
-/* The one primary action in the toolbar ("新建笔记") is a solid blue button in both styles.
-   The gradient deepens towards the bottom so white text keeps its contrast. */
+/* The one primary action in the toolbar ("新建笔记") uses the muted indigo accent without heavy glow. */
 body:is(.theme-light,.theme-dark) .aw-view .aw-chip.aw-new-note,
 body:is(.theme-light,.theme-dark) .aw-view .aw-primary {
   border-color: transparent;
-  color: #fff;
-  background: linear-gradient(180deg, var(--ds-accent), color-mix(in srgb, var(--ds-accent) 84%, #000));
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.25), 0 1px 2px rgba(var(--ds-tone-accent),.35), 0 8px 18px -8px rgba(var(--ds-tone-accent),.85);
+  color: var(--ds-on-accent);
+  background: var(--ds-accent);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.2), var(--ds-elev-1);
 }
-body:is(.theme-light,.theme-dark) .aw-view :is(.aw-chip.aw-new-note,.aw-primary):hover {color: #fff;filter: brightness(1.07);}
-body:is(.theme-light,.theme-dark) .aw-view :is(.aw-chip.aw-new-note,.aw-primary) .aw-chip-icon svg {color: #fff;}
+body:is(.theme-light,.theme-dark) .aw-view :is(.aw-chip.aw-new-note,.aw-primary):hover {color: var(--ds-on-accent);background: var(--ds-accent-hover);}
+body:is(.theme-light,.theme-dark) .aw-view :is(.aw-chip.aw-new-note,.aw-primary) .aw-chip-icon svg {color: var(--ds-on-accent);}
 
 /* Source: src/styles/workbench.css */
 /* Crisp pulse dashboard. All selectors are scoped to this plugin view. */
@@ -238,9 +228,9 @@ body:is(.theme-light,.theme-dark) .aw-view :is(.aw-chip.aw-new-note,.aw-primary)
 .workspace .workspace-split .workspace-leaf-content[data-type="algorithm-workbench"] {background:var(--ds-canvas);}
 .workspace .workspace-split .workspace-leaf-content[data-type="algorithm-workbench"] > .view-header {background:transparent;border-bottom:0;}
 .workspace .workspace-split .workspace-leaf-content[data-type="algorithm-workbench"] > .view-content.aw-view {padding:0;background:transparent;}
-/* Frosted window (窗口毛玻璃): no canvas, the dashboard's white cards float on the glass. */
-body.aw-glass .workspace .workspace-split .workspace-leaf-content[data-type="algorithm-workbench"],
-body.aw-glass .aw-view {background:transparent;}
+/* Frosted or translucent window: no opaque canvas, dashboard cards sit directly on the window sheet. */
+body:is(.aw-glass,.is-translucent) .workspace .workspace-split .workspace-leaf-content[data-type="algorithm-workbench"],
+body:is(.aw-glass,.is-translucent) .aw-view {background:transparent;}
 .aw-view button {font-family:inherit;-webkit-tap-highlight-color:transparent;}
 .aw-view .aw-icon,.aw-view .aw-chip-icon,.aw-view .aw-row-icon,.aw-view .aw-row-open {display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;}
 .aw-view .aw-icon svg {width:14px;height:14px;stroke-width:1.75;}
@@ -489,7 +479,7 @@ body:is(.theme-light,.theme-dark) .aw-view .aw-panel {border-color: var(--aw-g-e
 .aw-view .aw-kpi-icon {display: inline-flex;align-items: center;justify-content: center;width: 32px;height: 32px;border-radius: 10px;flex-shrink: 0;color: rgb(var(--aw-hue));background: rgba(255,255,255,.9);box-shadow: 0 0 0 1px rgba(var(--ds-ink-rgb),.06), 0 4px 10px -4px rgba(var(--aw-hue),.5);}
 .aw-view .aw-kpi-icon svg {width: 17px;height: 17px;stroke-width: 1.9;}
 .aw-view .aw-kpi-label {flex: 1 0 auto;margin: 0;font-size: 14px;font-weight: 600;color: var(--ds-heading);white-space: nowrap;}
-.aw-view .aw-kpi .aw-badge {border: 0;border-radius: 999px;padding: 3px 10px;font-size: 12px;color: var(--ds-heading);background: rgba(255,255,255,.78);box-shadow: 0 0 0 1px rgba(var(--ds-ink-rgb),.06);-webkit-backdrop-filter: blur(8px);backdrop-filter: blur(8px);}
+.aw-view .aw-kpi .aw-badge {border: 0;border-radius: 999px;padding: 3px 10px;font-size: 12px;color: var(--ds-heading);background: rgba(255,255,255,.88);box-shadow: 0 0 0 1px rgba(var(--ds-ink-rgb),.06);}
 .aw-view .aw-kpi-value {display: flex;align-items: baseline;gap: 8px;margin-top: auto;padding-top: 20px;white-space: nowrap;}
 .aw-view .aw-kpi-value strong {font-family: var(--ds-font-numeric);font-size: 38px;font-weight: 500;line-height: 1.05;letter-spacing: -.03em;font-variant-numeric: tabular-nums;color: var(--ds-heading);}
 .aw-view .aw-kpi-value .aw-unit {font-size: 13px;color: var(--ds-muted);}
@@ -579,7 +569,6 @@ body.theme-dark:not(.theme-light) .aw-view .is-current .aw-bar-value {color: var
   border-radius:10px;border:1px solid var(--ds-glass-line,var(--background-modifier-border));
   background:var(--ds-glass-strong,var(--background-primary));
   box-shadow:inset 0 1px 0 var(--ds-glass-rim,transparent),0 6px 18px -6px rgba(0,0,0,.25);
-  -webkit-backdrop-filter:blur(18px) saturate(180%);backdrop-filter:blur(18px) saturate(180%);
   opacity:0;pointer-events:none;transition:opacity 140ms ease;
 }
 .aw-figure-editable:hover > .aw-figure-bar,.aw-figure-resizing > .aw-figure-bar {opacity:1;pointer-events:auto;}
@@ -1106,9 +1095,7 @@ body.aw-annot-recall .markdown-reading-view .aw-annot:not(.aw-annot-c-rainbow) .
   justify-content: center;
   border: 2px dashed var(--ds-accent, var(--interactive-accent));
   border-radius: 14px;
-  background: color-mix(in srgb, var(--ds-paper, var(--background-primary)) 84%, transparent);
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
+  background: color-mix(in srgb, var(--ds-paper, var(--background-primary)) 94%, transparent);
   font-size: 14px;
   font-weight: 600;
   color: var(--ds-accent, var(--interactive-accent));
@@ -1255,9 +1242,7 @@ body.aw-annot-recall .markdown-reading-view .aw-annot:not(.aw-annot-c-rainbow) .
   border-radius: 6px;
   font: 600 10px/1.4 var(--ds-font-mono, var(--font-monospace));
   color: #fff;
-  background: rgba(16,24,40,.52);
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
+  background: rgba(16,24,40,.68);
 }
 .aw-lib-badges > .aw-lib-kind-gif {background: rgba(var(--ds-tone-4,236,136,52),.92);}
 .aw-lib-badges > .aw-lib-kind-svg {background: rgba(var(--ds-tone-3,139,108,240),.9);}
@@ -1269,9 +1254,7 @@ body.aw-annot-recall .markdown-reading-view .aw-annot:not(.aw-annot-c-rainbow) .
   gap: 3px;
   padding: 3px 5px;
   border-radius: 999px;
-  background: rgba(16,24,40,.42);
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
+  background: rgba(16,24,40,.58);
   opacity: 0;
   pointer-events: none;
   transition: opacity 140ms ease;
@@ -1380,9 +1363,8 @@ body.theme-dark .aw-lib .aw-lib-stars:hover .aw-lib-star {color: rgb(var(--ds-to
   padding: 0;
   border-radius: 50%;
   border: 1px solid var(--ds-border, var(--background-modifier-border));
-  background: color-mix(in srgb, var(--ds-paper, var(--background-primary)) 88%, transparent);
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
+  background: var(--ds-paper, var(--background-primary));
+  box-shadow: var(--ds-elev-1, 0 1px 3px rgba(0,0,0,.12));
   color: var(--ds-heading, var(--text-normal));
   transform: translateY(-50%);
   cursor: pointer;

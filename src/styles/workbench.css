@@ -16,9 +16,9 @@
 .workspace .workspace-split .workspace-leaf-content[data-type="algorithm-workbench"] {background:var(--ds-canvas);}
 .workspace .workspace-split .workspace-leaf-content[data-type="algorithm-workbench"] > .view-header {background:transparent;border-bottom:0;}
 .workspace .workspace-split .workspace-leaf-content[data-type="algorithm-workbench"] > .view-content.aw-view {padding:0;background:transparent;}
-/* Frosted window (窗口毛玻璃): no canvas, the dashboard's white cards float on the glass. */
-body.aw-glass .workspace .workspace-split .workspace-leaf-content[data-type="algorithm-workbench"],
-body.aw-glass .aw-view {background:transparent;}
+/* Frosted or translucent window: no opaque canvas, dashboard cards sit directly on the window sheet. */
+body:is(.aw-glass,.is-translucent) .workspace .workspace-split .workspace-leaf-content[data-type="algorithm-workbench"],
+body:is(.aw-glass,.is-translucent) .aw-view {background:transparent;}
 .aw-view button {font-family:inherit;-webkit-tap-highlight-color:transparent;}
 .aw-view .aw-icon,.aw-view .aw-chip-icon,.aw-view .aw-row-icon,.aw-view .aw-row-open {display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;}
 .aw-view .aw-icon svg {width:14px;height:14px;stroke-width:1.75;}

@@ -305,7 +305,7 @@ test('annotation styles ship with the plugin: eight positions, flow notes, print
   const print=plugin.slice(plugin.lastIndexOf('@media print'));
   assert.doesNotMatch(print,/aw-annot[^{]*\{[^}]*display: none/,'annotations print as they look');
   assert.doesNotMatch(snippet,/\.aw-annot/,'the theme snippet no longer styles annotations');
-  assert.match(snippet,/--ds-tone-amber: 184,134,22;/);assert.match(snippet,/--ds-tone-amber: 212,162,64;/);
+  assert.match(snippet,/--ds-tone-amber: 180,83,9;/);assert.match(snippet,/--ds-tone-amber: 226,163,54;/);
 });
 
 test('pinned notes stay with their target when lines wrap: short targets are kept whole, the room is glued to the last character',()=>{

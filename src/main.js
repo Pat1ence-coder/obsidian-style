@@ -314,6 +314,7 @@ class WorkbenchPlugin extends Plugin {
   }
   changed(){this.updateStatusBar();this.scheduleSave();this.scheduleRefresh();}
   onunload(){
+    this.windowGlass?.onunload();
     for(const doc of this.appearanceDocs??[]){
       for(const name of [...doc.body.classList])if(APPEARANCE.test(name))doc.body.classList.remove(name);
       doc.body.style.removeProperty('--aw-annot-font');

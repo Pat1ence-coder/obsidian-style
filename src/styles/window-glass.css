@@ -1,80 +1,215 @@
-/* Frosted paper window. The plugin's "窗口毛玻璃" setting puts body.aw-glass on the window. The
-   theme then lays a sheet of paper behind the whole window and frosted glass over it; the
-   ribbon, sidebar, tabs and note are one continuous sheet with no opaque panels on it. White
-   cards still float on top: menus, dialogs, tab pills, images, tables, code blocks.
+/* Window surface system:
+   1) Opaque warm-paper whole-window fallback (body.aw-glass when native translucency is off):
+      one continuous ivory sheet with fine paper fibre grain across sidebars, tabs and note.
+   2) Native macOS translucent glass (body.is-translucent on the main window):
+      one shared thin tint over native desktop vibrancy, inner containers transparent so tints
+      never stack, zero CSS backdrop-filter, zero layout transitions, and opaque floats/popouts
+      to prevent Chromium stale-frame ghosting. */
 
-   The paper is drawn here, not chosen by the user: soft lighter and darker clouds of a pale grey
-   (fractal noise, no picture file), plus a fine grain on the glass, so it reads like matte paper
-   seen through frosted glass. Everything is neutral grey: the paper, the fog, the lighter note,
-   dividers and fields carry no hue. The window stays opaque: Obsidian's
-   own "Translucent window" is not used, because on macOS it shows no desktop and ghosts text.
-
-   Without the plugin, or with the setting off, none of this applies and the white look stays. */
-body.aw-glass {
-  /* Paper: one 1400px tile of fractal noise. One noise channel becomes the lighter and darker
-     clouds, written to red, green and blue alike, so the paper is grey with no hue. */
-  --ds-glass-paper-texture: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1400' height='1400'><filter id='p' x='0' y='0' width='100%' height='100%' color-interpolation-filters='sRGB'><feTurbulence type='fractalNoise' baseFrequency='.0055' numOctaves='5' seed='11' stitchTiles='stitch'/><feColorMatrix values='0 0 .2 0 .75 0 0 .2 0 .75 0 0 .2 0 .75 0 0 0 0 1'/></filter><rect width='100%' height='100%' filter='url(%23p)'/></svg>");
-  --ds-glass-paper-tile: 1400px;
-  --ds-glass-grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .5 0 0 0 0 .5 0 0 0 0 .5 0 0 0 .06 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
-  --ds-glass-fog: rgba(255,255,255,.3);
-  /* The note sits a shade lighter than the sidebar so the reading area is calm. */
-  --ds-glass-wash: rgba(255,255,255,.45);
-  --ds-glass-divider: rgba(255,255,255,.45);
-  --ds-glass-field: rgba(255,255,255,.5);
-  --ds-glass-hover: rgba(255,255,255,.42);
-  /* One line between sidebar and note: the note's soft hairline, not the split divider too. */
+/* -------------------------------------------------------------------------- */
+/* 1. Warm paper whole-window fallback (when native translucency is off)      */
+/* -------------------------------------------------------------------------- */
+body.aw-glass:not(.is-translucent):not(.is-popout-modal) {
+  --ds-bg: #fbf8ef;
+  --ds-canvas: #fbf8ef;
+  --ds-paper: #fffdf8;
+  --ds-shell: #f4efe1;
+  --ds-surface: #f2ecdc;
+  --ds-surface-hover: rgba(34,28,18,.055);
+  --ds-text: #221e17;
+  --ds-heading: #17140f;
+  --ds-muted: #5a5346;
+  --ds-faint: #8c8474;
+  --ds-border: rgba(34,28,18,.095);
+  --ds-rule: rgba(34,28,18,.16);
+  --ds-code-bg: rgba(34,28,18,.04);
+  --ds-inset-bg: rgba(34,28,18,.045);
+  --ds-glass-paper-grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='p'><feTurbulence type='fractalNoise' baseFrequency='.7' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .42 0 0 0 0 .34 0 0 0 0 .22 0 0 0 .048 0'/></filter><rect width='100%' height='100%' filter='url(%23p)'/></svg>");
+  --ds-glass-grain-opacity: 1;
   --divider-color: transparent;
-  --background-primary: transparent;
-  --background-secondary: transparent;
-  --background-secondary-alt: transparent;
 }
-body.aw-glass.aw-glass-fog-light {--ds-glass-fog: rgba(255,255,255,.15);}
-body.aw-glass.aw-glass-fog-strong {--ds-glass-fog: rgba(255,255,255,.5);}
-body.theme-dark.aw-glass {
-  --ds-glass-paper-texture: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1400' height='1400'><filter id='p' x='0' y='0' width='100%' height='100%' color-interpolation-filters='sRGB'><feTurbulence type='fractalNoise' baseFrequency='.0055' numOctaves='5' seed='11' stitchTiles='stitch'/><feColorMatrix values='0 0 .08 0 .08 0 0 .08 0 .08 0 0 .08 0 .08 0 0 0 0 1'/></filter><rect width='100%' height='100%' filter='url(%23p)'/></svg>");
-  --ds-glass-fog: rgba(18,18,18,.3);
-  --ds-glass-wash: rgba(255,255,255,.035);
-  --ds-glass-divider: rgba(255,255,255,.08);
-  --ds-glass-field: rgba(255,255,255,.07);
-  --ds-glass-hover: rgba(255,255,255,.07);
+body.aw-glass.aw-glass-fog-light:not(.is-translucent):not(.is-popout-modal) {--ds-glass-grain-opacity: .5;}
+body.aw-glass.aw-glass-fog-strong:not(.is-translucent):not(.is-popout-modal) {--ds-bg: #f8f2e2;--ds-canvas: #f8f2e2;--ds-glass-grain-opacity: 1.35;}
+
+body.theme-dark.aw-glass:not(.is-translucent):not(.is-popout-modal) {
+  --ds-bg: #191816;
+  --ds-canvas: #191816;
+  --ds-paper: #22201d;
+  --ds-shell: #1d1c19;
+  --ds-surface: #272521;
+  --ds-surface-hover: rgba(255,248,235,.055);
+  --ds-text: #e6e1d6;
+  --ds-heading: #f2eee4;
+  --ds-muted: #a69f92;
+  --ds-faint: #7a7468;
+  --ds-border: rgba(255,248,235,.09);
+  --ds-rule: rgba(255,248,235,.15);
+  --ds-code-bg: rgba(255,248,235,.04);
+  --ds-inset-bg: rgba(255,248,235,.048);
+  --ds-glass-paper-grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='p'><feTurbulence type='fractalNoise' baseFrequency='.7' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 .96 0 0 0 0 .9 0 0 0 .032 0'/></filter><rect width='100%' height='100%' filter='url(%23p)'/></svg>");
 }
-body.theme-dark.aw-glass.aw-glass-fog-light {--ds-glass-fog: rgba(18,18,18,.15);}
-body.theme-dark.aw-glass.aw-glass-fog-strong {--ds-glass-fog: rgba(18,18,18,.5);}
+body.theme-dark.aw-glass.aw-glass-fog-strong:not(.is-translucent):not(.is-popout-modal) {--ds-bg: #161512;--ds-canvas: #161512;--ds-glass-grain-opacity: 1.35;}
 
 @media screen {
-  /* The paper, then the frosted glass over it: fog and grain. Both layers sit behind everything
-     in the window and never take the pointer; the paper tile is rasterised once and repeated. */
-  body.aw-glass .app-container {position: relative;isolation: isolate;background: var(--ds-bg);}
-  body.aw-glass .app-container::before,
-  body.aw-glass .app-container::after {content: "";position: fixed;inset: 0;z-index: -1;pointer-events: none;}
-  body.aw-glass .app-container::before {background: var(--ds-glass-paper-texture) 0 0 / var(--ds-glass-paper-tile) var(--ds-glass-paper-tile) repeat;}
-  body.aw-glass .app-container::after {background: var(--ds-glass-grain) 0 0 / 180px 180px repeat, var(--ds-glass-fog);}
-
-  body.aw-glass .workspace {background: transparent;}
-  /* Sidebars: no panel, the files sit straight on the glass. */
-  body.aw-glass .workspace .workspace-split.mod-sidedock .workspace-tabs > .workspace-tab-container {
-    border-color: transparent;
-    background: transparent;
-    box-shadow: none;
+  body.aw-glass:not(.is-translucent):not(.is-popout-modal) .app-container {position: relative;isolation: isolate;background: var(--ds-bg);}
+  body.aw-glass:not(.is-translucent):not(.is-popout-modal) .app-container::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    opacity: var(--ds-glass-grain-opacity);
+    background: var(--ds-glass-paper-grain) 0 0 / 200px 200px repeat;
   }
-  /* The note: the same glass, a touch lighter, with one soft hairline toward the sidebar. */
-  body.aw-glass .workspace-split.mod-root .workspace-leaf-content {
-    border-color: var(--ds-glass-divider);
-    background: var(--ds-glass-wash);
-    box-shadow: none;
-  }
-  body.aw-glass .status-bar {border-color: transparent;background: transparent;box-shadow: none;}
-  /* Fields and hover tiles: frosted white instead of flat grey, so they read on the paper. */
-  body.aw-glass .workspace-split.mod-sidedock .search-input-container input:not(:focus) {background: var(--ds-glass-field);box-shadow: inset 0 0 0 1px var(--ds-glass-divider);}
-  body.aw-glass .workspace .mod-root .workspace-tab-header:not(.is-active):hover {background: var(--ds-glass-hover);}
+  body.aw-glass:not(.is-translucent):not(.is-popout-modal) .workspace {background: transparent;}
 }
-/* Users who ask the system for less transparency get the plain white look. */
+
+/* -------------------------------------------------------------------------- */
+/* 2. Native macOS translucent window (single-tint anti-ghosting glass)       */
+/* -------------------------------------------------------------------------- */
+body.is-translucent:not(.is-popout-window):not(.is-popout-modal) {
+  --aw-trans-shell: rgba(255,255,255,.05);
+  --aw-trans-control: rgba(255,255,255,.22);
+  --aw-trans-rim: rgba(255,255,255,.72);
+  --aw-trans-edge: color-mix(in srgb, var(--ds-text) 12%, transparent);
+  --aw-trans-line: rgba(0,0,0,.065);
+  --workspace-background-translucent: rgba(255,255,255,.005);
+  --titlebar-background: transparent;
+  --titlebar-background-focused: transparent;
+  --divider-color: transparent;
+  background: transparent !important;
+}
+body.is-translucent.aw-glass-fog-light:not(.is-popout-window):not(.is-popout-modal) {--aw-trans-shell: rgba(255,255,255,.02);}
+body.is-translucent.aw-glass-fog-strong:not(.is-popout-window):not(.is-popout-modal) {--aw-trans-shell: rgba(255,255,255,.12);}
+
+body.theme-dark.is-translucent:not(.is-popout-window):not(.is-popout-modal) {
+  --aw-trans-shell: rgba(20,21,27,.05);
+  --aw-trans-control: rgba(255,255,255,.08);
+  --aw-trans-rim: rgba(255,255,255,.14);
+  --aw-trans-line: rgba(255,255,255,.07);
+  --workspace-background-translucent: rgba(17,18,22,.005);
+}
+body.theme-dark.is-translucent.aw-glass-fog-light:not(.is-popout-window):not(.is-popout-modal) {--aw-trans-shell: rgba(20,21,27,.02);}
+body.theme-dark.is-translucent.aw-glass-fog-strong:not(.is-popout-window):not(.is-popout-modal) {--aw-trans-shell: rgba(20,21,27,.12);}
+
+@media screen {
+  #startup-snapshot ~ .app-container {opacity: 0;}
+
+  body.is-translucent:not(.is-popout-window):not(.is-popout-modal) :is(.app-container,.workspace) {
+    background: transparent !important;
+  }
+  /* Paint the single thin tint once on top-level splits and ribbon only. */
+  body.is-translucent:not(.is-popout-window):not(.is-popout-modal):not(.is-fullscreen)
+    :is(.workspace-split.mod-left-split,.workspace-split.mod-right-split,.workspace-ribbon.mod-primary),
+  body.is-translucent:not(.is-popout-window):not(.is-popout-modal)
+    :is(.workspace-ribbon,.titlebar,.workspace-sidedock-vault-profile) {
+    background: var(--aw-trans-shell) !important;
+  }
+  body.is-translucent:not(.is-popout-window):not(.is-popout-modal) .workspace-split.mod-root {
+    background: var(--aw-trans-shell) !important;
+    contain: paint;
+  }
+  /* Clear every inner container so tints never stack into dense bands. */
+  body.is-translucent:not(.is-popout-window):not(.is-popout-modal) :where(
+    .workspace-tab-header-container,
+    .view-header,
+    .status-bar,
+    .workspace-split:not(.mod-root):not(.mod-left-split):not(.mod-right-split),
+    .workspace-tabs,
+    .workspace-tab-container,
+    .workspace-leaf,
+    .workspace-leaf-content,
+    .view-content,
+    .markdown-reading-view,
+    .markdown-source-view.mod-cm6,
+    .markdown-preview-view,
+    .cm-editor,
+    .cm-scroller
+  ) {
+    background: transparent !important;
+  }
+  /* Stacked tabs overlap while scrolling and need an opaque backing. */
+  body.is-translucent:not(.is-popout-window):not(.is-popout-modal) .mod-root .workspace-tabs.mod-stacked .workspace-leaf {
+    background: var(--ds-paper) !important;
+  }
+  body.is-translucent:not(.is-popout-window):not(.is-popout-modal) .mod-root .workspace-tabs.mod-stacked .workspace-tab-header {
+    background: var(--ds-bg) !important;
+  }
+  body.is-translucent:has(.workspace-leaf.mod-active .workspace-leaf-content[data-type="webviewer"]) .workspace-split.mod-left-split {
+    background: var(--ds-bg) !important;
+    transition: none !important;
+  }
+
+  /* Anti-ghosting guardrails: no CSS blur, no promoted layers, and instant layout repaints. */
+  body.is-translucent:not(.is-popout-window) .workspace *,
+  body.is-translucent:not(.is-popout-window) .workspace *::before,
+  body.is-translucent:not(.is-popout-window) .workspace *::after {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    will-change: auto !important;
+  }
+  body.is-translucent:not(.is-popout-window) :is(.workspace-split,.workspace-tabs,.workspace-tab-container,.workspace-leaf,.workspace-tab-header) {
+    transition: none !important;
+  }
+
+  /* Controls on glass: translucent lens active tab and quiet rest buttons. */
+  body.is-translucent:not(.is-popout-window):not(.is-popout-modal) .workspace-tab-header.is-active {
+    background: var(--aw-trans-control) !important;
+    box-shadow: inset 0 1px 0 var(--aw-trans-rim), inset 0 0 0 1px var(--aw-trans-edge) !important;
+  }
+  body.is-translucent:not(.is-popout-window):not(.is-popout-modal)
+    :is(.view-header,.nav-header,.workspace-tab-header-container,.workspace-sidedock-vault-profile)
+    button:not(.mod-cta,.mod-warning,.is-active,[aria-pressed="true"],[aria-disabled="true"],:disabled) {
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+  body.is-translucent:not(.is-popout-window):not(.is-popout-modal)
+    :is(.view-header,.nav-header,.workspace-tab-header-container,.workspace-sidedock-vault-profile)
+    button:not(.mod-cta,.mod-warning,.is-active,[aria-pressed="true"],[aria-disabled="true"],:disabled):hover {
+    background: var(--ds-surface-hover) !important;
+  }
+
+  /* Floats on glass: opaque surface with top rim, zero backdrop-filter. */
+  body.is-translucent:not(.is-popout-window):not(.is-popout-modal)
+    :is(.menu,.suggestion-container,.popover,.hover-popover,.prompt,.notice,.select-dropdown,.modal) {
+    background: var(--ds-paper) !important;
+    border: 1px solid var(--aw-trans-edge) !important;
+    box-shadow: inset 0 1px 0 var(--aw-trans-rim), var(--ds-elev-3) !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+  body.is-translucent:not(.is-popout-window):not(.is-popout-modal) .modal-container .modal-bg {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+
+  /* Popout windows remain 100% opaque so detached panes and settings never flash black. */
+  html:has(body:is(.is-popout-window,.is-popout-modal)) {
+    height: 100% !important;
+    min-height: 100% !important;
+    background-color: var(--ds-bg) !important;
+  }
+  body:is(.is-popout-window,.is-popout-modal) {
+    height: 100% !important;
+    min-height: 100% !important;
+    --workspace-background-translucent: var(--ds-bg);
+    background: var(--ds-bg) !important;
+    color: var(--ds-text) !important;
+  }
+  body:is(.is-popout-window,.is-popout-modal) :is(.app-container,.workspace) {background: var(--ds-bg) !important;}
+  body.is-popout-modal .titlebar {background: transparent !important;}
+}
+
 @media (prefers-reduced-transparency: reduce) {
-  body.aw-glass .app-container::before,
-  body.aw-glass .app-container::after {display: none;}
+  body.aw-glass .app-container::before {display: none;}
 }
 @media (forced-colors:active) {
-  body.aw-glass .app-container::before,
-  body.aw-glass .app-container::after {display: none;}
-  body.aw-glass .workspace-split.mod-root .workspace-leaf-content {background: Canvas;}
+  body.aw-glass .app-container::before {display: none;}
+}
+@media print {
+  html:has(body:is(.is-popout-window,.is-popout-modal)),
+  body:is(.is-popout-window,.is-popout-modal) {
+    height: auto !important;
+    min-height: 0 !important;
+  }
 }

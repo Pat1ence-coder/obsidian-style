@@ -120,16 +120,27 @@ const html=`<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta 
 <body class="theme-light"><div class="app-container workspace"><div class="workspace-ribbon side-dock-ribbon mod-left">${ribbon}</div>
 <div class="traffic"><i></i><i></i><i></i></div><div class="workspace-split mod-horizontal mod-sidedock mod-left-split"><div class="workspace-tabs"><div class="workspace-tab-header-container">${sideTabs}</div><div class="workspace-tab-container"><div class="workspace-leaf-content" data-type="file-explorer"><div class="nav-header">${navButtons}</div><div class="nav-files-container">${files}</div></div></div></div><div class="workspace-leaf-resize-handle"></div></div>
 <div class="workspace-split mod-vertical mod-root"><div class="workspace-tabs"><div class="workspace-tab-header-container"><div class="workspace-tab-header-container-inner"><div class="workspace-tab-header"><div class="workspace-tab-header-inner"><div class="workspace-tab-header-inner-title">写作工作台</div></div></div><div class="workspace-tab-header is-active"><div class="workspace-tab-header-inner"><div class="workspace-tab-header-inner-title">Attention 机制与梯度推导</div></div></div></div></div></div>
-<div class="workspace-tab-container"><div class="workspace-leaf-content" data-type="markdown"><div class="view-header"><div class="view-header-title">研究 / Attention 机制与梯度推导</div></div><div class="view-content aw-has-ruler"><div class="markdown-reading-view"><div class="markdown-preview-view markdown-rendered"><div class="markdown-preview-sizer">${note}</div></div></div><div class="aw-ruler" aria-hidden="true"><div class="aw-ruler-knob" style="top:18%"><span class="aw-ruler-label">0.18</span></div></div></div></div></div></div>
+<div class="workspace-tab-container"><div class="workspace-leaf-content" data-type="markdown"><div class="view-header"><div class="view-header-title-container"><div class="view-header-title">研究 / Attention 机制与梯度推导</div></div></div><div class="view-content aw-has-ruler"><div class="markdown-reading-view"><div class="markdown-preview-view markdown-rendered"><div class="markdown-preview-sizer">${note}</div></div></div><div class="aw-ruler" aria-hidden="true"><div class="aw-ruler-knob" style="top:18%"><span class="aw-ruler-label">0.18</span></div></div></div></div></div></div>
 </div><div class="menu"><div class="menu-item">在新标签页打开</div><div class="menu-item selected">在右侧打开</div><div class="menu-separator"></div><div class="menu-item">复制链接</div><div class="menu-item">重命名…</div></div><div class="status-bar">1,286 字 · 编辑 74 分钟</div></body></html>`;
 if(/<script\b/i.test(html))throw Error('Static preview unexpectedly contains a script');
 fs.mkdirSync(out,{recursive:true});
 fs.writeFileSync(path.join(out,'theme-static.html'),html);
 console.log('Script-free theme preview written:',path.join(out,'theme-static.html'));
-// Frosted paper window variants (窗口毛玻璃). The paper and the glass are drawn by the theme
-// itself, so these pages show exactly what Obsidian will: no stand-in picture.
+// Warm-paper whole-window variants (aw-glass when native translucency is off).
 for(const [file,theme] of [['theme-glass.html','theme-light'],['theme-glass-dark.html','theme-dark']]){
   const page=html.replace('<body class="theme-light">',`<body class="${theme} aw-glass aw-glass-fog-normal">`);
   fs.writeFileSync(checkedPath(root,path.join(out,file)),page);
 }
-console.log('Frosted window previews written.');
+// Simulated macOS native vibrancy desktop backdrop behind body.is-translucent for visual inspection.
+const VIBRANCY_LIGHT=`html{background:radial-gradient(120% 95% at 12% 8%,#eef2f7 0%,#e4e9f0 46%,#ebe7df 100%) fixed}`;
+const VIBRANCY_DARK=`html{background:radial-gradient(120% 95% at 12% 8%,#272c36 0%,#1f232b 48%,#252220 100%) fixed}`;
+for(const [file,theme,backdrop] of [
+  ['theme-translucent.html','theme-light',VIBRANCY_LIGHT],
+  ['theme-translucent-dark.html','theme-dark',VIBRANCY_DARK],
+]){
+  const page=html
+    .replace('</style></head>',`\n${backdrop}</style></head>`)
+    .replace('<body class="theme-light">',`<body class="${theme} is-translucent aw-glass aw-glass-fog-normal">`);
+  fs.writeFileSync(checkedPath(root,path.join(out,file)),page);
+}
+console.log('Warm-paper and translucent window previews written.');

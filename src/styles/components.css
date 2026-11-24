@@ -1,6 +1,6 @@
 body {
-  --blockquote-border-color: rgba(var(--ds-tone-accent),.55);
-  --blockquote-border-thickness: 3px;
+  --blockquote-border-color: rgba(var(--ds-tone-amber),.68);
+  --blockquote-border-thickness: 2.5px;
   --blockquote-background-color: transparent;
   --blockquote-color: var(--ds-muted);
   --blockquote-font-style: normal;
@@ -38,10 +38,10 @@ body {
   --table-cell-vertical-alignment: top;
   --table-white-space: normal;
 }
-/* Quote: an accent thread and a faint wash that fades to the right. */
-.markdown-rendered blockquote:not(.callout) {padding: .6em 1em;border-radius: 0 var(--ds-radius-control) var(--ds-radius-control) 0;
-  border-image: linear-gradient(180deg, rgb(var(--ds-tone-accent)), rgba(var(--ds-tone-3),.55)) 1;
-  background: linear-gradient(90deg, rgba(var(--ds-tone-accent),.07), rgba(var(--ds-tone-accent),0) 72%);}
+/* Quote: a warm amber bar with a gentle wash. */
+.markdown-rendered blockquote:not(.callout) {padding: .65em 1.1em;border-radius: 0 var(--ds-radius-control) var(--ds-radius-control) 0;
+  border-inline-start: var(--blockquote-border-thickness) solid var(--blockquote-border-color);
+  background: rgba(var(--ds-tone-amber),.04);}
 .markdown-rendered blockquote:not(.callout) > :last-child {margin-bottom: 0;}
 .callout-content > :last-child {margin-bottom: 0;}
 /* Callout families map onto the companion hues; dark mode lifts them automatically. */

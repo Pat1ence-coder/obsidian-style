@@ -1,26 +1,51 @@
 'use strict';
-const {Component}=require('obsidian');
+const {Component,Platform}=require('obsidian');
 const Core=require('../core');
 
-// Frosted paper window: the theme lays a sheet of paper (drawn in CSS from fractal noise, no
-// picture) behind the whole window with frosted glass over it, and the sidebar, tabs and note
-// sit on that one sheet. The plugin only switches it on and says how thick the fog is.
-//
-// This replaces Obsidian's own "Translucent window" on macOS, which shows no desktop since
-// 1.8.9 and leaves ghosted text behind (an Electron compositing bug CSS can't fix). The window
-// stays opaque here, so nothing ghosts.
+// Whole-window surface manager:
+// - When Obsidian's macOS native translucency (body.is-translucent) is active, syncs Electron's
+//   nativeTheme.themeSource with Obsidian's light/dark setting so vibrancy never mismatches.
+// - When native translucency is off, switches on the warm-paper whole-window sheet (body.aw-glass).
 class WindowGlass extends Component{
-  constructor(plugin){super();this.plugin=plugin;}
-  // Body classes for the glass, or none when it is switched off.
+  constructor(plugin){super();this.plugin=plugin;this.nativeTheme=null;this.previousSource=undefined;this.lastSource=undefined;}
+  onload(){
+    if(!Platform?.isDesktopApp||!Platform?.isMacOS)return;
+    try{
+      const remote=require('@electron/remote');
+      if(!remote?.nativeTheme)return;
+      this.nativeTheme=remote.nativeTheme;
+      this.previousSource=this.nativeTheme.themeSource;
+      if(typeof this.plugin.app?.vault?.on==='function'){
+        this.registerEvent(this.plugin.app.vault.on('config-changed',key=>{if(key==='theme')this.syncNativeTheme();}));
+      }
+      this.syncNativeTheme();
+    }catch{this.nativeTheme=null;}
+  }
+  onunload(){
+    if(this.nativeTheme&&this.lastSource!==undefined&&this.nativeTheme.themeSource===this.lastSource){
+      try{this.nativeTheme.themeSource=this.previousSource;}catch{}
+    }
+    this.nativeTheme=null;
+  }
+  syncNativeTheme(){
+    if(!this.nativeTheme)return;
+    const enabled=!!this.plugin.data?.settings?.glass;
+    const theme=typeof this.plugin.app?.vault?.getConfig==='function'?this.plugin.app.vault.getConfig('theme'):null;
+    const next=!enabled?'system':theme==='obsidian'?'dark':theme==='moonstone'?'light':'system';
+    try{
+      if(this.nativeTheme.themeSource!==next)this.nativeTheme.themeSource=next;
+      this.lastSource=next;
+    }catch{}
+  }
   classes(){
     const {glass,glassFog}=this.plugin.data.settings;
     return glass?['aw-glass','aw-glass-fog-'+(Core.GLASS_FOGS.some(f=>f.id===glassFog)?glassFog:'normal')]:[];
   }
   displaySettings(container,Setting){
-    const s=this.plugin.data.settings,apply=()=>{this.plugin.applyAppearanceEverywhere();this.plugin.changed();};
-    new Setting(container).setName('窗口毛玻璃').setDesc('整个窗口铺一层类纸的磨砂玻璃：浅灰的纸面带柔和的明暗云纹和细颗粒，不带颜色，侧栏和正文连成同一层玻璃，正文略亮，白色卡片浮在上面。不需要任何图片，也不需要打开 Obsidian 的「半透明窗口」（它在 macOS 上会产生重影）。关闭则保持纯白外观。')
+    const s=this.plugin.data.settings,apply=()=>{this.syncNativeTheme();this.plugin.applyAppearanceEverywhere();this.plugin.changed();};
+    new Setting(container).setName('类纸底色与半透明玻璃')
       .addToggle(t=>t.setValue(!!s.glass).onChange(v=>{s.glass=v;apply();}));
-    new Setting(container).setName('毛玻璃雾的浓度').setDesc('纸面上那层白雾（深色模式为暗雾）的厚度：越浓越亮越素净，越淡纸纹越明显。')
+    new Setting(container).setName('纹理与玻璃雾度')
       .addDropdown(d=>{
         for(const f of Core.GLASS_FOGS)d.addOption(f.id,f.label);
         d.setValue(s.glassFog||'normal').onChange(v=>{s.glassFog=v;apply();});
