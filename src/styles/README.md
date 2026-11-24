@@ -11,16 +11,16 @@
 - figures.css：原生 figure Callout 单图、多列（grid-N）及一大多小（mosaic-left/right）排版。
 - print.css：A4、20mm、100% 缩放的学术导出规范。
 - materials.css：看板卡片外壳、白色内容面、按钮与徽标材质和交互过渡；带减少动态和透明度降级。
-- workbench.css：写作工作台版式与插图弹窗，不包含文档内容样式。
+- workbench.css：写作工作台版式（含周度复盘与底部状态栏进度徽章）与插图弹窗，不包含文档内容样式。
 - figure-tools.css：文档内插图悬停工具条、调整宽度手柄、移动手柄与拖动时的位置轮廓（插件样式，打印时隐藏）。
 - blocks.css：[!diagram] 图解。
-- annotations.css：手写标注（插件样式）：八个位置、双线 / 虚线箭头、颜色与标注对话框。
+- annotations.css：手写标注（插件样式）：八个位置、五种手绘箭头（双线 / 虚线 / 实线 / 波浪 / 螺旋）、多行让位与边缘微调、自测模糊遮罩、颜色及标注与汇总对话框。
 - glass.css：文档外观细化（等宽字体、暖色代码与高亮、白色表格底板、图片卡片），仅作用于屏幕。
 - window-glass.css：窗口毛玻璃。插件开启时，窗口后面铺一张由分形噪声画出的浅灰纸面（只有明暗云纹，不带颜色），上面盖中性雾和细颗粒，整窗成为一片类纸的磨砂玻璃，白色卡片浮在上面；不使用任何图片文件，插件关闭时不生效。
 - workbench-glass.css：看板外观，含便当格布局、指标卡光斑、趋势图与月度柱（插件样式）。
-- reading-tools.css：滚动刻度尺、刻度尺旁的标题与角落装饰图（插件样式）。
-- library.css：素材库（插件样式）：搜索与筛选、目录树与标签、瀑布流卡片；面板窄于 560px 时目录树收成下拉框。
+- reading-tools.css：滚动刻度尺、刻度尺旁标题、密集目录浮层、阅读位置菱形标记与角落装饰图（插件样式）。
+- library.css：素材库（插件样式）：搜索与主色/比例筛选、目录树与标签、瀑布流卡片、拖拽归档遮罩、大图预览与检视弹窗；面板窄于 560px 时目录树收成下拉框。
 
-scripts/build.js 输出两个样式文件：dist/snippets/style.css 管理文档；dist/algorithm-workbench/styles.css 只管理工作台与弹窗。两者共享同一份 tokens.css。figure 样式因此在文档样式启用时无需插件运行也能使用。
+scripts/build.js 输出两个样式文件：dist/snippets/style.css 管理文档；dist/algorithm-workbench/styles.css 管理工作台、素材库、标注、刻度尺、插图工具与弹窗。两者共享同一份 tokens.css。figure 样式因此在文档样式启用时无需插件运行也能使用。
 
 普通文档及 research 为 1000px，experiment 为 1120px。正文宽度由这套规范显式管理，即使 Obsidian 的“缩减栏宽”关闭也生效。屏幕字体有意统一为系统无衬线；PDF 切换学术字体。旧的粗体换字体、标题全部居中与段落零间距规则已移除。

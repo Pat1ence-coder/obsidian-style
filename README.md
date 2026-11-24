@@ -1,6 +1,6 @@
 # Obsidian Style
 
-面向技术笔记的 Obsidian 文档样式与「算法工作台」插件：统一正文、公式、表格、插图和打印排版，提供「写作工作台」（多指标活跃统计、趋势图、年度热力图、月度汇总）、最近笔记及文件创建辅助功能。
+面向技术笔记的 Obsidian 文档样式与「算法工作台」插件：统一正文、公式、表格、插图、类纸毛玻璃外框和打印排版，提供「写作工作台」（多指标活跃统计、每日目标与状态栏进度、趋势图、年度热力图、月度汇总、周度复盘与周报复制）、「素材库」（瀑布流、主色筛选、漫游、大图检视与粘贴归档）、8 方向手写标注、右侧标题刻度尺及文件创建辅助功能。
 
 ## 开发
 
@@ -9,7 +9,7 @@
 ```sh
 npm test          # 自动构建，再运行测试
 npm run build    # 生成插件和 CSS snippet
-npm run preview  # 生成 artifacts/preview/workbench-static.html
+npm run preview  # 生成 artifacts/preview/ 下的工作台各视图与外框静态示例
 npm run stage    # 准备独立的 sandbox-vault 预览库
 ```
 
