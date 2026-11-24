@@ -132,6 +132,7 @@ test('a saved filter is cleaned before use',()=>{
   assert.deepEqual(plain(cleanFilter({scope:{kind:'folder',value:'assets'},type:'gif',shape:'tall',color:'blue',rating:'4',sort:'large',size:'xl'})),
     {scope:{kind:'folder',value:'assets'},text:'',type:'gif',shape:'all',color:'blue',rating:'4',sort:'large',size:'m'});
   assert.equal(cleanFilter({color:'ultraviolet'}).color,'all');
+  assert.equal(cleanFilter({scope:{kind:'folder',value:'../outside'}}).scope.kind,'all');
   assert.equal(cleanFilter({scope:{kind:'evil',value:1}}).scope.kind,'all');
 });
 test('library styles ship with the plugin: tokens reach the pane, the side list folds in narrow panes',()=>{
@@ -181,9 +182,12 @@ test('dominant colour analysis, seeded roam shuffle, image ingest and editable n
   assert.equal(L.sanitizeImageName('image.png','png',d).name,'素材-20261124-080905.png');
   assert.equal(L.sanitizeImageName('../weird:name?.JPEG','png',d).name,'-weird-name-.jpg');
   const taken=new Set(['00_Inbox/shot.png','00_Inbox/shot-1.png']);
+  assert.equal(L.cleanFolder('/00_Inbox/sub/'),'00_Inbox/sub');
+  assert.equal(L.cleanFolder('../outside'),'');assert.equal(L.cleanFolder('a/../b'),'');
   assert.equal(L.uniqueVaultPath('00_Inbox','shot.png',p=>taken.has(p)),'00_Inbox/shot-2.png');
+  assert.equal(L.uniqueVaultPath('../../etc','shot.png',p=>taken.has(p)),'shot.png');
 
-  // 5. Clipboard/drop ingest saves into selected folder and editableMarkdownLeaf skips library leaf
+  // 5. Clipboard/drop ingest saves into selected folder, catches write errors cleanly, and skips traversal folders
   const {lib,files,TFile}=loadLibrary();
   const created=[];
   lib.app.vault.createFolder=async()=>{};
@@ -195,4 +199,7 @@ test('dominant colour analysis, seeded roam shuffle, image ingest and editable n
   assert.equal(saved.length,1);
   assert.match(saved[0],/^assets\/素材-\d{8}-\d{6}\.png$/);
   assert.equal(created.length,1);assert.equal(created[0][1],4);
+  lib.app.vault.createBinary=async()=>{throw Error('磁盘空间不足');};
+  const failed=await lib.ingest([{name:'b.png',type:'image/png',arrayBuffer:async()=>new Uint8Array([1]).buffer}],{folder:'assets'});
+  assert.deepEqual(Array.from(failed),[],'write failure caught without unhandled rejection');
 });

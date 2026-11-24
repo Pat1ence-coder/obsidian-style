@@ -16,7 +16,11 @@ function cleanFilter(raw){
   const f={...FILTER,scope:{...FILTER.scope}};
   if(!raw||typeof raw!=='object')return f;
   const kind=raw.scope?.kind;
-  if(['all','unused','rated','folder','tag'].includes(kind))f.scope={kind,value:typeof raw.scope.value==='string'?raw.scope.value:''};
+  if(['all','unused','rated','folder','tag'].includes(kind)){
+    const rawVal=typeof raw.scope.value==='string'?raw.scope.value:'';
+    const value=kind==='folder'?L.cleanFolder(rawVal):rawVal;
+    f.scope=kind==='folder'&&rawVal&&!value?{...FILTER.scope}:{kind,value};
+  }
   f.type=pick(L.TYPES,raw.type,'all');f.shape=pick(L.SHAPES,raw.shape,'all');
   f.color=pick(L.COLORS,raw.color,'all');f.rating=pick(L.RATINGS,raw.rating,'all');
   f.sort=pick(L.SORTS,raw.sort,'new');f.size=pick(L.SIZES,raw.size,'m');
@@ -178,31 +182,36 @@ class Library extends Component{
   async ingest(files,{folder='',doc=null}={}){
     const valid=extractImageFiles(files);
     if(!valid.length)return [];
-    const vault=this.app.vault,saved=[];
-    const dir=String(folder||'').replace(/^\/+|\/+$/g,'');
-    if(dir&&!vault.getAbstractFileByPath(dir)&&typeof vault.createFolder==='function'){
-      try{await vault.createFolder(dir);}catch{}
-    }
-    const sourcePath=this.editableMarkdownLeaf()?.view?.file?.path||'';
-    for(const raw of valid){
-      const fallbackExt=MIME_EXT[String(raw.type||'').toLowerCase()]||'png';
-      const clean=L.sanitizeImageName(raw.name,fallbackExt);
-      let targetPath;
-      if(dir||typeof this.app.fileManager?.getAvailablePathForAttachment!=='function'){
-        targetPath=L.uniqueVaultPath(dir,clean.name,p=>Boolean(vault.getAbstractFileByPath(p)));
-      }else{
-        targetPath=await this.app.fileManager.getAvailablePathForAttachment(clean.name,sourcePath);
+    const vault=this.app.vault,saved=[],dir=L.cleanFolder(folder);
+    try{
+      if(dir&&!vault.getAbstractFileByPath(dir)&&typeof vault.createFolder==='function'){
+        try{await vault.createFolder(dir);}catch{}
       }
-      const bytes=await raw.arrayBuffer();
-      await vault.createBinary(targetPath,bytes);
-      saved.push(targetPath);
+      const sourcePath=this.editableMarkdownLeaf()?.view?.file?.path||'';
+      for(const raw of valid){
+        const fallbackExt=MIME_EXT[String(raw.type||'').toLowerCase()]||'png';
+        const clean=L.sanitizeImageName(raw.name,fallbackExt);
+        let targetPath;
+        if(dir||typeof this.app.fileManager?.getAvailablePathForAttachment!=='function'){
+          targetPath=L.uniqueVaultPath(dir,clean.name,p=>Boolean(vault.getAbstractFileByPath(p)));
+        }else{
+          targetPath=await this.app.fileManager.getAvailablePathForAttachment(clean.name,sourcePath);
+        }
+        const bytes=await raw.arrayBuffer();
+        await vault.createBinary(targetPath,bytes);
+        saved.push(targetPath);
+      }
+      this.refreshNow();
+      if(saved.length&&doc){
+        const where=dir?`「${dir}」`:'附件目录';
+        new Notice(saved.length===1?`已导入图片：${saved[0]}`:`已导入 ${saved.length} 张图片到${where}。`);
+      }
+      return saved;
+    }catch(error){
+      if(saved.length)this.refreshNow();
+      new Notice(error?.message||'导入图片失败，请检查磁盘空间或权限。');
+      return saved;
     }
-    this.refreshNow();
-    if(saved.length&&doc){
-      const where=dir?`「${dir}」`:'附件目录';
-      new Notice(saved.length===1?`已导入图片：${saved[0]}`:`已导入 ${saved.length} 张图片到${where}。`);
-    }
-    return saved;
   }
   async open(){
     try{
@@ -723,7 +732,8 @@ class ImagePreviewModal extends Modal{
       if(!swatches.length){swatchRow.createSpan({cls:'aw-lib-hint',text:'读取中…'});return;}
       for(const hex of swatches){
         const chip=swatchRow.createEl('button',{cls:'aw-lib-swatch',attr:{type:'button',title:`点击复制 ${hex}`}});
-        chip.createSpan({cls:'aw-lib-swatch-dot',attr:{style:`background:${hex}`}});
+        const dot=chip.createSpan({cls:'aw-lib-swatch-dot'});
+        dot.style.background=hex;
         chip.createSpan({cls:'aw-lib-swatch-hex',text:hex});
         chip.addEventListener('click',()=>void this.view.copyText(hex,`已复制色值 ${hex}`));
       }

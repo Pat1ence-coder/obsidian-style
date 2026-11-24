@@ -183,8 +183,12 @@ function sanitizeImageName(rawName,fallbackExt='png',now=new Date()){
   if(!stem||/^(?:image|blob|clipboard|pasted image)$/i.test(stem))stem=`素材-${stamp}`;
   return {stem,ext,name:`${stem}.${ext}`};
 }
+function cleanFolder(raw){
+  const parts=String(raw||'').replace(/\\/g,'/').split('/').filter(Boolean);
+  return parts.some(p=>p==='.'||p==='..')?'':parts.join('/');
+}
 function uniqueVaultPath(folder,fileName,exists){
-  const dir=String(folder||'').replace(/^\/+|\/+$/g,'');
+  const dir=cleanFolder(folder);
   const dot=fileName.lastIndexOf('.'),stem=dot>0?fileName.slice(0,dot):fileName,ext=dot>0?fileName.slice(dot):'';
   for(let n=0;n<10000;n++){
     const leaf=n===0?`${stem}${ext}`:`${stem}-${n}${ext}`;
@@ -314,5 +318,5 @@ function columnCount(width,card,gap){return Math.max(1,Math.floor((width+gap)/(c
 
 module.exports={IMAGE,TYPES,SHAPES,COLORS,RATINGS,SORTS,SIZES,isImage,kindOf,shapeOf,matchesShape,formatSize,
   rgbToHex,analyzePixels,emptyLibrary,parseTags,loadLibrary,setRating,setTags,renameInLibrary,forgetInLibrary,
-  sanitizeImageName,uniqueVaultPath,references,makeItems,inScope,matches,shuffleItems,sortItems,filterItems,
+  sanitizeImageName,cleanFolder,uniqueVaultPath,references,makeItems,inScope,matches,shuffleItems,sortItems,filterItems,
   folderTree,tagCounts,cardHeight,placeCards,columnCount};
