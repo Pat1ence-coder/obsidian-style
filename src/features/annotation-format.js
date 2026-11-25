@@ -2,7 +2,7 @@
 // Handwritten annotations: ==target=={note} or ==target=={note|options}. The braces sit right
 // after the closing == with no space, on one line. The note is up to 80 characters; options
 // after the last "|" set where the note sits, its colour and its line:
-//   position  右下 (default) 下 左下 右 左 右上 上 左上, or the arrows ↘ ↓ ↙ → ← ↗ ↑ ↖
+//   position  右下 (default) 下 左下 右上 上 左上, or the arrows ↘ ↓ ↙ ↗ ↑ ↖
 //   colour    蓝 (default) 中性 琥珀 橙 绿 红 紫 彩虹, or #rgb / #rrggbb
 //   line      双线 (default) 虚线 实线 波浪 螺旋
 //   无高亮     the target keeps no tinted background
@@ -10,7 +10,6 @@
 const MAX_NOTE=80;
 const DIRECTIONS=[
   {id:'nw',arrow:'↖',label:'左上'},{id:'n',arrow:'↑',label:'上'},{id:'ne',arrow:'↗',label:'右上'},
-  {id:'w',arrow:'←',label:'左'},{id:'e',arrow:'→',label:'右'},
   {id:'sw',arrow:'↙',label:'左下'},{id:'s',arrow:'↓',label:'下'},{id:'se',arrow:'↘',label:'右下'},
 ];
 const COLORS=[
@@ -90,21 +89,14 @@ function formatAnnotation(spec){
   if(!words.length&&note.includes('|')&&parseBody(note)?.note!==note)words.push(DIRECTIONS.find(d=>d.id===DEFAULTS.dir).label);
   return `{${note}${words.length?'|'+words.join(' '):''}}`;
 }
-// Where the note goes relative to its target: pinned outside the line (the eight positions),
-// or in the text flow after / before the target (右, 左).
-function placement(spec){
-  if(spec.dir==='e')return 'after';
-  if(spec.dir==='w')return 'before';
-  return 'pin';
-}
-// Classes for the highlighted target. A pinned note is laid out against the target's box.
-// A pinned note hangs off its target's box, so a short target is kept on one line (it wraps
-// to the next line as a whole): split over two lines, its box would span both and the note
-// would drift. Targets longer than KEEP characters may still wrap, so they never overflow.
+// Classes for the highlighted target. Every annotation is pinned off its target's box, so a
+// short target is kept on one line (it wraps to the next line as a whole): split over two lines,
+// its box would span both and the note would drift. Targets longer than KEEP characters wrap
+// normally, so they never overflow.
 const KEEP=24;
 function targetClasses(spec,target){
-  const pin=placement(spec)==='pin',keep=pin&&target!=null&&[...String(target)].length<=KEEP;
-  return ['aw-annot-target','aw-annot-c-'+spec.color].concat(spec.highlight?[]:['aw-annot-plain'],pin?['aw-annot-holds']:[],keep?['aw-annot-keep']:[]);
+  const keep=target!=null&&[...String(target)].length<=KEEP;
+  return ['aw-annot-target','aw-annot-c-'+spec.color].concat(spec.highlight?[]:['aw-annot-plain'],['aw-annot-holds'],keep?['aw-annot-keep']:[]);
 }
 // Visual width in the note's own em; pinned notes wrap at 13.5em and reserve room per line.
 function noteLines(note){
@@ -122,21 +114,19 @@ const LEADER_PATHS={
 // The note as a plain tree ({tag, cls, attrs, text, children, svg}); the plugin turns it into
 // DOM and the preview script into HTML, so both draw the same thing.
 function noteTree(spec){
-  const where=placement(spec),lines=where==='pin'?noteLines(spec.note):1;
+  const lines=noteLines(spec.note);
   const strokes=LEADER_PATHS[spec.line]||LEADER_PATHS.double;
   const leader={tag:'svg',svg:true,attrs:{class:'aw-annot-arrow',viewBox:'0 0 32 12','aria-hidden':'true'},children:[
     {tag:'path',svg:true,attrs:{d:'M8.6 2.3 Q5.3 4.2 2.3 5.8 Q5.2 7.7 8.2 10',class:'aw-annot-head'}},
     ...strokes.map(d=>({tag:'path',svg:true,attrs:{d,class:'aw-annot-line'}})),
   ]};
   const text={tag:'span',cls:'aw-annot-text',text:spec.note};
-  let children;
-  if(where==='pin')children=[{tag:'span',cls:'aw-annot-room',attrs:{'aria-hidden':'true'}},{tag:'span',cls:'aw-annot-pin',children:[leader,text]}];
-  else children=where==='before'?[text,leader]:[leader,text];
-  const cls=['aw-annot','aw-annot-'+spec.dir,'aw-annot-'+spec.line,'aw-annot-c-'+spec.color,where==='pin'?'aw-annot-pinned':'aw-annot-flow'];
+  const children=[{tag:'span',cls:'aw-annot-room',attrs:{'aria-hidden':'true'}},{tag:'span',cls:'aw-annot-pin',children:[leader,text]}];
+  const cls=['aw-annot','aw-annot-'+spec.dir,'aw-annot-'+spec.line,'aw-annot-c-'+spec.color,'aw-annot-pinned'];
   if(lines>1)cls.push('aw-annot-l'+lines);
   // A pinned note starts with a word joiner (U+2060): no line break between the target's last
   // character and the note's room block, so the room stays on the target's line.
-  return {tag:'span',text:where==='pin'?'\u2060':null,cls:cls.join(' '),
+  return {tag:'span',text:'\u2060',cls:cls.join(' '),
     attrs:{title:'标注：'+spec.note},color:spec.color==='custom'?spec.custom:null,children};
 }
 // Replace inline code, inline math and comments with equal-length spaces so character offsets stay exact.
@@ -183,9 +173,9 @@ function formatAnnotationSummary(title,items){
   const heading=`## 标注汇总：${String(title||'当前笔记').trim()||'当前笔记'}`;
   if(!items?.length)return `${heading}\n\n（暂无标注）`;
   const rows=items.map((a,idx)=>{
-    const dir=DIRECTIONS.find(d=>d.id===a.dir)?.label||DIRECTIONS[7].label;
+    const dir=DIRECTIONS.find(d=>d.id===a.dir)?.label||'右下';
     return `${idx+1}. **${a.target}**（${dir}）：${a.note} *(第 ${a.lineIndex+1} 行)*`;
   });
   return `${heading}\n\n${rows.join('\n')}`;
 }
-module.exports={parseAnnotation,findAnnotations,formatAnnotation,parseBody,placement,targetClasses,noteLines,noteTree,collectNoteAnnotations,replaceSectionAnnotation,formatAnnotationSummary,sameSpec,DIRECTIONS,COLORS,LINES,DEFAULTS,MAX_NOTE,KEEP};
+module.exports={parseAnnotation,findAnnotations,formatAnnotation,parseBody,targetClasses,noteLines,noteTree,collectNoteAnnotations,replaceSectionAnnotation,formatAnnotationSummary,sameSpec,DIRECTIONS,COLORS,LINES,DEFAULTS,MAX_NOTE,KEEP};

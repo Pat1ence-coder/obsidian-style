@@ -28,5 +28,3 @@
 提交源码、测试、脚本、示例、模板和维护文档。目前直接在仓库中分发四个构建文件：`dist/algorithm-workbench/` 下的 `main.js`、`manifest.json`、`styles.css`，以及 `dist/snippets/style.css`。源码变更后执行 `npm run build`，将对应产物与源码一起提交。`.gitignore` 仅放行这四个文件；其他构建目录内容（包括 `data.json`）、预览库、缓存、备份以及测试结果继续排除。
 
 整理前的其余实验材料保存在本地 `artifacts/legacy-style-refactor/`，包括原始报告、历史版本记录、下载的测试运行环境和旧预览库。原始记录保持原样，不作为当前项目的版本声明或测试证据。该目录不属于干净克隆后的运行依赖。
-
-开始新实现阶段前，建立带校验和的独立源码快照；快照放入忽略的 `backups/` 或仓库外，避免把数据文件和缓存加入源码提交。

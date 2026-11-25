@@ -36,7 +36,7 @@ const pluginTokens=fs.readFileSync(path.join(styleSource,'tokens.css'),'utf8')
   .replace(/\bbody((?:\.[\w-]+)*)\s*\{/g,(_match,classes)=>classes?ROOTS.map(r=>`body${classes} ${r}`).join(', ')+' {':ROOTS.join(', ')+' {');
 const pluginOut=path.join(root,'dist/algorithm-workbench'),snippetOut=path.join(root,'dist/snippets');
 fs.mkdirSync(pluginOut,{recursive:true});fs.mkdirSync(snippetOut,{recursive:true});
-fs.writeFileSync(path.join(pluginOut,'styles.css'),generated+pluginTokens+'\n'+cssParts(['materials','workbench','workbench-glass','figure-tools','reading-tools','annotations','library']));
+fs.writeFileSync(path.join(pluginOut,'styles.css'),generated+pluginTokens+'\n'+cssParts(['materials','workbench','workbench-glass','figure-tools','reading-tools','typing-motion','annotations','library']));
 // Build only inside this repository; installation is a separate explicit action.
 fs.writeFileSync(path.join(snippetOut,'style.css'),generated+cssParts(['tokens'])+'\n'+cssParts(['shell','controls','typography','components','editor','figures','blocks','glass','window-glass','print']));
 fs.writeFileSync(path.join(pluginOut,'main.js'),bundled);

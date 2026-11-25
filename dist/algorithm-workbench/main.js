@@ -16,8 +16,9 @@ const {Decor}=__awRequire("features/decor.js");
 const {WindowGlass}=__awRequire("features/window-glass.js");
 const {Library}=__awRequire("features/library.js");
 const {MarkdownPaste}=__awRequire("features/markdown-paste.js");
+const {TypingMotion}=__awRequire("features/typing-motion.js");
 // aw-palette-* and aw-style-* are listed so classes left by earlier versions are cleaned up.
-const APPEARANCE=/^aw-(?:palette|style|caption|glass-fog)-|^aw-(?:figure-tools-off|glass|annot-recall)$/;
+const APPEARANCE=/^aw-(?:palette|style|caption|glass-fog)-|^aw-(?:figure-tools-off|glass|annot-recall|smooth-caret)$/;
 // A created note counts as new when it is opened within this time.
 const NEW_NOTE_OPEN_MS=10000;
 // Settings are saved soon after a change; statistics gathered while typing wait longer, so
@@ -55,6 +56,7 @@ class WorkbenchSettings extends PluginSettingTab {
       d.setValue(s.captionSize).onChange(v=>this.plugin.setCaptionSize(v));
     });
     this.plugin.windowGlass.displaySettings(this.containerEl,Setting);
+    this.plugin.typingMotion.displaySettings(this.containerEl,Setting);
     this.plugin.annotations.displaySettings(this.containerEl);
     this.plugin.scrollRuler.displaySettings(this.containerEl,Setting);
     this.plugin.decor.displaySettings(this.containerEl,Setting);
@@ -105,6 +107,7 @@ class WorkbenchPlugin extends Plugin {
     this.scrollRuler=this.addChild(new ScrollRuler(this));
     this.decor=this.addChild(new Decor(this));
     this.windowGlass=this.addChild(new WindowGlass(this));
+    this.typingMotion=this.addChild(new TypingMotion(this));
     this.registerView(VIEW,leaf=>new WorkbenchView(leaf,this));
     this.addRibbonIcon(viewIcon(),`打开${NAME}`,()=>this.openWorkbench());
     this.addCommand({id:'open-workbench',name:`打开${NAME}`,callback:()=>this.openWorkbench()});
@@ -262,7 +265,7 @@ class WorkbenchPlugin extends Plugin {
   // Appearance settings are body classes read by both stylesheets.
   appearanceClasses(){
     const s=this.data.settings;
-    return ['aw-caption-'+s.captionSize].concat(s.figureTools?[]:['aw-figure-tools-off'],this.windowGlass?.classes()??[],this.annotations?.recall?['aw-annot-recall']:[]);
+    return ['aw-caption-'+s.captionSize].concat(s.figureTools?[]:['aw-figure-tools-off'],this.windowGlass?.classes()??[],this.typingMotion?.classes()??[],this.annotations?.recall?['aw-annot-recall']:[]);
   }
   applyAppearance(doc){
     if(!doc?.body)return;
@@ -317,6 +320,7 @@ class WorkbenchPlugin extends Plugin {
   changed(){this.updateStatusBar();this.scheduleSave();this.scheduleRefresh();}
   onunload(){
     this.windowGlass?.onunload();
+    this.typingMotion?.onunload();
     for(const doc of this.appearanceDocs??[]){
       for(const name of [...doc.body.classList])if(APPEARANCE.test(name))doc.body.classList.remove(name);
       doc.body.style.removeProperty('--aw-annot-font');
@@ -332,7 +336,7 @@ module.exports=WorkbenchPlugin;
 "core.js":(module,exports,__awRequire)=>{
 'use strict';
 const Library = __awRequire("features/library-data.js");
-const DEFAULT_SETTINGS = { nameScreenshots: true, folderNotes: true, openOnStartup: true, tracking: true, statusBar: true, dailyGoal: 0, recentLimit: 8, range: 90, metric: 'score', captionSize: 'normal', figureTools: true, scrollRuler: true, rulerHeadings: true, rulerMemory: true, pasteSource: true, decorImage: '', glass: true, glassFog: 'normal', annotFont: '', excludedFolders: ['Templates', 'templates'] };
+const DEFAULT_SETTINGS = { nameScreenshots: true, folderNotes: true, openOnStartup: true, tracking: true, statusBar: true, dailyGoal: 0, recentLimit: 8, range: 90, metric: 'score', captionSize: 'normal', figureTools: true, scrollRuler: true, rulerHeadings: true, rulerMemory: true, pasteSource: true, smoothCaret: true, decorImage: '', glass: true, glassFog: 'normal', annotFont: '', excludedFolders: ['Templates', 'templates'] };
 const MAX_DAILY_GOAL = 100000;
 const RANGES = [30, 90, 180, 365];
 // Figure and table caption sizes; body class aw-caption-<id>, defined in figures.css.
@@ -435,7 +439,7 @@ function loadState(raw, now = new Date()) {
   const d = emptyData(now); d.started = raw.started;
   if (raw.version === 2) d.activityStarted = raw.activityStarted;
   const s = raw.settings || {};
-  for (const name of ['openOnStartup', 'tracking', 'statusBar', 'folderNotes', 'nameScreenshots', 'figureTools', 'scrollRuler', 'rulerHeadings', 'rulerMemory', 'glass', 'pasteSource']) if (typeof s[name] === 'boolean') d.settings[name] = s[name];
+  for (const name of ['openOnStartup', 'tracking', 'statusBar', 'folderNotes', 'nameScreenshots', 'figureTools', 'scrollRuler', 'rulerHeadings', 'rulerMemory', 'glass', 'pasteSource', 'smoothCaret']) if (typeof s[name] === 'boolean') d.settings[name] = s[name];
   if (Number.isInteger(s.dailyGoal) && s.dailyGoal >= 0) d.settings.dailyGoal = Math.min(MAX_DAILY_GOAL, s.dailyGoal);
   if (RANGES.includes(s.range)) d.settings.range = s.range;
   if (METRICS.some(m => m.key === s.metric)) d.settings.metric = s.metric;
@@ -2457,7 +2461,7 @@ const {ViewPlugin,Decoration,WidgetType}=require('@codemirror/view');
 let syntaxTree=null;
 try{({syntaxTree}=require('@codemirror/language'));}catch{}
 const Format=__awRequire("features/annotation-format.js");
-const {parseAnnotation,findAnnotations,formatAnnotation,placement,targetClasses,noteTree,collectNoteAnnotations,replaceSectionAnnotation,formatAnnotationSummary,sameSpec,DIRECTIONS,COLORS,LINES}=Format;
+const {parseAnnotation,findAnnotations,formatAnnotation,targetClasses,noteTree,collectNoteAnnotations,replaceSectionAnnotation,formatAnnotationSummary,sameSpec,DIRECTIONS,COLORS,LINES}=Format;
 const SVG='http://www.w3.org/2000/svg';
 const STYLE_KEYS=['dir','color','custom','line','highlight'];
 
@@ -2520,13 +2524,7 @@ function scheduleClamp(root){
 // Live Preview: the annotation is drawn unless the cursor is on it, in which case the source
 // stays editable (as Obsidian does for its own formatting).
 function editorExtension(){
-  class NoteWidget extends WidgetType{
-    constructor(spec){super();this.spec=spec;}
-    eq(other){return sameSpec(other.spec,this.spec);}
-    toDOM(view){return noteNode(view.dom.ownerDocument,this.spec);}
-    ignoreEvent(){return false;}
-  }
-  // A pinned note is laid out against its target's box, so the whole ==target=={note} is one
+  // Every annotation is pinned against its target's box, so the whole ==target=={note} is one
   // widget: the target words with the note inside them, built as in reading view. Placing the
   // note inside a mark instead depends on how CodeMirror nests this plugin's decorations with
   // Obsidian's own (which hide the == and tint the highlight); in one order the note ends up
@@ -2554,13 +2552,7 @@ function editorExtension(){
     for(const a of [...seen.values()].sort((x,y)=>x.markFrom-y.markFrom)){
       if(verbatim(view.state,a.markFrom)||verbatim(view.state,a.from))continue;
       if(ranges.some(r=>r.from<=a.to&&r.to>=a.markFrom)){out.push(Decoration.mark({class:'aw-annot-source'}).range(a.from,a.to));continue;}
-      const where=placement(a),attributes=a.color==='custom'?{style:`--aw-annot-color:${a.custom}`}:undefined;
-      if(where==='pin'){out.push(Decoration.replace({widget:new PinnedWidget(a,view.state.sliceDoc(a.targetFrom,a.targetTo))}).range(a.markFrom,a.to));continue;}
-      out.push(Decoration.mark({class:targetClasses(a).join(' '),attributes}).range(a.targetFrom,a.targetTo));
-      if(where==='before'){
-        out.push(Decoration.widget({widget:new NoteWidget(a),side:-1}).range(a.markFrom));
-        out.push(Decoration.replace({}).range(a.from,a.to));
-      }else out.push(Decoration.replace({widget:new NoteWidget(a)}).range(a.from,a.to));
+      out.push(Decoration.replace({widget:new PinnedWidget(a,view.state.sliceDoc(a.targetFrom,a.targetTo))}).range(a.markFrom,a.to));
     }
     return Decoration.set(out,true);
   };
@@ -2598,22 +2590,20 @@ class AnnotationModal extends Modal{
     renderPreview=()=>{
       lineEl.replaceChildren();
       const sample={...this.spec,note:String(this.spec.note||'').trim()||'手写批注预览'};
-      const where=placement(sample),note=noteNode(doc,sample),mark=doc.createElement('mark');
+      const note=noteNode(doc,sample),mark=doc.createElement('mark');
       mark.className=targetClasses(sample,'目标文字').join(' ');tint(mark,sample);
       mark.appendChild(doc.createTextNode('目标文字'));
-      if(where==='pin')mark.appendChild(note);
+      mark.appendChild(note);
       lineEl.appendChild(doc.createTextNode('示例前文 '));
-      if(where==='before')lineEl.appendChild(note);
       lineEl.appendChild(mark);
-      if(where==='after')lineEl.appendChild(note);
       lineEl.appendChild(doc.createTextNode(' 示例后文'));
     };
     const pickers=el.createDiv({cls:'aw-annot-pickers'});
     const group=name=>{const box=pickers.createDiv({cls:'aw-annot-picker'});box.createDiv({cls:'aw-annot-picker-name',text:name});return box;};
     const choose=(buttons,key,value)=>{this.spec[key]=value;for(const b of buttons)b.setAttribute('aria-pressed',String(b.dataset.value===value));renderPreview();};
-    // Position: the eight directions around a small "文字" chip.
+    // Position: six pinned directions above and below a centred "文字" chip.
     const compass=group('位置').createDiv({cls:'aw-annot-compass'}),dirs=[];
-    for(const id of ['nw','n','ne','w','center','e','sw','s','se']){
+    for(const id of ['nw','n','ne','center','sw','s','se']){
       if(id==='center'){compass.createSpan({cls:'aw-annot-compass-center',text:'文字'});continue;}
       const d=DIRECTIONS.find(x=>x.id===id),b=compass.createEl('button',{cls:'aw-annot-choice',text:d.arrow,attr:{type:'button','aria-label':d.label}});
       b.dataset.value=id;b.addEventListener('click',()=>choose(dirs,'dir',id));dirs.push(b);
@@ -2761,9 +2751,9 @@ class Annotations extends Component{
       next.textContent=found.rest;
       for(const name of targetClasses(found,mark.textContent))mark.classList.add(name);
       tint(mark,found);
-      const note=noteNode(el.ownerDocument,found),where=placement(found);
+      const note=noteNode(el.ownerDocument,found);
       if(ctx){
-        const holder=where==='pin'?note.children[1]:note;
+        const holder=note.children[1];
         const textEl=note.querySelector?.('.aw-annot-text')??[...(holder?.children||[])].find(c=>c.className==='aw-annot-text');
         textEl?.setAttribute?.('tabindex','0');
         textEl?.setAttribute?.('role','button');
@@ -2771,8 +2761,7 @@ class Annotations extends Component{
         counts.set(key,ordinal+1);
         this.noteMeta.set(note,{el,ctx,target:mark.textContent,spec:{...found},ordinal});
       }
-      if(where==='pin')mark.appendChild(note);
-      else mark.parentNode.insertBefore(note,where==='before'?mark:next);
+      mark.appendChild(note);
     }
     scheduleClamp(el);
   }
@@ -2942,7 +2931,7 @@ class Annotations extends Component{
       }));
   }
 }
-module.exports={Annotations,AnnotationModal,AnnotationSummaryModal,noteNode,clampNotes,placement,targetClasses};
+module.exports={Annotations,AnnotationModal,AnnotationSummaryModal,noteNode,clampNotes,targetClasses};
 
 },
 "features/annotation-format.js":(module,exports,__awRequire)=>{
@@ -2950,7 +2939,7 @@ module.exports={Annotations,AnnotationModal,AnnotationSummaryModal,noteNode,clam
 // Handwritten annotations: ==target=={note} or ==target=={note|options}. The braces sit right
 // after the closing == with no space, on one line. The note is up to 80 characters; options
 // after the last "|" set where the note sits, its colour and its line:
-//   position  右下 (default) 下 左下 右 左 右上 上 左上, or the arrows ↘ ↓ ↙ → ← ↗ ↑ ↖
+//   position  右下 (default) 下 左下 右上 上 左上, or the arrows ↘ ↓ ↙ ↗ ↑ ↖
 //   colour    蓝 (default) 中性 琥珀 橙 绿 红 紫 彩虹, or #rgb / #rrggbb
 //   line      双线 (default) 虚线 实线 波浪 螺旋
 //   无高亮     the target keeps no tinted background
@@ -2958,7 +2947,6 @@ module.exports={Annotations,AnnotationModal,AnnotationSummaryModal,noteNode,clam
 const MAX_NOTE=80;
 const DIRECTIONS=[
   {id:'nw',arrow:'↖',label:'左上'},{id:'n',arrow:'↑',label:'上'},{id:'ne',arrow:'↗',label:'右上'},
-  {id:'w',arrow:'←',label:'左'},{id:'e',arrow:'→',label:'右'},
   {id:'sw',arrow:'↙',label:'左下'},{id:'s',arrow:'↓',label:'下'},{id:'se',arrow:'↘',label:'右下'},
 ];
 const COLORS=[
@@ -3038,21 +3026,14 @@ function formatAnnotation(spec){
   if(!words.length&&note.includes('|')&&parseBody(note)?.note!==note)words.push(DIRECTIONS.find(d=>d.id===DEFAULTS.dir).label);
   return `{${note}${words.length?'|'+words.join(' '):''}}`;
 }
-// Where the note goes relative to its target: pinned outside the line (the eight positions),
-// or in the text flow after / before the target (右, 左).
-function placement(spec){
-  if(spec.dir==='e')return 'after';
-  if(spec.dir==='w')return 'before';
-  return 'pin';
-}
-// Classes for the highlighted target. A pinned note is laid out against the target's box.
-// A pinned note hangs off its target's box, so a short target is kept on one line (it wraps
-// to the next line as a whole): split over two lines, its box would span both and the note
-// would drift. Targets longer than KEEP characters may still wrap, so they never overflow.
+// Classes for the highlighted target. Every annotation is pinned off its target's box, so a
+// short target is kept on one line (it wraps to the next line as a whole): split over two lines,
+// its box would span both and the note would drift. Targets longer than KEEP characters wrap
+// normally, so they never overflow.
 const KEEP=24;
 function targetClasses(spec,target){
-  const pin=placement(spec)==='pin',keep=pin&&target!=null&&[...String(target)].length<=KEEP;
-  return ['aw-annot-target','aw-annot-c-'+spec.color].concat(spec.highlight?[]:['aw-annot-plain'],pin?['aw-annot-holds']:[],keep?['aw-annot-keep']:[]);
+  const keep=target!=null&&[...String(target)].length<=KEEP;
+  return ['aw-annot-target','aw-annot-c-'+spec.color].concat(spec.highlight?[]:['aw-annot-plain'],['aw-annot-holds'],keep?['aw-annot-keep']:[]);
 }
 // Visual width in the note's own em; pinned notes wrap at 13.5em and reserve room per line.
 function noteLines(note){
@@ -3070,21 +3051,19 @@ const LEADER_PATHS={
 // The note as a plain tree ({tag, cls, attrs, text, children, svg}); the plugin turns it into
 // DOM and the preview script into HTML, so both draw the same thing.
 function noteTree(spec){
-  const where=placement(spec),lines=where==='pin'?noteLines(spec.note):1;
+  const lines=noteLines(spec.note);
   const strokes=LEADER_PATHS[spec.line]||LEADER_PATHS.double;
   const leader={tag:'svg',svg:true,attrs:{class:'aw-annot-arrow',viewBox:'0 0 32 12','aria-hidden':'true'},children:[
     {tag:'path',svg:true,attrs:{d:'M8.6 2.3 Q5.3 4.2 2.3 5.8 Q5.2 7.7 8.2 10',class:'aw-annot-head'}},
     ...strokes.map(d=>({tag:'path',svg:true,attrs:{d,class:'aw-annot-line'}})),
   ]};
   const text={tag:'span',cls:'aw-annot-text',text:spec.note};
-  let children;
-  if(where==='pin')children=[{tag:'span',cls:'aw-annot-room',attrs:{'aria-hidden':'true'}},{tag:'span',cls:'aw-annot-pin',children:[leader,text]}];
-  else children=where==='before'?[text,leader]:[leader,text];
-  const cls=['aw-annot','aw-annot-'+spec.dir,'aw-annot-'+spec.line,'aw-annot-c-'+spec.color,where==='pin'?'aw-annot-pinned':'aw-annot-flow'];
+  const children=[{tag:'span',cls:'aw-annot-room',attrs:{'aria-hidden':'true'}},{tag:'span',cls:'aw-annot-pin',children:[leader,text]}];
+  const cls=['aw-annot','aw-annot-'+spec.dir,'aw-annot-'+spec.line,'aw-annot-c-'+spec.color,'aw-annot-pinned'];
   if(lines>1)cls.push('aw-annot-l'+lines);
   // A pinned note starts with a word joiner (U+2060): no line break between the target's last
   // character and the note's room block, so the room stays on the target's line.
-  return {tag:'span',text:where==='pin'?'\u2060':null,cls:cls.join(' '),
+  return {tag:'span',text:'\u2060',cls:cls.join(' '),
     attrs:{title:'标注：'+spec.note},color:spec.color==='custom'?spec.custom:null,children};
 }
 // Replace inline code, inline math and comments with equal-length spaces so character offsets stay exact.
@@ -3131,12 +3110,12 @@ function formatAnnotationSummary(title,items){
   const heading=`## 标注汇总：${String(title||'当前笔记').trim()||'当前笔记'}`;
   if(!items?.length)return `${heading}\n\n（暂无标注）`;
   const rows=items.map((a,idx)=>{
-    const dir=DIRECTIONS.find(d=>d.id===a.dir)?.label||DIRECTIONS[7].label;
+    const dir=DIRECTIONS.find(d=>d.id===a.dir)?.label||'右下';
     return `${idx+1}. **${a.target}**（${dir}）：${a.note} *(第 ${a.lineIndex+1} 行)*`;
   });
   return `${heading}\n\n${rows.join('\n')}`;
 }
-module.exports={parseAnnotation,findAnnotations,formatAnnotation,parseBody,placement,targetClasses,noteLines,noteTree,collectNoteAnnotations,replaceSectionAnnotation,formatAnnotationSummary,sameSpec,DIRECTIONS,COLORS,LINES,DEFAULTS,MAX_NOTE,KEEP};
+module.exports={parseAnnotation,findAnnotations,formatAnnotation,parseBody,targetClasses,noteLines,noteTree,collectNoteAnnotations,replaceSectionAnnotation,formatAnnotationSummary,sameSpec,DIRECTIONS,COLORS,LINES,DEFAULTS,MAX_NOTE,KEEP};
 
 },
 "features/scroll-ruler.js":(module,exports,__awRequire)=>{
@@ -4556,6 +4535,259 @@ class MarkdownPaste extends Component{
   }
 }
 module.exports={MarkdownPaste,sourceText};
+
+},
+"features/typing-motion.js":(module,exports,__awRequire)=>{
+'use strict';
+const {Component}=require('obsidian');
+const {EditorView,ViewPlugin}=require('@codemirror/view');
+
+const IDLE_MS=480;
+const MAX_GLIDE_DY=260;
+const MAX_GLIDE_DIST=1000;
+
+function shouldActivate({enabled,reducedMotion,hasFocus,editable,rangeCount,empty,vim,blocked}){
+  return Boolean(enabled&&!reducedMotion&&hasFocus&&editable&&rangeCount===1&&empty&&!vim&&!blocked);
+}
+
+function shouldGlide({hadPos,animate,prevX,prevY,x,y}){
+  if(!hadPos||!animate)return false;
+  const dx=x-prevX,dy=y-prevY;
+  if(Math.abs(dx)<0.5&&Math.abs(dy)<0.5)return false;
+  return Math.abs(dy)<=MAX_GLIDE_DY&&Math.hypot(dx,dy)<=MAX_GLIDE_DIST;
+}
+
+function caretRect(coords,scrollerRect,scrollLeft,scrollTop,clientLeft=0,clientTop=0){
+  if(!coords||!scrollerRect||!(coords.bottom>coords.top))return null;
+  const rawX=coords.left-scrollerRect.left+scrollLeft-clientLeft;
+  const x=Math.max(0,rawX-0.5);
+  const y=coords.top-scrollerRect.top+scrollTop-clientTop;
+  const height=Math.max(12,Math.min(96,Math.round(coords.bottom-coords.top)));
+  return {x,y,height};
+}
+
+function measureCaretCoords(view){
+  const sel=view.state?.selection;
+  if(!sel||sel.ranges.length!==1||!sel.main.empty)return null;
+  const doc=view.dom?.ownerDocument;
+  // During IME composition, the live collapsed DOM selection tracks the end of the preedit text
+  // without touching selection state, keeping macOS candidate popups anchored natively.
+  if(view.composing){
+    const domSel=doc?.getSelection?.();
+    if(domSel&&domSel.rangeCount>0&&domSel.isCollapsed&&view.contentDOM?.contains?.(domSel.focusNode)){
+      const range=domSel.getRangeAt(0);
+      const rect=range.getBoundingClientRect?.();
+      if(rect&&rect.height>0)return {left:rect.left,top:rect.top,bottom:rect.bottom};
+      const rects=range.getClientRects?.();
+      if(rects?.length&&rects[0].height>0)return {left:rects[0].left,top:rects[0].top,bottom:rects[0].bottom};
+    }
+  }
+  const c=view.coordsAtPos?.(sel.main.head,sel.main.assoc||1);
+  return c&&c.bottom>c.top?c:null;
+}
+
+function isVimActive(view,app){
+  if(app?.vault?.getConfig?.('vimMode')===true)return true;
+  if(view.dom?.classList?.contains?.('cm-fat-cursor'))return true;
+  if(view.dom?.closest?.('.cm-vim-mode'))return true;
+  if(view.dom?.ownerDocument?.body?.classList?.contains?.('is-vim-mode'))return true;
+  return false;
+}
+
+function isBlockedEditor(view){
+  return Boolean(view.dom?.closest?.('.cm-table-widget,.formula-editor,.mod-image-selected'));
+}
+
+function isEditable(view){
+  if(view.contentDOM?.getAttribute?.('contenteditable')==='false')return false;
+  if(EditorView?.editable&&typeof view.state?.facet==='function'){
+    try{if(view.state.facet(EditorView.editable)===false)return false;}catch{}
+  }
+  return true;
+}
+
+class TypingMotion extends Component{
+  constructor(plugin){
+    super();
+    this.plugin=plugin;
+    this.app=plugin.app;
+    this.instances=new Set();
+  }
+  onload(){
+    this.plugin.registerEditorExtension(this.editorExtension());
+    if(typeof this.app?.vault?.on==='function'){
+      this.registerEvent(this.app.vault.on('config-changed',key=>{if(key==='vimMode')this.refresh();}));
+    }
+  }
+  onunload(){
+    for(const inst of [...this.instances])inst.hide();
+    this.instances.clear();
+  }
+  enabled(){return this.plugin.data?.settings?.smoothCaret!==false;}
+  classes(){return this.enabled()?['aw-smooth-caret']:[];}
+  refresh(){
+    for(const inst of this.instances)inst.schedule(false);
+  }
+  editorExtension(){
+    const host=this;
+    return ViewPlugin.fromClass(class{
+      constructor(view){
+        this.view=view;
+        this.doc=view.dom?.ownerDocument;
+        this.win=this.doc?.defaultView||globalThis;
+        this.measureKey={};
+        this.caret=null;
+        this.hasPos=false;
+        this.prevX=0;
+        this.prevY=0;
+        this.prevH=0;
+        this.idleTimer=null;
+        this.rafId=null;
+        this.pendingAnimate=false;
+        this.destroyed=false;
+        this.mql=this.win.matchMedia?.('(prefers-reduced-motion: reduce)')||null;
+        this.onReduced=()=>this.schedule(false);
+        this.onCompose=()=>this.schedule(true);
+        this.onFocus=()=>this.schedule(false);
+        this.onBlur=()=>this.hide();
+        this.mql?.addEventListener?.('change',this.onReduced);
+        const content=view.contentDOM;
+        if(typeof content?.addEventListener==='function'){
+          content.addEventListener('compositionstart',this.onCompose);
+          content.addEventListener('compositionupdate',this.onCompose);
+          content.addEventListener('compositionend',this.onCompose);
+          content.addEventListener('focus',this.onFocus);
+          content.addEventListener('blur',this.onBlur);
+        }
+        host.instances.add(this);
+        this.schedule(false);
+      }
+      ensureCaret(){
+        if(this.caret)return this.caret;
+        const scroller=this.view.scrollDOM;
+        if(!scroller||typeof this.doc?.createElement!=='function')return null;
+        const el=this.doc.createElement('div');
+        el.className='aw-caret';
+        el.setAttribute?.('aria-hidden','true');
+        scroller.appendChild(el);
+        this.caret=el;
+        return el;
+      }
+      clearIdle(){
+        if(this.idleTimer!=null){this.win.clearTimeout?.(this.idleTimer);this.idleTimer=null;}
+      }
+      resetIdle(){
+        this.clearIdle();
+        this.caret?.classList?.remove?.('is-idle');
+        if(typeof this.win.setTimeout==='function'){
+          this.idleTimer=this.win.setTimeout(()=>{
+            this.idleTimer=null;
+            if(!this.destroyed&&this.hasPos)this.caret?.classList?.add?.('is-idle');
+          },IDLE_MS);
+        }
+      }
+      hide(){
+        this.clearIdle();
+        this.hasPos=false;
+        this.view.dom?.classList?.remove?.('aw-caret-active');
+        if(this.caret){
+          this.caret.classList?.remove?.('is-visible','is-gliding','is-idle');
+        }
+      }
+      canActivate(){
+        const sel=this.view.state?.selection;
+        return shouldActivate({
+          enabled:host.enabled(),
+          reducedMotion:Boolean(this.mql?.matches),
+          hasFocus:Boolean(this.view.hasFocus),
+          editable:isEditable(this.view),
+          rangeCount:sel?.ranges?.length??0,
+          empty:Boolean(sel?.main?.empty),
+          vim:isVimActive(this.view,host.app),
+          blocked:isBlockedEditor(this.view),
+        });
+      }
+      update(update){
+        if(update.focusChanged&&!update.view.hasFocus){this.hide();return;}
+        if(update.docChanged||update.selectionSet){this.schedule(true);return;}
+        if(update.geometryChanged||update.focusChanged){this.schedule(false);}
+      }
+      schedule(animate){
+        if(this.destroyed)return;
+        if(!this.canActivate()){this.hide();return;}
+        this.pendingAnimate=this.pendingAnimate||animate;
+        const read=view=>{
+          if(this.destroyed||!this.canActivate())return null;
+          const scroller=view.scrollDOM;
+          if(!scroller||typeof scroller.getBoundingClientRect!=='function')return null;
+          const coords=measureCaretCoords(view);
+          if(!coords)return null;
+          return caretRect(coords,scroller.getBoundingClientRect(),scroller.scrollLeft||0,scroller.scrollTop||0,scroller.clientLeft||0,scroller.clientTop||0);
+        };
+        const write=rect=>{
+          const wantAnimate=this.pendingAnimate;
+          this.pendingAnimate=false;
+          if(this.destroyed||!rect){this.hide();return;}
+          const el=this.ensureCaret();
+          if(!el)return;
+          const moved=!this.hasPos||Math.abs(rect.x-this.prevX)>=0.5||Math.abs(rect.y-this.prevY)>=0.5||rect.height!==this.prevH;
+          this.view.dom?.classList?.add?.('aw-caret-active');
+          el.classList?.add?.('is-visible');
+          // Do not toggle is-gliding off when target coordinates are unchanged, or an in-flight
+          // glide would be cut short by a follow-up geometryChanged notification.
+          if(!moved)return;
+          const glide=shouldGlide({hadPos:this.hasPos,animate:wantAnimate,prevX:this.prevX,prevY:this.prevY,x:rect.x,y:rect.y});
+          el.classList?.toggle?.('is-gliding',glide);
+          el.style.transform=`translate(${rect.x.toFixed(1)}px, ${rect.y.toFixed(1)}px)`;
+          el.style.height=`${rect.height}px`;
+          this.prevX=rect.x;
+          this.prevY=rect.y;
+          this.prevH=rect.height;
+          this.hasPos=true;
+          this.resetIdle();
+        };
+        if(typeof this.view.requestMeasure==='function'){
+          this.view.requestMeasure({key:this.measureKey,read,write});
+          return;
+        }
+        if(this.rafId!=null)return;
+        const raf=this.win.requestAnimationFrame;
+        if(typeof raf==='function'){
+          this.rafId=raf(()=>{this.rafId=null;write(read(this.view));});
+        }else write(read(this.view));
+      }
+      destroy(){
+        this.destroyed=true;
+        if(this.rafId!=null){this.win.cancelAnimationFrame?.(this.rafId);this.rafId=null;}
+        this.hide();
+        this.mql?.removeEventListener?.('change',this.onReduced);
+        const content=this.view.contentDOM;
+        if(typeof content?.removeEventListener==='function'){
+          content.removeEventListener('compositionstart',this.onCompose);
+          content.removeEventListener('compositionupdate',this.onCompose);
+          content.removeEventListener('compositionend',this.onCompose);
+          content.removeEventListener('focus',this.onFocus);
+          content.removeEventListener('blur',this.onBlur);
+        }
+        this.caret?.remove?.();
+        this.caret=null;
+        host.instances.delete(this);
+      }
+    });
+  }
+  displaySettings(container,Setting){
+    const s=this.plugin.data.settings;
+    new Setting(container).setName('平滑光标')
+      .addToggle(t=>t.setValue(s.smoothCaret!==false).onChange(v=>{
+        s.smoothCaret=v;
+        this.plugin.applyAppearanceEverywhere();
+        this.refresh();
+        this.plugin.changed();
+      }));
+  }
+}
+
+module.exports={TypingMotion,shouldActivate,shouldGlide,caretRect,measureCaretCoords,IDLE_MS,MAX_GLIDE_DY,MAX_GLIDE_DIST};
 
 }};
 const __awCache=Object.create(null);

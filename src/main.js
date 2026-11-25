@@ -14,8 +14,9 @@ const {Decor}=require('./features/decor');
 const {WindowGlass}=require('./features/window-glass');
 const {Library}=require('./features/library');
 const {MarkdownPaste}=require('./features/markdown-paste');
+const {TypingMotion}=require('./features/typing-motion');
 // aw-palette-* and aw-style-* are listed so classes left by earlier versions are cleaned up.
-const APPEARANCE=/^aw-(?:palette|style|caption|glass-fog)-|^aw-(?:figure-tools-off|glass|annot-recall)$/;
+const APPEARANCE=/^aw-(?:palette|style|caption|glass-fog)-|^aw-(?:figure-tools-off|glass|annot-recall|smooth-caret)$/;
 // A created note counts as new when it is opened within this time.
 const NEW_NOTE_OPEN_MS=10000;
 // Settings are saved soon after a change; statistics gathered while typing wait longer, so
@@ -53,6 +54,7 @@ class WorkbenchSettings extends PluginSettingTab {
       d.setValue(s.captionSize).onChange(v=>this.plugin.setCaptionSize(v));
     });
     this.plugin.windowGlass.displaySettings(this.containerEl,Setting);
+    this.plugin.typingMotion.displaySettings(this.containerEl,Setting);
     this.plugin.annotations.displaySettings(this.containerEl);
     this.plugin.scrollRuler.displaySettings(this.containerEl,Setting);
     this.plugin.decor.displaySettings(this.containerEl,Setting);
@@ -103,6 +105,7 @@ class WorkbenchPlugin extends Plugin {
     this.scrollRuler=this.addChild(new ScrollRuler(this));
     this.decor=this.addChild(new Decor(this));
     this.windowGlass=this.addChild(new WindowGlass(this));
+    this.typingMotion=this.addChild(new TypingMotion(this));
     this.registerView(VIEW,leaf=>new WorkbenchView(leaf,this));
     this.addRibbonIcon(viewIcon(),`打开${NAME}`,()=>this.openWorkbench());
     this.addCommand({id:'open-workbench',name:`打开${NAME}`,callback:()=>this.openWorkbench()});
@@ -260,7 +263,7 @@ class WorkbenchPlugin extends Plugin {
   // Appearance settings are body classes read by both stylesheets.
   appearanceClasses(){
     const s=this.data.settings;
-    return ['aw-caption-'+s.captionSize].concat(s.figureTools?[]:['aw-figure-tools-off'],this.windowGlass?.classes()??[],this.annotations?.recall?['aw-annot-recall']:[]);
+    return ['aw-caption-'+s.captionSize].concat(s.figureTools?[]:['aw-figure-tools-off'],this.windowGlass?.classes()??[],this.typingMotion?.classes()??[],this.annotations?.recall?['aw-annot-recall']:[]);
   }
   applyAppearance(doc){
     if(!doc?.body)return;
@@ -315,6 +318,7 @@ class WorkbenchPlugin extends Plugin {
   changed(){this.updateStatusBar();this.scheduleSave();this.scheduleRefresh();}
   onunload(){
     this.windowGlass?.onunload();
+    this.typingMotion?.onunload();
     for(const doc of this.appearanceDocs??[]){
       for(const name of [...doc.body.classList])if(APPEARANCE.test(name))doc.body.classList.remove(name);
       doc.body.style.removeProperty('--aw-annot-font');

@@ -4,7 +4,7 @@ const {ViewPlugin,Decoration,WidgetType}=require('@codemirror/view');
 let syntaxTree=null;
 try{({syntaxTree}=require('@codemirror/language'));}catch{}
 const Format=require('./annotation-format');
-const {parseAnnotation,findAnnotations,formatAnnotation,placement,targetClasses,noteTree,collectNoteAnnotations,replaceSectionAnnotation,formatAnnotationSummary,sameSpec,DIRECTIONS,COLORS,LINES}=Format;
+const {parseAnnotation,findAnnotations,formatAnnotation,targetClasses,noteTree,collectNoteAnnotations,replaceSectionAnnotation,formatAnnotationSummary,sameSpec,DIRECTIONS,COLORS,LINES}=Format;
 const SVG='http://www.w3.org/2000/svg';
 const STYLE_KEYS=['dir','color','custom','line','highlight'];
 
@@ -67,13 +67,7 @@ function scheduleClamp(root){
 // Live Preview: the annotation is drawn unless the cursor is on it, in which case the source
 // stays editable (as Obsidian does for its own formatting).
 function editorExtension(){
-  class NoteWidget extends WidgetType{
-    constructor(spec){super();this.spec=spec;}
-    eq(other){return sameSpec(other.spec,this.spec);}
-    toDOM(view){return noteNode(view.dom.ownerDocument,this.spec);}
-    ignoreEvent(){return false;}
-  }
-  // A pinned note is laid out against its target's box, so the whole ==target=={note} is one
+  // Every annotation is pinned against its target's box, so the whole ==target=={note} is one
   // widget: the target words with the note inside them, built as in reading view. Placing the
   // note inside a mark instead depends on how CodeMirror nests this plugin's decorations with
   // Obsidian's own (which hide the == and tint the highlight); in one order the note ends up
@@ -101,13 +95,7 @@ function editorExtension(){
     for(const a of [...seen.values()].sort((x,y)=>x.markFrom-y.markFrom)){
       if(verbatim(view.state,a.markFrom)||verbatim(view.state,a.from))continue;
       if(ranges.some(r=>r.from<=a.to&&r.to>=a.markFrom)){out.push(Decoration.mark({class:'aw-annot-source'}).range(a.from,a.to));continue;}
-      const where=placement(a),attributes=a.color==='custom'?{style:`--aw-annot-color:${a.custom}`}:undefined;
-      if(where==='pin'){out.push(Decoration.replace({widget:new PinnedWidget(a,view.state.sliceDoc(a.targetFrom,a.targetTo))}).range(a.markFrom,a.to));continue;}
-      out.push(Decoration.mark({class:targetClasses(a).join(' '),attributes}).range(a.targetFrom,a.targetTo));
-      if(where==='before'){
-        out.push(Decoration.widget({widget:new NoteWidget(a),side:-1}).range(a.markFrom));
-        out.push(Decoration.replace({}).range(a.from,a.to));
-      }else out.push(Decoration.replace({widget:new NoteWidget(a)}).range(a.from,a.to));
+      out.push(Decoration.replace({widget:new PinnedWidget(a,view.state.sliceDoc(a.targetFrom,a.targetTo))}).range(a.markFrom,a.to));
     }
     return Decoration.set(out,true);
   };
@@ -145,22 +133,20 @@ class AnnotationModal extends Modal{
     renderPreview=()=>{
       lineEl.replaceChildren();
       const sample={...this.spec,note:String(this.spec.note||'').trim()||'手写批注预览'};
-      const where=placement(sample),note=noteNode(doc,sample),mark=doc.createElement('mark');
+      const note=noteNode(doc,sample),mark=doc.createElement('mark');
       mark.className=targetClasses(sample,'目标文字').join(' ');tint(mark,sample);
       mark.appendChild(doc.createTextNode('目标文字'));
-      if(where==='pin')mark.appendChild(note);
+      mark.appendChild(note);
       lineEl.appendChild(doc.createTextNode('示例前文 '));
-      if(where==='before')lineEl.appendChild(note);
       lineEl.appendChild(mark);
-      if(where==='after')lineEl.appendChild(note);
       lineEl.appendChild(doc.createTextNode(' 示例后文'));
     };
     const pickers=el.createDiv({cls:'aw-annot-pickers'});
     const group=name=>{const box=pickers.createDiv({cls:'aw-annot-picker'});box.createDiv({cls:'aw-annot-picker-name',text:name});return box;};
     const choose=(buttons,key,value)=>{this.spec[key]=value;for(const b of buttons)b.setAttribute('aria-pressed',String(b.dataset.value===value));renderPreview();};
-    // Position: the eight directions around a small "文字" chip.
+    // Position: six pinned directions above and below a centred "文字" chip.
     const compass=group('位置').createDiv({cls:'aw-annot-compass'}),dirs=[];
-    for(const id of ['nw','n','ne','w','center','e','sw','s','se']){
+    for(const id of ['nw','n','ne','center','sw','s','se']){
       if(id==='center'){compass.createSpan({cls:'aw-annot-compass-center',text:'文字'});continue;}
       const d=DIRECTIONS.find(x=>x.id===id),b=compass.createEl('button',{cls:'aw-annot-choice',text:d.arrow,attr:{type:'button','aria-label':d.label}});
       b.dataset.value=id;b.addEventListener('click',()=>choose(dirs,'dir',id));dirs.push(b);
@@ -308,9 +294,9 @@ class Annotations extends Component{
       next.textContent=found.rest;
       for(const name of targetClasses(found,mark.textContent))mark.classList.add(name);
       tint(mark,found);
-      const note=noteNode(el.ownerDocument,found),where=placement(found);
+      const note=noteNode(el.ownerDocument,found);
       if(ctx){
-        const holder=where==='pin'?note.children[1]:note;
+        const holder=note.children[1];
         const textEl=note.querySelector?.('.aw-annot-text')??[...(holder?.children||[])].find(c=>c.className==='aw-annot-text');
         textEl?.setAttribute?.('tabindex','0');
         textEl?.setAttribute?.('role','button');
@@ -318,8 +304,7 @@ class Annotations extends Component{
         counts.set(key,ordinal+1);
         this.noteMeta.set(note,{el,ctx,target:mark.textContent,spec:{...found},ordinal});
       }
-      if(where==='pin')mark.appendChild(note);
-      else mark.parentNode.insertBefore(note,where==='before'?mark:next);
+      mark.appendChild(note);
     }
     scheduleClamp(el);
   }
@@ -489,4 +474,4 @@ class Annotations extends Component{
       }));
   }
 }
-module.exports={Annotations,AnnotationModal,AnnotationSummaryModal,noteNode,clampNotes,placement,targetClasses};
+module.exports={Annotations,AnnotationModal,AnnotationSummaryModal,noteNode,clampNotes,targetClasses};

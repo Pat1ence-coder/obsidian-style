@@ -16,9 +16,13 @@ test('annotation syntax: {note} or {note|options} right after the highlight; def
   assert.equal(p('{波动提醒|波浪 橙}').line,'wavy');
   assert.equal(p('{重点圈注|螺旋 紫}').line,'spiral');
   assert.equal(p('{旧写法|内联}').note,'旧写法|内联','the inline line style is gone: 内联 is just text now');
+  assert.equal(p('{旧写法|右}').note,'旧写法|右','inline right position is gone: 右 is just text now');
+  assert.equal(p('{旧写法|左}').note,'旧写法|左','inline left position is gone: 左 is just text now');
+  assert.equal(p('{旧写法|→}').note,'旧写法|→');
+  assert.deepEqual(A.DIRECTIONS.map(d=>d.id),['nw','n','ne','sw','s','se']);
   // A "|" followed by words that aren't all options belongs to the note.
-  assert.equal(p('{a|b}').note,'a|b');assert.equal(p('{输入|输出 右}').note,'输入|输出 右');
-  for(const text of [' {有空格}','{}','{  }','{|右下}','{跨\n行}','{'+'长'.repeat(81)+'}','{'+'长'.repeat(81)+'|右}','(括号)'])assert.equal(A.parseAnnotation(text),null,text);
+  assert.equal(p('{a|b}').note,'a|b');assert.equal(p('{输入|输出 下}').note,'输入|输出 下');
+  for(const text of [' {有空格}','{}','{  }','{|右下}','{跨\n行}','{'+'长'.repeat(81)+'}','{'+'长'.repeat(81)+'|下}','(括号)'])assert.equal(A.parseAnnotation(text),null,text);
   assert.equal(A.parseAnnotation('{'+'长'.repeat(80)+'|左上 紫}').note.length,80,'options do not count toward the 80 characters');
   const src='前文 ==vertex shader=={标注下} 中间 ==只是高亮== 和 ==b=={二|上 绿}';
   const found=A.findAnnotations(src,100);
@@ -82,7 +86,7 @@ function readingView(source){
   new Annotations({app:{workspace:{on(){}}}}).process(el);
   return p;
 }
-test('reading view: an annotation tints its target and pins the note to it; 右 and 左 sit in the text flow',()=>{
+test('reading view: an annotation tints its target and pins the note outside the line',()=>{
   const p=readingView('前文 ==decryption method=={标注}。中间 ==只是高亮== 后文');
   const [mark,plain]=p.querySelectorAll('mark');
   assert.match(mark.className,/aw-annot-target aw-annot-c-blue aw-annot-holds aw-annot-keep/,'a short target is kept on one line');
@@ -97,24 +101,22 @@ test('reading view: an annotation tints its target and pins the note to it; 右 
   assert.equal(pin.children[1].textContent,'标注');assert.equal(note.attrs.title,'标注：标注');
   assert.equal(text(p),'前文 decryption method标注。中间 只是高亮 后文','the braces are gone, the rest of the text stays');
   assert.equal(plain.className,'','a plain highlight is left alone');
-  const right=readingView('==a=={右边|右 虚线}后'),left=readingView('前==b=={左边|左 无高亮}');
-  const [ra]=right.querySelectorAll('mark'),[lb]=left.querySelectorAll('mark');
-  assert.equal(ra.nextSibling.className.split(' ').includes('aw-annot-flow'),true,'右: the note follows the target');
-  assert.equal(ra.nextSibling.children[0].children.filter(c=>c.attrs.class==='aw-annot-line').length,1,'dashed leader');
+  const dashed=readingView('==a=={下方|下 虚线}后'),plainBg=readingView('前==b=={上方|上 无高亮}');
+  const [da]=dashed.querySelectorAll('mark'),[pb]=plainBg.querySelectorAll('mark');
+  assert.match(da.children.at(-1).className,/aw-annot-s aw-annot-dashed aw-annot-c-blue aw-annot-pinned/);
+  assert.equal(da.children.at(-1).children[1].children[0].children.filter(c=>c.attrs.class==='aw-annot-line').length,1,'dashed leader');
   const spiral=readingView('==s=={圈注|螺旋}').querySelectorAll('mark')[0].children.at(-1);
   assert.match(spiral.className,/aw-annot-spiral/);
   assert.match(spiral.children[1].children[0].children.find(c=>c.attrs.class==='aw-annot-line').attrs.d,/C.*C.*C/,'spiral loop cubic segments');
   const wrapped=readingView('==m=={当批注文字超过十几个字时会自动折成多行并预留空间}');
   assert.match(wrapped.querySelectorAll('mark')[0].children.at(-1).className,/aw-annot-l[2-6]/,'multi-line note reserves extra vertical room');
-  assert.equal(left.children[1].className.includes('aw-annot-w'),true,'左: the note comes before the target');
-  assert.match(lb.className,/aw-annot-plain/);assert.doesNotMatch(lb.className,/aw-annot-holds|aw-annot-keep/,'flow notes need no anchor box');
-  assert.equal(ra.nextSibling.textContent,'','no word joiner in a flow note');
+  assert.match(pb.className,/aw-annot-plain aw-annot-holds aw-annot-keep/);
   const long=readingView('==这是一个超过二十四个字的很长的标注目标用来检查换行时的退化=={长}');
   assert.doesNotMatch(long.querySelectorAll('mark')[0].className,/aw-annot-keep/,'a long target may wrap, so it never overflows the line');
   const custom=readingView('==d=={粉|#d0428a}');const [cm]=custom.querySelectorAll('mark');
   assert.equal(cm.props['--aw-annot-color'],'#d0428a');assert.equal(cm.children.at(-1).props['--aw-annot-color'],'#d0428a');
 });
-test('Live Preview: a pinned annotation is one widget, target with the note inside; flow notes keep a mark; the source shows while the cursor is on it',()=>{
+test('Live Preview: every annotation is one pinned widget, target with the note inside; the source shows while the cursor is on it',()=>{
   const made=[];
   const Decoration={none:'none',set:(list,sort)=>({list,sort}),
     mark:spec=>({range:(from,to)=>({kind:'mark',spec,from,to})}),
@@ -128,22 +130,25 @@ test('Live Preview: a pinned annotation is one widget, target with the note insi
     '@codemirror/language':{syntaxTree:()=>tree}});
   const plugin={registerMarkdownPostProcessor(){},registerEditorExtension(){},app:{workspace:{on(){}}}};
   const a=new Annotations(plugin);a.registerEvent=()=>{};a.onload();
-  const source='x ==ab=={标注} y ==cd=={左边|左} ==ef=={粉|#d0428a 右}';
+  const source='x ==ab=={标注} y ==cd=={上方|上} ==ef=={粉|#d0428a 下}';
   const view=sel=>({state:{doc:{lineAt:()=>({from:0,to:source.length})},sliceDoc:(f,t)=>source.slice(f,t),selection:{ranges:[{from:sel,to:sel}]},field:()=>true},visibleRanges:[{from:0,to:source.length}]});
   const {list,sort}=new made[0].cls(view(0)).decorations;
   assert.equal(sort,true);
   const at=s=>source.indexOf(s);
-  // ==ab=={标注}: one replacement from the opening == to the closing brace, drawing the target and its note.
-  assert.deepEqual(Array.from(list.slice(0,1),d=>[d.kind,d.from,d.to]),[['replace',at('==ab'),at('{标注}')+4]]);
+  // Every annotation is one replacement from the opening == to the closing brace, drawing the target and its note.
+  assert.deepEqual(Array.from(list,d=>[d.kind,d.from,d.to]),[
+    ['replace',at('==ab'),at('{标注}')+4],
+    ['replace',at('==cd'),at('{上方|上}')+6],
+    ['replace',at('==ef'),at('{粉|#d0428a 下}')+13],
+  ]);
   const pinned=list[0].spec.widget;assert.equal(pinned.target,'ab');assert.equal(pinned.spec.dir,'se');
   // The widget is the target span (the classes that place the note) with the note inside it.
   const doc=fakeDocument(),drawn=pinned.toDOM({dom:{ownerDocument:doc}});
   assert.match(drawn.className,/aw-annot-target .*aw-annot-holds aw-annot-keep/);assert.equal(drawn.children[0].textContent,'ab','the target words come first');
   assert.equal(drawn.children.at(-1).className.split(' ')[0],'aw-annot','the note is inside the target');
   assert.ok(pinned.eq({target:'ab',spec:{...pinned.spec}}));assert.ok(!pinned.eq({target:'abc',spec:{...pinned.spec}}),'a changed target redraws');
-  assert.deepEqual(Array.from(list.slice(1,4),d=>[d.kind,d.from]),[['mark',at('cd')],['widget',at('==cd')],['replace',at('{左边')]]);
-  assert.equal(list[1].to,at('cd')+2,'a flow note does not widen the target mark');
-  assert.equal(list[4].spec.attributes.style,'--aw-annot-color:#d0428a');
+  const customDrawn=list[2].spec.widget.toDOM({dom:{ownerDocument:doc}});
+  assert.equal(customDrawn.props['--aw-annot-color'],'#d0428a');
   const editing=new made[0].cls(view(at('ab')+1)).decorations.list;
   assert.equal(editing[0].kind,'mark');assert.equal(editing[0].spec.class,'aw-annot-source');assert.equal(editing[0].from,at('{标注}'));
   // Written inside inline code (or a code block, math, a comment): left as source, as in reading view.
@@ -295,12 +300,13 @@ test('the document look is screen-only and every token it sets has a dark twin',
   assert.match(plugin,/@media print \{\s*\.aw-ruler,\.aw-decor \{display: none !important;\}/);
   assert.match(plugin,/body:is\(\.theme-light,\.theme-dark\) \.aw-ruler \{\s*display: block;/,'the ruler shows without any style class');
 });
-test('annotation styles ship with the plugin: eight positions, flow notes, print kept, nothing left in the theme snippet',()=>{
+test('annotation styles ship with the plugin: six pinned positions, print kept, nothing left in the theme snippet',()=>{
   const plugin=fs.readFileSync(path.join(root,'dist/algorithm-workbench/styles.css'),'utf8'),snippet=fs.readFileSync(path.join(root,'dist/snippets/style.css'),'utf8');
   for(const d of ['se','s','sw','ne','n','nw'])assert.match(plugin,new RegExp(`\\.aw-annot-${d} \\.aw-annot-pin \\{`),d);
   assert.match(plugin,/\.aw-annot-room \{display: inline-block;width: 0;height: 0;vertical-align: var\(--aw-annot-room\);\}/,'pinned notes make room from the baseline instead of covering the next line');
   for(const [d,v] of [['se','-3.45em'],['s','-4.1em'],['ne','4.3em'],['n','4.9em']])assert.match(plugin,new RegExp(`\\.aw-annot-${d} \\{--aw-annot-room: ${v.replace('.','\\.')};\\}`),d);
-  assert.match(plugin,/\.aw-annot-flow\.aw-annot-w \.aw-annot-arrow \{transform: scaleX\(-1\);\}/);
+  assert.doesNotMatch(plugin,/\.aw-annot-flow/,'inline flow positions are removed');
+  assert.match(plugin,/\.aw-annot-compass-center \{grid-column: 1 \/ -1;/);
   for(const c of ['blue','neutral','amber','orange','green','red','purple','rainbow'])assert.match(plugin,new RegExp(`\\.aw-annot-c-${c} \\{--aw-annot-color:`),c);
   const print=plugin.slice(plugin.lastIndexOf('@media print'));
   assert.doesNotMatch(print,/aw-annot[^{]*\{[^}]*display: none/,'annotations print as they look');
@@ -310,14 +316,13 @@ test('annotation styles ship with the plugin: eight positions, flow notes, print
 
 test('pinned notes stay with their target when lines wrap: short targets are kept whole, the room is glued to the last character',()=>{
   const F=require(path.join(__dirname,'../src/features/annotation-format.js'));
-  const pin=F.parseAnnotation('{n|左下}'),flow=F.parseAnnotation('{n|右}');
+  const pin=F.parseAnnotation('{n|左下}');
   assert.equal(F.KEEP,24);
   assert.ok(F.targetClasses(pin,'x'.repeat(24)).includes('aw-annot-keep'));
   assert.ok(!F.targetClasses(pin,'x'.repeat(25)).includes('aw-annot-keep'));
   assert.ok(F.targetClasses(pin,'饱和区').includes('aw-annot-keep'),'counted in characters, not bytes');
   assert.ok(!F.targetClasses(pin).includes('aw-annot-keep'),'no target text, no promise');
-  assert.ok(!F.targetClasses(flow,'x').includes('aw-annot-keep'));
-  assert.equal(F.noteTree(pin).text,'\u2060');assert.equal(F.noteTree(flow).text,null);
+  assert.equal(F.noteTree(pin).text,'\u2060');
   const css=fs.readFileSync(path.join(__dirname,'../dist/algorithm-workbench/styles.css'),'utf8');
   assert.match(css,/\.aw-annot-target\.aw-annot-keep \{white-space: nowrap;\}/);
 });

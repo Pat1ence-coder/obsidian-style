@@ -1,6 +1,6 @@
 'use strict';
 const Library = require('./features/library-data');
-const DEFAULT_SETTINGS = { nameScreenshots: true, folderNotes: true, openOnStartup: true, tracking: true, statusBar: true, dailyGoal: 0, recentLimit: 8, range: 90, metric: 'score', captionSize: 'normal', figureTools: true, scrollRuler: true, rulerHeadings: true, rulerMemory: true, pasteSource: true, decorImage: '', glass: true, glassFog: 'normal', annotFont: '', excludedFolders: ['Templates', 'templates'] };
+const DEFAULT_SETTINGS = { nameScreenshots: true, folderNotes: true, openOnStartup: true, tracking: true, statusBar: true, dailyGoal: 0, recentLimit: 8, range: 90, metric: 'score', captionSize: 'normal', figureTools: true, scrollRuler: true, rulerHeadings: true, rulerMemory: true, pasteSource: true, smoothCaret: true, decorImage: '', glass: true, glassFog: 'normal', annotFont: '', excludedFolders: ['Templates', 'templates'] };
 const MAX_DAILY_GOAL = 100000;
 const RANGES = [30, 90, 180, 365];
 // Figure and table caption sizes; body class aw-caption-<id>, defined in figures.css.
@@ -103,7 +103,7 @@ function loadState(raw, now = new Date()) {
   const d = emptyData(now); d.started = raw.started;
   if (raw.version === 2) d.activityStarted = raw.activityStarted;
   const s = raw.settings || {};
-  for (const name of ['openOnStartup', 'tracking', 'statusBar', 'folderNotes', 'nameScreenshots', 'figureTools', 'scrollRuler', 'rulerHeadings', 'rulerMemory', 'glass', 'pasteSource']) if (typeof s[name] === 'boolean') d.settings[name] = s[name];
+  for (const name of ['openOnStartup', 'tracking', 'statusBar', 'folderNotes', 'nameScreenshots', 'figureTools', 'scrollRuler', 'rulerHeadings', 'rulerMemory', 'glass', 'pasteSource', 'smoothCaret']) if (typeof s[name] === 'boolean') d.settings[name] = s[name];
   if (Number.isInteger(s.dailyGoal) && s.dailyGoal >= 0) d.settings.dailyGoal = Math.min(MAX_DAILY_GOAL, s.dailyGoal);
   if (RANGES.includes(s.range)) d.settings.range = s.range;
   if (METRICS.some(m => m.key === s.metric)) d.settings.metric = s.metric;

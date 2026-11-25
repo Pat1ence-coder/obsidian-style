@@ -217,9 +217,11 @@ test('appearance is a body class: applied on load, stale palette and style class
   const {plugin,classes}=fixture();classes.add('aw-palette-sand');classes.add('aw-style-card');
   plugin.initialData={...Core.emptyData(),settings:{...Core.DEFAULT_SETTINGS,palette:'celadon'}};
   await plugin.onload();
-  assert.deepEqual([...classes].sort(),['aw-caption-normal','aw-glass','aw-glass-fog-normal','theme-light']);
+  assert.deepEqual([...classes].sort(),['aw-caption-normal','aw-glass','aw-glass-fog-normal','aw-smooth-caret','theme-light']);
   assert.equal(plugin.data.settings.palette,undefined,'the palette setting is gone');assert.equal(plugin.commands['cycle-palette'],undefined);
   assert.equal(plugin.commands['cycle-style'],undefined,'one interface style, no switch');assert.equal(plugin.setStyle,undefined);
+  plugin.data.settings.smoothCaret=false;plugin.applyAppearanceEverywhere();assert.equal(classes.has('aw-smooth-caret'),false);
+  plugin.data.settings.smoothCaret=true;plugin.applyAppearanceEverywhere();assert.equal(classes.has('aw-smooth-caret'),true);
   plugin.onunload();assert.deepEqual([...classes],['theme-light']);await plugin.saveQueue;
 });
 
@@ -231,7 +233,7 @@ test('popout windows already open, or restored with the layout, follow the appea
   leaves.push({view:{containerEl:{ownerDocument:restored}}});workspace.ready();
   assert.ok(restored.classes.has('aw-caption-normal'),'popouts restored with the layout are covered');
   plugin.setCaptionSize('large');
-  for(const doc of [existing,restored])assert.deepEqual([...doc.classes].sort(),['aw-caption-large','aw-glass','aw-glass-fog-normal','theme-light']);
+  for(const doc of [existing,restored])assert.deepEqual([...doc.classes].sort(),['aw-caption-large','aw-glass','aw-glass-fog-normal','aw-smooth-caret','theme-light']);
   plugin.onunload();for(const doc of [existing,restored])assert.deepEqual([...doc.classes],['theme-light']);
   await plugin.saveQueue;
 });

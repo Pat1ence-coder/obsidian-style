@@ -1,9 +1,9 @@
 /* Handwritten annotations (plugin styles): ==target=={note|options}. The target gets a light
    tint of the note's colour; the note is written in a handwriting face and joined to the target
-   by a dashed leader with an open arrowhead. Eight positions pin the note outside the line (an
-   invisible inline block makes that line tall enough, so nothing overlaps the next line);
-   右 and 左 put it in the text flow. Theme tokens come from the document
-   snippet, with fallbacks for running alone. Annotations print as they look on screen. */
+   by a curved leader with an open arrowhead. Six positions pin the note outside the line (an
+   invisible inline block makes that line tall enough, so nothing overlaps the next line).
+   Theme tokens come from the document snippet, with fallbacks for running alone. Annotations
+   print as they look on screen. */
 body {
   --aw-annot-face: var(--aw-annot-font, "Hannotate SC", "HanziPen SC", "Xingkai SC", "LXGW WenKai", "Kaiti SC", "STKaiti", "KaiTi", cursive);
 }
@@ -105,12 +105,6 @@ body .cm-highlight:has(.aw-annot-target) {background-color: transparent;}
 .aw-annot-n .aw-annot-pin {left: 50%;top: 0;--aw-annot-angle: -90deg;--aw-annot-arc: -1;--aw-annot-x: 0em;--aw-annot-y: -2.2em;--aw-annot-shift: translate(-50%, calc(-100% - .15em));}
 .aw-annot-nw .aw-annot-pin {left: .8em;top: 0;--aw-annot-angle: -135deg;--aw-annot-arc: 1;--aw-annot-x: -1.56em;--aw-annot-y: -1.56em;--aw-annot-shift: translate(-75%, calc(-100% - .15em));}
 
-/* Notes in the text flow: right of the target (leader pointing back) or left of it. */
-.aw-annot-flow {margin-inline: .35em;}
-.aw-annot-flow .aw-annot-text {white-space: normal;overflow-wrap: break-word;}
-.aw-annot-flow .aw-annot-arrow {display: inline-block;width: 2em;height: .9em;margin-inline: .15em;vertical-align: middle;}
-.aw-annot-flow.aw-annot-w .aw-annot-arrow {transform: scaleX(-1);}
-
 /* Reading view: click a note to mask or reveal it for active recall; double-click to edit. */
 .markdown-reading-view .aw-annot .aw-annot-text {
   pointer-events: auto;
@@ -162,7 +156,7 @@ body.aw-annot-recall .markdown-reading-view .aw-annot:not(.aw-annot-c-rainbow) .
 .aw-annot-modal .aw-annot-pickers {display: grid;grid-template-columns: auto 1fr;gap: 20px;margin: 4px 0 12px;}
 .aw-annot-modal .aw-annot-picker-name {margin-bottom: 8px;font-weight: 600;}
 .aw-annot-modal .aw-annot-compass {display: grid;grid-template-columns: repeat(3,36px);gap: 6px;padding: 10px;border-radius: 12px;background: var(--background-secondary);}
-.aw-annot-modal .aw-annot-compass-center {display: flex;align-items: center;justify-content: center;font-size: 11px;color: var(--text-faint);border: 1px dashed var(--background-modifier-border);border-radius: 8px;}
+.aw-annot-modal .aw-annot-compass-center {grid-column: 1 / -1;height: 28px;display: flex;align-items: center;justify-content: center;font-size: 11px;color: var(--text-faint);border: 1px dashed var(--background-modifier-border);border-radius: 8px;}
 .aw-annot-modal .aw-annot-swatches {display: grid;grid-template-columns: repeat(3,minmax(0,1fr));gap: 6px;padding: 10px;border-radius: 12px;background: var(--background-secondary);}
 .aw-annot-modal .aw-annot-choice {display: inline-flex;align-items: center;justify-content: center;gap: 6px;height: 34px;padding: 0 10px;border-radius: 9px;font-size: 13px;cursor: pointer;}
 .aw-annot-modal .aw-annot-compass .aw-annot-choice {width: 36px;padding: 0;font-size: 15px;}

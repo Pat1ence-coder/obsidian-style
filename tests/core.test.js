@@ -168,6 +168,7 @@ test('scroll ruler and decoration settings validate; a style saved by an older v
   // The window glass no longer takes a picture: it is on by default and a saved path is dropped.
   assert.equal(d.settings.glass,true);assert.equal(load({glass:false}).glass,false);assert.equal(load({glass:'no'}).glass,true);
   assert.equal(d.settings.pasteSource,true);assert.equal(load({pasteSource:false}).pasteSource,false);assert.equal(load({pasteSource:'x'}).pasteSource,true);
+  assert.equal(d.settings.smoothCaret,true);assert.equal(load({smoothCaret:false}).smoothCaret,false);assert.equal(load({smoothCaret:'no'}).smoothCaret,true);
   assert.equal(d.settings.rulerMemory,true);assert.equal(load({rulerMemory:false}).rulerMemory,false);assert.equal(load({rulerMemory:'x'}).rulerMemory,true);
   assert.equal(load({glassImage:'assets/wall.jpg'}).glassImage,undefined);assert.equal(load({glassFog:'strong'}).glassFog,'strong');
 });

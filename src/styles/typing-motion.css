@@ -1,0 +1,35 @@
+/* Smooth caret typing motion (plugin styles): pure 2D translate + soft opacity breathing.
+   No 3D transforms, will-change or backdrop-filter, so translucent macOS windows stay ghost-free. */
+@keyframes aw-caret-breathe {
+  0%, 100% {opacity: 1;}
+  50% {opacity: .12;}
+}
+
+.aw-caret {
+  display: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 3;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--caret-color, var(--ds-heading, var(--text-normal, #16181d)));
+  pointer-events: none;
+  opacity: 1;
+}
+.aw-caret.is-visible {display: block;}
+.aw-caret.is-gliding {transition: transform 90ms cubic-bezier(.22,1,.36,1), height 90ms ease-out;}
+.aw-caret.is-visible.is-idle {animation: aw-caret-breathe 1.05s ease-in-out infinite;}
+
+/* Hide the native caret only when this editor's smooth caret is actively tracking a collapsed cursor. */
+body.aw-smooth-caret .cm-editor.aw-caret-active .cm-content {caret-color: transparent !important;}
+body.aw-smooth-caret .cm-editor.aw-caret-active .cm-cursor-primary {opacity: 0 !important;}
+
+@media (prefers-reduced-motion: reduce) {
+  .aw-caret {display: none !important;transition: none !important;animation: none !important;}
+  body.aw-smooth-caret .cm-editor.aw-caret-active .cm-content {caret-color: auto !important;}
+  body.aw-smooth-caret .cm-editor.aw-caret-active .cm-cursor-primary {opacity: 1 !important;}
+}
+@media print {
+  .aw-caret {display: none !important;}
+}
