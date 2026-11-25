@@ -164,6 +164,7 @@ test('scroll ruler and decoration settings validate; a style saved by an older v
   assert.equal(load({style:'card'}).style,undefined);
   assert.equal(load({scrollRuler:false}).scrollRuler,false);assert.equal(load({scrollRuler:1}).scrollRuler,true);
   assert.equal(d.settings.rulerHeadings,true);assert.equal(load({rulerHeadings:false}).rulerHeadings,false);assert.equal(load({rulerHeadings:'off'}).rulerHeadings,true);
+  assert.equal(d.settings.rulerHeadingLevels,4);assert.equal(load({rulerHeadingLevels:6}).rulerHeadingLevels,6);assert.equal(load({rulerHeadingLevels:3}).rulerHeadingLevels,3);assert.equal(load({rulerHeadingLevels:9}).rulerHeadingLevels,4);
   assert.equal(load({decorImage:'  /assets/dog.png '}).decorImage,'assets/dog.png');assert.equal(load({decorImage:42}).decorImage,'');
   // The window glass no longer takes a picture: it is on by default and a saved path is dropped.
   assert.equal(d.settings.glass,true);assert.equal(load({glass:false}).glass,false);assert.equal(load({glass:'no'}).glass,true);

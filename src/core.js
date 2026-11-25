@@ -1,12 +1,14 @@
 'use strict';
 const Library = require('./features/library-data');
-const DEFAULT_SETTINGS = { nameScreenshots: true, folderNotes: true, openOnStartup: true, tracking: true, statusBar: true, dailyGoal: 0, recentLimit: 8, range: 90, metric: 'score', captionSize: 'normal', figureTools: true, scrollRuler: true, rulerHeadings: true, rulerMemory: true, pasteSource: true, smoothCaret: true, decorImage: '', glass: true, glassFog: 'normal', annotFont: '', excludedFolders: ['Templates', 'templates'] };
+const DEFAULT_SETTINGS = { nameScreenshots: true, folderNotes: true, openOnStartup: true, tracking: true, statusBar: true, dailyGoal: 0, recentLimit: 8, range: 90, metric: 'score', captionSize: 'normal', figureTools: true, scrollRuler: true, rulerHeadings: true, rulerHeadingLevels: 4, rulerMemory: true, pasteSource: true, smoothCaret: true, decorImage: '', glass: true, glassFog: 'normal', annotFont: '', excludedFolders: ['Templates', 'templates'] };
 const MAX_DAILY_GOAL = 100000;
 const RANGES = [30, 90, 180, 365];
 // Figure and table caption sizes; body class aw-caption-<id>, defined in figures.css.
 const CAPTION_SIZES = [{id:'small', label:'小'}, {id:'normal', label:'标准'}, {id:'large', label:'大'}];
 // How much fog lies over the paper behind the window glass.
 const GLASS_FOGS = [{id:'light', label:'淡'}, {id:'normal', label:'标准'}, {id:'strong', label:'浓'}];
+// Maximum heading depth indexed by the right-edge scroll ruler.
+const RULER_HEADING_LEVELS = [{id:2, label:'H1–H2'}, {id:3, label:'H1–H3'}, {id:4, label:'H1–H4'}, {id:6, label:'全部（H1–H6）'}];
 // Score weights are documented in the dashboard; values are derived, never stored.
 const METRICS = [
   {key:'score', label:'贡献分', unit:'分'},
@@ -108,6 +110,7 @@ function loadState(raw, now = new Date()) {
   if (RANGES.includes(s.range)) d.settings.range = s.range;
   if (METRICS.some(m => m.key === s.metric)) d.settings.metric = s.metric;
   if (CAPTION_SIZES.some(x => x.id === s.captionSize)) d.settings.captionSize = s.captionSize;
+  if (RULER_HEADING_LEVELS.some(x => x.id === s.rulerHeadingLevels)) d.settings.rulerHeadingLevels = s.rulerHeadingLevels;
   if (typeof s.decorImage === 'string') d.settings.decorImage = s.decorImage.trim().replace(/^\/+/, '').slice(0, 500);
   if (GLASS_FOGS.some(x => x.id === s.glassFog)) d.settings.glassFog = s.glassFog;
   if (typeof s.annotFont === 'string') d.settings.annotFont = s.annotFont.replace(/[;{}<>\\]/g, '').trim().slice(0, 200);
@@ -293,5 +296,5 @@ function calendarDays(now, weeks) {
   const start = shiftDay(monday,-7*(weeks-1));
   return Array.from({length:weeks*7},(_,i)=>dayKey(shiftDay(start,i)));
 }
-module.exports = {transactionCounts,pruneRecords,DEFAULT_SETTINGS,MAX_DAILY_GOAL,RANGES,METRICS,CAPTION_SIZES,GLASS_FOGS,dayKey,shiftDay,countCharacters,emptyData,loadState,loadReading,setReading,isExcluded,recordChange,
+module.exports = {transactionCounts,pruneRecords,DEFAULT_SETTINGS,MAX_DAILY_GOAL,RANGES,METRICS,CAPTION_SIZES,GLASS_FOGS,RULER_HEADING_LEVELS,dayKey,shiftDay,countCharacters,emptyData,loadState,loadReading,setReading,isExcluded,recordChange,
   recordActivity,taskDelta,recordTasks,recordNote,retractEmptyNewNote,dayScore,metricValue,lastDays,summary,currentStreak,activeValues,intensity,percentile,renamePath,recentFiles,calendarDays};

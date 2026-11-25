@@ -69,6 +69,7 @@ function loadModule(file,extra={}){
   vm.runInNewContext(fs.readFileSync(path.join(root,'src/features',file),'utf8'),{module:mod,require:name=>{
     if(name in extra)return extra[name];
     if(name==='./annotation-format')return A;
+    if(name==='../core')return require('../src/core');
     throw Error(name);
   },requestAnimationFrame:fn=>setTimeout(fn,0),cancelAnimationFrame:clearTimeout});
   return mod.exports;
@@ -231,14 +232,15 @@ function rulerFixture({mode='source',headings,sections,settings={},column={right
   const view={file:{path:'note.md'},contentEl:host,getMode:()=>mode,editor:{cm,lineCount:()=>100},
     previewMode:{renderer:{sections}}};
   const H=(heading,level,line)=>({heading,level,position:{start:{line}}});
-  const list=headings??[H('Intro',1,0),H('Too deep',4,5),H('XOR',2,40),H('Close',2,41),H('',2,60),H('End',2,90)];
+  const list=headings??[H('Intro',1,0),H('Too deep',5,5),H('XOR',2,40),H('Close',2,41),H('',2,60),H('End',2,90)];
   class Component{addChild(c){return c;}removeChild(){}registerEvent(){}registerDomEvent(){}}
   const {ScrollRuler}=loadModule('scroll-ruler.js',{obsidian:{Component,MarkdownView:class{}}});
   const ruler=new ScrollRuler({app:{metadataCache:{getFileCache:()=>({headings:list})}},data:{settings:{scrollRuler:true,...settings}}});
   ruler.attach(view);
   const entry=ruler.entries.get(view);entry.el.rect={top:66,left:900,height:400};
   const marks=()=>entry.heads.children.map(m=>({text:m.firstChild.textContent,cls:m.className,top:m.style.top,line:m.dataset.line}));
-  return {ruler,view,entry,scroller,sizer,marks,listeners};
+  const hmarks=()=>entry.hmarksBox.children.map(m=>({title:m.title,cls:m.className,top:m.style.top,line:m.dataset.line}));
+  return {ruler,view,entry,scroller,sizer,marks,hmarks,listeners};
 }
 test('ruler headings sit at their place in the note, the one being read darker; clicking one moves the dot onto it',()=>{
   const f=rulerFixture();f.ruler.update(f.view);
@@ -258,10 +260,35 @@ test('ruler headings sit at their place in the note, the one being read darker; 
   f.view.editor.cm.documentTop=50-1350;f.ruler.update(f.view);
   assert.deepEqual(f.marks().map(m=>m.cls.includes('is-current')?m.text:null).filter(Boolean),['End']);
   assert.equal(f.entry.heads.children.length,3);assert.equal(f.entry.el['is-on-heading'],true,'0.90 sits on End: its number gives way');
-  // A narrow margin: the same headings, shown over the text while the pointer is on the ruler.
+  // A narrow margin: heading text collapses until hover, while independent rail marks stay mounted for every heading.
   f.sizer.rect.right=820;f.ruler.update(f.view);
-  assert.equal(f.entry.el['is-compact'],true);assert.equal(f.marks().length,3);
+  assert.equal(f.entry.el['is-compact'],true);assert.equal(f.entry.el['has-headings'],true);assert.equal(f.marks().length,3);
   assert.equal(f.entry.heads.style.props['--aw-heads-width'],'220px');
+  assert.deepEqual(f.hmarks(),[
+    {title:'Intro',cls:'aw-ruler-hmark is-level-1 is-passed',top:'0.00%',line:'0'},
+    {title:'XOR',cls:'aw-ruler-hmark is-level-2 is-passed',top:'40.00%',line:'40'},
+    {title:'Close',cls:'aw-ruler-hmark is-level-2 is-passed',top:'41.00%',line:'41'},
+    {title:'End',cls:'aw-ruler-hmark is-level-2 is-current',top:'90.00%',line:'90'},
+  ],'all headings get independent rail marks sized by level even when compact or dense');
+  const markClick=f.listeners.find(l=>l.node===f.entry.hmarksBox.children[1]&&l.type==='pointerdown');
+  markClick.fn({button:0,preventDefault(){},stopPropagation(){}});
+  assert.equal(f.scroller.scrollTop,600,'clicking an independent heading tick jumps to that heading');
+});
+test('ruler heading depth defaults to H1–H4 and can be configured up to H1–H6; narrow margins keep heading ticks visible',()=>{
+  const H=(heading,level,line)=>({heading,level,position:{start:{line}}});
+  const deep=[H('分布式',1,0),H('DDP',2,15),H('通讯量分析',3,30),H('DP',4,45),H('Zero',4,60),H('实现细节',5,75),H('附录',6,90)];
+  const def=rulerFixture({headings:deep});def.ruler.update(def.view);
+  assert.deepEqual(def.hmarks().map(m=>m.title),['分布式','DDP','通讯量分析','DP','Zero'],'default depth 4 includes H4');
+  assert.equal(def.hmarks()[3].cls,'aw-ruler-hmark is-level-4 is-passed');
+  const all=rulerFixture({headings:deep,settings:{rulerHeadingLevels:6}});all.ruler.update(all.view);
+  assert.deepEqual(all.hmarks().map(m=>m.title),['分布式','DDP','通讯量分析','DP','Zero','实现细节','附录'],'depth 6 matches full outline');
+  const shallow=rulerFixture({headings:deep,settings:{rulerHeadingLevels:2}});shallow.ruler.update(shallow.view);
+  assert.deepEqual(shallow.hmarks().map(m=>m.title),['分布式','DDP']);
+  const plugin=fs.readFileSync(path.join(root,'dist/algorithm-workbench/styles.css'),'utf8');
+  assert.match(plugin,/\.aw-ruler-hmarks \{/);
+  assert.match(plugin,/\.aw-ruler-hmark\.is-current,/);
+  assert.match(plugin,/\.aw-ruler\.has-headings \.aw-ruler-tick\.is-major \{width: 5px;/,'uniform quiet ticks when real headings exist');
+  assert.doesNotMatch(plugin,/\.is-compact\s+\.aw-ruler-hmarks/,'narrow margin never hides rail heading marks');
 });
 test('ruler headings can be turned off, and follow the reading view or the line count when there is no editor',()=>{
   const off=rulerFixture({settings:{rulerHeadings:false}});off.ruler.update(off.view);

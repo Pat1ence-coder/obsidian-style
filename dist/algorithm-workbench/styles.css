@@ -666,7 +666,7 @@ body:is(.theme-light,.theme-dark) .aw-ruler {
   top: 16px;
   bottom: 20px;
   right: 10px;
-  width: 18px;
+  width: 20px;
   cursor: pointer;
   touch-action: none;
   /* Static fallback before JS mounts discrete wave ticks. */
@@ -685,16 +685,56 @@ body:is(.theme-light,.theme-dark) .aw-ruler.is-idle {display: none;}
 .aw-ruler-tick {
   position: absolute;
   right: 0;
-  width: 6px;
+  width: 5px;
   height: 1px;
-  background: rgba(var(--ds-ink-rgb,0,0,0),.11);
+  background: rgba(var(--ds-ink-rgb,0,0,0),.1);
   transition: transform 110ms ease-out, background-color 120ms ease;
 }
-.aw-ruler-tick.is-major {width: 12px;background: rgba(var(--ds-ink-rgb,0,0,0),.22);}
-.aw-ruler-tick.is-near {background: rgba(var(--ds-tone-accent,52,128,246),.5);}
-body.theme-dark .aw-ruler-tick {background: rgba(255,255,255,.13);}
-body.theme-dark .aw-ruler-tick.is-major {background: rgba(255,255,255,.26);}
-body.theme-dark .aw-ruler-tick.is-near {background: rgba(var(--ds-tone-accent,76,142,247),.65);}
+.aw-ruler-tick.is-major {width: 11px;background: rgba(var(--ds-ink-rgb,0,0,0),.2);}
+/* When real heading marks exist, keep background ticks quiet and uniform so headings read cleanly. */
+.aw-ruler.has-headings .aw-ruler-tick.is-major {width: 5px;background: rgba(var(--ds-ink-rgb,0,0,0),.1);}
+.aw-ruler-tick.is-near {background: rgba(var(--ds-tone-accent,72,86,175),.48);}
+body.theme-dark .aw-ruler-tick {background: rgba(255,255,255,.11);}
+body.theme-dark .aw-ruler-tick.is-major {background: rgba(255,255,255,.24);}
+body.theme-dark .aw-ruler.has-headings .aw-ruler-tick.is-major {width: 5px;background: rgba(255,255,255,.11);}
+body.theme-dark .aw-ruler-tick.is-near {background: rgba(var(--ds-tone-accent,132,146,228),.62);}
+
+/* Independent heading marks on the rail: always visible regardless of margin width, sized by level,
+   with the active section highlighted in the accent colour. */
+.aw-ruler-hmarks {position: absolute;inset: 0;z-index: 1;pointer-events: none;}
+.aw-ruler-hmark {
+  position: absolute;
+  right: 0;
+  width: 11px;
+  height: 1.5px;
+  margin-top: -.75px;
+  border-radius: 1px;
+  background: rgba(var(--ds-ink-rgb,0,0,0),.32);
+  pointer-events: auto;
+  cursor: pointer;
+  transition: transform 110ms ease-out, width 140ms ease, background-color 140ms ease, opacity 140ms ease;
+}
+.aw-ruler-hmark.is-level-1 {width: 17px;height: 1.75px;background: rgba(var(--ds-ink-rgb,0,0,0),.46);}
+.aw-ruler-hmark.is-level-2 {width: 14px;height: 1.5px;background: rgba(var(--ds-ink-rgb,0,0,0),.38);}
+.aw-ruler-hmark.is-level-3 {width: 11px;height: 1.25px;background: rgba(var(--ds-ink-rgb,0,0,0),.3);}
+.aw-ruler-hmark.is-level-4 {width: 8px;height: 1px;background: rgba(var(--ds-ink-rgb,0,0,0),.25);}
+.aw-ruler-hmark:is(.is-level-5,.is-level-6) {width: 6.5px;height: 1px;background: rgba(var(--ds-ink-rgb,0,0,0),.22);}
+.aw-ruler-hmark.is-passed {background: rgba(var(--ds-ink-rgb,0,0,0),.48);}
+body.theme-dark .aw-ruler-hmark {background: rgba(255,255,255,.32);}
+body.theme-dark .aw-ruler-hmark.is-level-1 {background: rgba(255,255,255,.5);}
+body.theme-dark .aw-ruler-hmark.is-level-2 {background: rgba(255,255,255,.42);}
+body.theme-dark .aw-ruler-hmark.is-level-3 {background: rgba(255,255,255,.32);}
+body.theme-dark .aw-ruler-hmark.is-level-4 {background: rgba(255,255,255,.26);}
+body.theme-dark .aw-ruler-hmark:is(.is-level-5,.is-level-6) {background: rgba(255,255,255,.22);}
+body.theme-dark .aw-ruler-hmark.is-passed {background: rgba(255,255,255,.52);}
+.aw-ruler-hmark.is-current,
+.aw-ruler-hmark:hover {
+  z-index: 2;
+  width: 20px;
+  height: 2px;
+  margin-top: -1px;
+  background: var(--ds-accent, rgb(var(--ds-tone-accent,72,86,175)));
+}
 
 /* Last-session reading position marker: a small accent diamond on the track. */
 .aw-ruler-resume {
@@ -733,23 +773,22 @@ body.theme-dark .aw-ruler-tick.is-near {background: rgba(var(--ds-tone-accent,76
 .aw-ruler.is-dragging .aw-ruler-knob {transition: none;}
 .aw-ruler-label {
   position: absolute;
-  right: 20px;
+  right: 26px;
   top: 50%;
   transform: translateY(-50%);
   font: 500 10px var(--ds-font-mono, var(--font-monospace));
   color: var(--ds-faint, var(--text-faint));
   white-space: nowrap;
 }
-/* Headings beside the ruler: right-aligned in the page margin at their place in the note, each
-   with a short dash to the ruler's long ticks. The one being read is darker with a longer dash.
-   Only the names take the pointer, so the rest of the margin stays free. */
-.aw-ruler-heads {position: absolute;top: 0;bottom: 0;right: 12px;width: var(--aw-heads-width, 160px);pointer-events: none;}
+/* Heading text beside the ruler: right-aligned in the page margin beside the independent rail
+   marks. In narrow margins (.is-compact), only the text collapses until hover; the rail marks
+   stay visible at all times. */
+.aw-ruler-heads {position: absolute;top: 0;bottom: 0;right: 24px;width: var(--aw-heads-width, 160px);pointer-events: none;}
 .aw-ruler-head {
   position: absolute;
   right: 0;
   display: flex;
   align-items: center;
-  gap: 5px;
   max-width: 100%;
   transform: translateY(-50%);
   font: 400 10px/14px var(--ds-font-mono, var(--font-monospace));
@@ -760,10 +799,8 @@ body.theme-dark .aw-ruler-tick.is-near {background: rgba(var(--ds-tone-accent,76
   transition: color 160ms ease;
 }
 .aw-ruler-head-text {min-width: 0;overflow: hidden;text-overflow: ellipsis;}
-.aw-ruler-head::after {content: "";flex: none;width: 6px;height: 1px;background: currentColor;opacity: .6;transition: width 160ms ease, opacity 160ms ease;}
 .aw-ruler-head.is-level-1 {color: var(--ds-muted, var(--text-muted));}
-.aw-ruler-head.is-current {color: var(--ds-text, var(--text-normal));}
-.aw-ruler-head.is-current::after {width: 14px;opacity: 1;}
+.aw-ruler-head.is-current {color: var(--ds-accent, var(--ds-heading, var(--text-normal)));font-weight: 550;}
 .aw-ruler-head:hover {color: var(--ds-accent, var(--text-accent));}
 /* The dot's number gives way when the dot sits on a heading's name, or while the dense outline card is open. */
 .aw-ruler.is-on-heading:not(.is-compact) .aw-ruler-label,
@@ -788,11 +825,11 @@ body.theme-dark .aw-ruler-tick.is-near {background: rgba(var(--ds-tone-accent,76
   top: 0;
   bottom: 0;
   right: 100%;
-  width: 12px;
+  width: 16px;
 }
 .aw-ruler-panel {
   position: absolute;
-  right: 24px;
+  right: 26px;
   top: 50%;
   z-index: 5;
   width: min(244px, 68vw);
@@ -856,7 +893,7 @@ body:is(.theme-light,.theme-dark) .aw-decor {
   .aw-ruler,.aw-decor {display: none !important;}
 }
 @media (prefers-reduced-motion:reduce) {
-  .aw-ruler,.aw-ruler-tick,.aw-ruler-resume,.aw-ruler-knob,.aw-ruler-head,.aw-ruler-head::after,.aw-ruler.is-compact .aw-ruler-heads,.aw-ruler-panel,.aw-ruler-item {transition: none;}
+  .aw-ruler,.aw-ruler-tick,.aw-ruler-hmark,.aw-ruler-resume,.aw-ruler-knob,.aw-ruler-head,.aw-ruler.is-compact .aw-ruler-heads,.aw-ruler-panel,.aw-ruler-item {transition: none;}
 }
 
 /* Source: src/styles/typing-motion.css */

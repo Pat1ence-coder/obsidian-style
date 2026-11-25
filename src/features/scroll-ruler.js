@@ -1,5 +1,6 @@
 'use strict';
 const {Component,MarkdownView}=require('obsidian');
+const Core=require('../core');
 
 // Reading progress as a fraction, or null when the note does not scroll.
 function progressOf(top,height,client){
@@ -89,7 +90,7 @@ function layoutHeadings(items,gap,current=-1){
 }
 const inside=(root,node)=>{for(let cur=node;cur;cur=cur.parentNode)if(cur===root)return true;return false;};
 const reducedMotion=win=>!!win?.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
-const HEADING_LEVELS=3,HEADING_GAP=16,MIN_MARGIN=120,LIST_WIDTH=220,GLIDE_MS=160,MEMORY_DELAY=1200;
+const HEADING_LEVELS=4,HEADING_GAP=16,MIN_MARGIN=120,LIST_WIDTH=220,GLIDE_MS=160,MEMORY_DELAY=1200;
 
 class ScrollRuler extends Component{
   constructor(plugin){super();this.plugin=plugin;this.app=plugin.app;this.entries=new Map();}
@@ -112,6 +113,10 @@ class ScrollRuler extends Component{
   onunload(){for(const view of [...this.entries.keys()])this.detach(view);}
   enabled(){return this.plugin.data.settings.scrollRuler!==false;}
   showHeadings(){return this.plugin.data.settings.rulerHeadings!==false;}
+  headingLevels(){
+    const n=this.plugin.data?.settings?.rulerHeadingLevels;
+    return Core.RULER_HEADING_LEVELS.some(x=>x.id===n)?n:HEADING_LEVELS;
+  }
   memoryEnabled(){return this.plugin.data.settings.rulerMemory!==false;}
   sync(){
     const views=this.enabled()?this.app.workspace.getLeavesOfType('markdown').map(leaf=>leaf.view).filter(v=>v instanceof MarkdownView):[];
@@ -122,19 +127,20 @@ class ScrollRuler extends Component{
     const host=view.contentEl,doc=host.ownerDocument,owner=this.addChild(new Component());
     const el=doc.createElement('div');el.className='aw-ruler';el.setAttribute('aria-hidden','true');
     const ticksBox=doc.createElement('div');ticksBox.className='aw-ruler-ticks';
+    const hmarksBox=doc.createElement('div');hmarksBox.className='aw-ruler-hmarks';
     const heads=doc.createElement('div');heads.className='aw-ruler-heads';
     const panel=doc.createElement('div');panel.className='aw-ruler-panel';
     const resume=doc.createElement('div');resume.className='aw-ruler-resume';resume.hidden=true;resume.title='上次阅读位置（点击返回）';
     const knob=doc.createElement('div');knob.className='aw-ruler-knob';
     const label=doc.createElement('span');label.className='aw-ruler-label';
     knob.appendChild(label);
-    el.appendChild(ticksBox);el.appendChild(heads);el.appendChild(panel);el.appendChild(resume);el.appendChild(knob);
+    el.appendChild(ticksBox);el.appendChild(hmarksBox);el.appendChild(heads);el.appendChild(panel);el.appendChild(resume);el.appendChild(knob);
     host.appendChild(el);host.classList.add('aw-has-ruler');
     // Frames come from the ruler's own window: a popout keeps updating while the main window
     // is minimised or covered (its frames would pause).
     const win=doc.defaultView||window;
     const entry={
-      owner,el,ticksBox,ticks:[],heads,marks:[],panel,panelItems:[],resume,knob,label,
+      owner,el,ticksBox,ticks:[],hmarksBox,hmarks:[],heads,marks:[],panel,panelItems:[],resume,knob,label,
       frame:0,glideFrame:0,memoryTimer:0,pendingMemory:null,win,
       hoverY:null,dragging:false,endDrag:null,
       sectionSig:'',knownStarts:new Map(),
@@ -220,7 +226,7 @@ class ScrollRuler extends Component{
     entry.el.classList.toggle('has-ticks',true);
   }
   paintWave(entry,progress=entry.lastProgress){
-    if(!entry.ticks.length)return;
+    if(!entry.ticks.length&&!entry.hmarks.length)return;
     const height=entry.el.getBoundingClientRect().height;
     const center=reducedMotion(entry.win)?null:entry.dragging&&Number.isFinite(progress)?progress*height:entry.hoverY;
     const count=entry.ticks.length;
@@ -229,6 +235,11 @@ class ScrollRuler extends Component{
       const off=center===null||!(height>0)?0:waveOffset(y-center);
       tick.style.transform=off>=0.25?`translateX(${-off.toFixed(1)}px)`:'';
       tick.classList.toggle('is-near',off>=1.5);
+    }
+    for(const hm of entry.hmarks){
+      const f=Number(hm.dataset.fraction);
+      const off=center===null||!(height>0)||!Number.isFinite(f)?0:waveOffset(f*height-center);
+      hm.style.transform=off>=0.25?`translateX(${-off.toFixed(1)}px)`:'';
     }
   }
   update(view){
@@ -242,8 +253,8 @@ class ScrollRuler extends Component{
     entry.knob.style.top=`${(progress*100).toFixed(2)}%`;entry.label.textContent=progress.toFixed(2);
     const height=entry.el.getBoundingClientRect().height;
     this.syncTicks(entry,height);
-    this.paintWave(entry,progress);
     const {headings,fractions,current}=this.updateHeadings(view,entry,s,progress,height);
+    this.paintWave(entry,progress);
     const resume=this.memoryEnabled()?resolveResume(entry.savedMemory,headings,fractions):null;
     entry.resumeFraction=resume;
     if(resume!==null){
@@ -253,11 +264,12 @@ class ScrollRuler extends Component{
     if(entry.savedMemory===null||Math.abs(progress-(resume??-1))>0.01)
       this.queueMemory(entry,makeMemory(progress,headings,fractions,current));
   }
-  // Headings of levels 1–3 with their cleaned display text and 0-based source lines.
+  // Headings up to the configured max level with their cleaned display text and 0-based source lines.
   headings(view){
+    const maxLevel=this.headingLevels();
     const list=view.file&&this.app.metadataCache.getFileCache(view.file)?.headings||[];
     return list.map(h=>({text:cleanHeading(h.heading),level:h.level,line:h.position?.start?.line}))
-      .filter(h=>h.level<=HEADING_LEVELS&&h.text&&Number.isInteger(h.line));
+      .filter(h=>h.level<=maxLevel&&h.text&&Number.isInteger(h.line));
   }
   // Where each heading's top sits in the scroller's content, as a fraction of its whole height.
   fractions(view,s,headings){
@@ -317,10 +329,27 @@ class ScrollRuler extends Component{
     entry.heads.style.setProperty('--aw-heads-width',`${Math.round(compact?LIST_WIDTH:Math.min(LIST_WIDTH,margin-24))}px`);
     const fractions=this.fractions(view,s,headings);
     const current=currentHeading(fractions,progress);
+    const doc=entry.el.ownerDocument;
+    // Independent heading ticks stay visible on the rail even when narrow margins collapse text labels.
+    entry.el.classList.toggle('has-headings',true);
+    headings.forEach((h,i)=>{
+      let hm=entry.hmarks[i];
+      if(!hm){
+        hm=doc.createElement('i');
+        hm.addEventListener('pointerdown',event=>{
+          if(event.button!==0)return;
+          event.preventDefault();event.stopPropagation();this.jumpTo(view,Number(hm.dataset.fraction),true);
+        });
+        entry.hmarksBox.appendChild(hm);entry.hmarks.push(hm);
+      }
+      hm.className=`aw-ruler-hmark is-level-${h.level}${i===current?' is-current':i<current?' is-passed':''}`;
+      hm.dataset.line=String(h.line);hm.dataset.fraction=String(fractions[i]);hm.title=h.text;
+      hm.style.top=`${(fractions[i]*100).toFixed(2)}%`;
+    });
+    for(const extra of entry.hmarks.splice(headings.length))extra.remove();
     const kept=layoutHeadings(headings.map((h,i)=>({index:i,level:h.level,top:fractions[i]*height})),HEADING_GAP,current);
     const dense=kept.length<headings.length;
     entry.el.classList.toggle('is-dense',dense);
-    const doc=entry.el.ownerDocument;
     let near=false;
     kept.forEach((i,n)=>{
       const h=headings[i];
@@ -367,9 +396,11 @@ class ScrollRuler extends Component{
     return {headings,fractions,current};
   }
   clearHeadings(entry){
+    for(const hm of entry.hmarks)hm.remove();
     for(const mark of entry.marks)mark.remove();
     for(const item of entry.panelItems)item.remove();
-    entry.marks=[];entry.panelItems=[];
+    entry.hmarks=[];entry.marks=[];entry.panelItems=[];
+    entry.el.classList.toggle('has-headings',false);
     entry.el.classList.toggle('is-on-heading',false);
     entry.el.classList.toggle('is-compact',false);
     entry.el.classList.toggle('is-dense',false);
@@ -427,11 +458,16 @@ class ScrollRuler extends Component{
     entry.win.addEventListener?.('blur',up);
   }
   displaySettings(container,Setting){
-    new Setting(container).setName('滚动刻度尺').setDesc('在笔记右侧显示阅读位置刻度；可点击或拖动跳转。')
+    new Setting(container).setName('滚动刻度尺')
       .addToggle(t=>t.setValue(this.plugin.data.settings.scrollRuler!==false).onChange(v=>{this.plugin.data.settings.scrollRuler=v;this.sync();this.plugin.changed();}));
-    new Setting(container).setName('刻度尺旁显示标题').setDesc('在刻度尺左侧的页边列出一到三级标题，位置对应它们在全文中的位置；正在读的标题颜色加深，点击标题平滑跳转。页边窄或标题密集时，指针移到刻度尺上展开完整标题列表。')
+    new Setting(container).setName('刻度尺旁显示标题')
       .addToggle(t=>t.setValue(this.showHeadings()).onChange(v=>{this.plugin.data.settings.rulerHeadings=v;this.sync();this.plugin.changed();}));
-    new Setting(container).setName('记住上次阅读位置').setDesc('重新打开长笔记时，在刻度尺上用小菱形标出上次读到的位置，点击即可返回。')
+    new Setting(container).setName('刻度尺标题层级')
+      .addDropdown(d=>{
+        for(const opt of Core.RULER_HEADING_LEVELS)d.addOption(String(opt.id),opt.label);
+        d.setValue(String(this.headingLevels())).onChange(v=>{this.plugin.data.settings.rulerHeadingLevels=Number(v);this.sync();this.plugin.changed();});
+      });
+    new Setting(container).setName('记住上次阅读位置')
       .addToggle(t=>t.setValue(this.memoryEnabled()).onChange(v=>{this.plugin.data.settings.rulerMemory=v;this.sync();this.plugin.changed();}));
   }
 }
