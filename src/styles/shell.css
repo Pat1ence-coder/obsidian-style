@@ -82,8 +82,8 @@ body:is(.theme-light,.theme-dark) {
 /* Opaque floor for non-translucent and detached modal windows so titlebars never flash black. */
 body:is(.theme-light,.theme-dark) {background-color: var(--ds-bg);}
 .workspace {background: var(--ds-bg);}
-.workspace .workspace-ribbon.mod-left,
-.workspace .workspace-ribbon.mod-left:not(.is-collapsed) {border: 0;border-right-color: transparent;box-shadow: none;}
+.workspace .workspace-ribbon:is(.mod-left,.mod-primary),
+.workspace .workspace-ribbon:is(.mod-left,.mod-primary):not(.is-collapsed) {border: 0;border-right-color: transparent;box-shadow: none;}
 .workspace-sidedock-vault-profile {border-top: 0;}
 /* Split resize handles act as drag affordances only; at rest there is no vertical line. */
 .workspace-leaf-resize-handle {border-color: transparent;}
@@ -145,8 +145,29 @@ body:is(.theme-light,.theme-dark) {background-color: var(--ds-bg);}
    lives on ::before so native translucent windows keep sharp contrast with zero backdrop-filter. */
 body:not(.is-mobile) {
   --aw-peek-width: 280px;
-  --aw-peek-trigger: 12px;
+  --aw-peek-trigger: 10px;
   --aw-peek-delay: 80ms;
+}
+/* Keep open sidebars wide enough so tab icons and the collapse toggle never collide on narrow drags. */
+body:not(.is-mobile) .workspace-split.mod-sidedock:not(.is-sidedock-collapsed) {
+  min-width: 204px;
+}
+body.mod-macos.is-hidden-frameless:not(.is-fullscreen):not(.is-mobile):is(:not(.show-ribbon),.show-ribbon:not(.aw-ribbon-hide-off)) .workspace-split.mod-sidedock.mod-left-split:not(.is-sidedock-collapsed) {
+  min-width: 248px;
+}
+body:not(.is-mobile) .workspace-split.mod-sidedock .workspace-tab-header-container {
+  gap: 6px;
+}
+body:not(.is-mobile) .workspace-split.mod-sidedock .workspace-tab-header-container-inner {
+  min-width: 0;
+  margin-inline: 0;
+}
+body:not(.is-mobile) .workspace-split.mod-sidedock .sidebar-toggle-button {
+  flex: 0 0 auto;
+}
+/* Keep a fixed ribbon above a sliding collapsed drawer so the drawer glides out cleanly from behind it. */
+body.show-ribbon.aw-ribbon-hide-off:not(.is-mobile) .workspace-ribbon:is(.mod-left,.mod-primary) {
+  z-index: 16;
 }
 body:not(.is-mobile):not(.aw-sidebar-hover-off) .workspace-split.mod-sidedock.is-sidedock-collapsed[style*="display"] {
   --aw-peek-offset: 0px;
@@ -154,7 +175,7 @@ body:not(.is-mobile):not(.aw-sidebar-hover-off) .workspace-split.mod-sidedock.is
   width: var(--aw-peek-width) !important;
   position: absolute;
   inset-block: 0;
-  z-index: 15;
+  z-index: 14;
   opacity: 0;
   pointer-events: none;
   transition: transform 200ms cubic-bezier(.22,1,.36,1), opacity 180ms ease;
@@ -203,20 +224,20 @@ body:not(.is-mobile):not(.aw-sidebar-hover-off) .workspace-split.mod-sidedock.is
 body:not(.is-mobile):not(.aw-sidebar-hover-off) .workspace-split.mod-sidedock.is-sidedock-collapsed[style*="display"].mod-right-split::after {left: 0;}
 body:not(.is-mobile):not(.aw-sidebar-hover-off) .workspace-split.mod-sidedock.is-sidedock-collapsed[style*="display"]:hover,
 body:not(.is-mobile):not(.aw-sidebar-hover-off) .workspace-split.mod-sidedock.is-sidedock-collapsed[style*="display"]:focus-within,
-body.show-ribbon:not(.aw-ribbon-hide-off):not(.is-mobile):not(.aw-sidebar-hover-off) .workspace-ribbon:is(.mod-left,.mod-primary):is(:hover,:focus-within) + .workspace-split.mod-sidedock.is-sidedock-collapsed[style*="display"] {
+body.show-ribbon:not(.aw-ribbon-hide-off):not(.is-mobile):not(.aw-sidebar-hover-off) .workspace-ribbon:is(.mod-left,.mod-primary):is(:hover,:focus-within) ~ .workspace-split.mod-sidedock.mod-left-split.is-sidedock-collapsed[style*="display"] {
   transform: translateX(var(--aw-peek-offset));
   opacity: 1;
   pointer-events: auto;
   transition-delay: var(--aw-peek-delay);
 }
 body:not(.is-mobile):not(.aw-sidebar-hover-off) .workspace-split.mod-sidedock.is-sidedock-collapsed[style*="display"]:is(:hover,:focus-within)::after,
-body.show-ribbon:not(.aw-ribbon-hide-off):not(.is-mobile):not(.aw-sidebar-hover-off) .workspace-ribbon:is(.mod-left,.mod-primary):is(:hover,:focus-within) + .workspace-split.mod-sidedock.is-sidedock-collapsed[style*="display"]::after {
+body.show-ribbon:not(.aw-ribbon-hide-off):not(.is-mobile):not(.aw-sidebar-hover-off) .workspace-ribbon:is(.mod-left,.mod-primary):is(:hover,:focus-within) ~ .workspace-split.mod-sidedock.mod-left-split.is-sidedock-collapsed[style*="display"]::after {
   pointer-events: none;
 }
-body.mod-macos.is-hidden-frameless:not(.is-fullscreen):not(.is-mobile):not(.aw-sidebar-hover-off) .workspace-split.mod-sidedock.mod-left-split.is-sidedock-collapsed[style*="display"] > .workspace-tabs:first-child .workspace-tab-header-container {
-  padding-left: calc(var(--size-4-2, 8px) + var(--frame-left-space, 72px));
+body.mod-macos.is-hidden-frameless:not(.is-fullscreen):not(.is-mobile):not(.aw-sidebar-hover-off) .workspace-split.mod-sidedock.mod-left-split.is-sidedock-collapsed[style*="display"] > .workspace-tabs:not(.workspace-tabs ~ .workspace-tabs) .workspace-tab-header-container {
+  padding-left: calc(var(--size-4-2, 8px) + var(--frame-left-space, 36px));
 }
-body.is-hidden-frameless:not(.mod-macos):not(.is-fullscreen):not(.is-mobile):not(.aw-sidebar-hover-off) .workspace-split.mod-sidedock.mod-right-split.is-sidedock-collapsed[style*="display"] > .workspace-tabs:first-child .workspace-tab-header-container {
+body.is-hidden-frameless:not(.mod-macos):not(.is-fullscreen):not(.is-mobile):not(.aw-sidebar-hover-off) .workspace-split.mod-sidedock.mod-right-split.is-sidedock-collapsed[style*="display"] > .workspace-tabs:not(.workspace-tabs ~ .workspace-tabs) .workspace-tab-header-container {
   padding-right: var(--frame-right-space, 0px);
 }
 body:not(.is-mobile):not(.aw-sidebar-hover-off) .workspace-split.mod-sidedock.is-sidedock-collapsed .workspace-tab-header-container {
@@ -238,6 +259,10 @@ body.show-ribbon:not(.is-mobile):not(.aw-ribbon-hide-off) .workspace-ribbon:is(.
   margin-top: 0;
   padding-top: var(--header-height, 40px);
 }
+/* Suppress core's ribbon top-bar pseudo-element once the ribbon is positioned absolutely. */
+body.show-ribbon:not(.is-mobile):not(.aw-ribbon-hide-off) .workspace-ribbon:is(.mod-left,.mod-primary)::before {
+  display: none;
+}
 body.show-ribbon:not(.is-mobile):not(.aw-ribbon-hide-off) .workspace-ribbon:is(.mod-left,.mod-primary).is-collapsed::after {
   content: "";
   position: absolute;
@@ -248,14 +273,10 @@ body.show-ribbon:not(.is-mobile):not(.aw-ribbon-hide-off) .workspace-ribbon:is(.
   border-right: 1px solid var(--ds-border);
 }
 body.show-ribbon:not(.is-mobile):not(.aw-ribbon-hide-off) .workspace-ribbon:is(.mod-left,.mod-primary):is(:hover,:focus-within),
-body.show-ribbon:not(.is-mobile):not(.aw-ribbon-hide-off):not(.aw-sidebar-hover-off) .workspace-ribbon:is(.mod-left,.mod-primary):has(+ .workspace-split.mod-sidedock.is-sidedock-collapsed[style*="display"]:is(:hover,:focus-within)) {
+body.show-ribbon:not(.is-mobile):not(.aw-ribbon-hide-off):not(.aw-sidebar-hover-off) .workspace-ribbon:is(.mod-left,.mod-primary):has(~ .workspace-split.mod-sidedock.mod-left-split.is-sidedock-collapsed[style*="display"]:is(:hover,:focus-within)) {
   opacity: 1;
   transform: none;
   transition-delay: var(--aw-peek-delay);
-}
-body.show-ribbon:not(.is-mobile):not(.aw-ribbon-hide-off) .workspace-ribbon:is(.mod-left,.mod-primary)::before {
-  -webkit-app-region: no-drag;
-  app-region: no-drag;
 }
 body.show-ribbon:not(.is-mobile):not(.aw-ribbon-hide-off) .workspace-ribbon:is(.mod-left,.mod-primary):is(:hover,:focus-within) ~ :is(.mod-left-split,.mod-root) :is(.workspace-tab-header-container,.workspace-tab-header-container-inner,.workspace-tab-header-spacer) {
   -webkit-app-region: no-drag;
@@ -264,25 +285,26 @@ body.show-ribbon:not(.is-mobile):not(.aw-ribbon-hide-off) .workspace-ribbon:is(.
 body.show-ribbon:not(.is-mobile):not(.aw-ribbon-hide-off):not(.aw-sidebar-hover-off) .workspace-split.mod-sidedock.mod-left-split.is-sidedock-collapsed[style*="display"] {
   padding-left: var(--ribbon-width, 44px);
 }
-/* Open left sidebar shifts aside smoothly while the auto-hidden ribbon is revealed. */
+/* Open left sidebar shifts right by the full ribbon width via margin-left so it keeps its full width
+   and never overlaps the popped-out ribbon. */
 body.show-ribbon:not(.is-mobile):not(.aw-ribbon-hide-off) .workspace-split.mod-sidedock.mod-left-split:not(.is-sidedock-collapsed) {
-  transition: padding-left 200ms cubic-bezier(.22,1,.36,1);
+  transition: margin-left 200ms cubic-bezier(.22,1,.36,1);
 }
-body.show-ribbon:not(.is-mobile):not(.aw-ribbon-hide-off) .workspace-ribbon:is(.mod-left,.mod-primary):is(:hover,:focus-within) + .workspace-split.mod-sidedock.mod-left-split:not(.is-sidedock-collapsed) {
-  padding-left: calc(var(--ribbon-width, 44px) - 6px);
+body.show-ribbon:not(.is-mobile):not(.aw-ribbon-hide-off) .workspace-ribbon:is(.mod-left,.mod-primary):is(:hover,:focus-within) ~ .workspace-split.mod-sidedock.mod-left-split:not(.is-sidedock-collapsed) {
+  margin-left: var(--ribbon-width, 44px);
   transition-delay: var(--aw-peek-delay);
 }
-/* macOS traffic lights: add ribbon width back when parked, release it while open sidebar shifts right. */
+/* macOS traffic lights: add ribbon width back when parked, release it exactly as the open sidebar shifts right. */
 body.mod-macos.is-hidden-frameless.show-ribbon:not(.is-fullscreen):not(.is-mobile):not(.aw-ribbon-hide-off) .workspace-tabs.mod-top-left-space .workspace-tab-header-container {
-  padding-left: calc(var(--size-4-2, 8px) + var(--frame-left-space, 72px) + var(--ribbon-width, 44px));
+  padding-left: calc(var(--size-4-2, 8px) + var(--frame-left-space, 36px) + var(--ribbon-width, 44px));
   transition: padding-left 200ms cubic-bezier(.22,1,.36,1);
 }
 body.mod-macos.is-hidden-frameless.show-ribbon:not(.is-fullscreen):not(.is-mobile):not(.aw-ribbon-hide-off) .mod-left-split:not(.is-sidedock-collapsed) > .workspace-tabs.mod-top-left-space,
 body.mod-macos.is-hidden-frameless.show-ribbon:not(.is-fullscreen):not(.is-mobile):not(.aw-ribbon-hide-off) .mod-left-split:not(.is-sidedock-collapsed) > .workspace-tabs.mod-top-left-space > .workspace-tab-header-container {
   transition: inherit;
 }
-body.mod-macos.is-hidden-frameless.show-ribbon:not(.is-fullscreen):not(.is-mobile):not(.aw-ribbon-hide-off) .workspace-ribbon:is(.mod-left,.mod-primary):is(:hover,:focus-within) + .workspace-split.mod-sidedock.mod-left-split:not(.is-sidedock-collapsed) .workspace-tabs.mod-top-left-space .workspace-tab-header-container {
-  padding-left: calc(var(--size-4-2, 8px) + var(--frame-left-space, 72px) + 6px);
+body.mod-macos.is-hidden-frameless.show-ribbon:not(.is-fullscreen):not(.is-mobile):not(.aw-ribbon-hide-off) .workspace-ribbon:is(.mod-left,.mod-primary):is(:hover,:focus-within) ~ .workspace-split.mod-sidedock.mod-left-split:not(.is-sidedock-collapsed) .workspace-tabs.mod-top-left-space .workspace-tab-header-container {
+  padding-left: calc(var(--size-4-2, 8px) + var(--frame-left-space, 36px));
   transition-delay: var(--aw-peek-delay);
 }
 

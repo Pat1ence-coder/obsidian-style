@@ -553,7 +553,9 @@ test('typography auto-spacing, orphan prevention, hover-slide sidebars, auto-hid
   assert.match(snippet,/body:not\(\.is-mobile\):not\(\.aw-sidebar-hover-off\) \.workspace-split\.mod-sidedock\.is-sidedock-collapsed\[style\*="display"\]/);
   assert.match(snippet,/\.workspace-split\.mod-sidedock\.is-sidedock-collapsed\[style\*="display"\] > \.workspace-tabs \{\s*visibility: visible;/);
   assert.match(snippet,/body\.show-ribbon:not\(\.is-mobile\):not\(\.aw-ribbon-hide-off\) \.workspace-ribbon:is\(\.mod-left,\.mod-primary\)/);
-  assert.match(snippet,/body\.mod-macos\.is-hidden-frameless\.show-ribbon:not\(\.is-fullscreen\):not\(\.is-mobile\):not\(\.aw-ribbon-hide-off\)/);
+  assert.match(snippet,/body\.show-ribbon:not\(\.is-mobile\):not\(\.aw-ribbon-hide-off\) \.workspace-ribbon:is\(\.mod-left,\.mod-primary\):is\(:hover,:focus-within\) ~ \.workspace-split\.mod-sidedock\.mod-left-split:not\(\.is-sidedock-collapsed\) \{\s*margin-left: var\(--ribbon-width, 44px\);/);
+  assert.match(snippet,/body\.mod-macos\.is-hidden-frameless:not\(\.is-fullscreen\):not\(\.is-mobile\):is\(:not\(\.show-ribbon\),\.show-ribbon:not\(\.aw-ribbon-hide-off\)\) \.workspace-split\.mod-sidedock\.mod-left-split:not\(\.is-sidedock-collapsed\) \{\s*min-width: 248px;/);
+  assert.match(snippet,/\.workspace-split\.mod-sidedock\.mod-left-split\.is-sidedock-collapsed\[style\*="display"\] > \.workspace-tabs:not\(\.workspace-tabs ~ \.workspace-tabs\) \.workspace-tab-header-container/);
   assert.doesNotMatch(snippet,/backdrop-filter:\s*blur|will-change:\s+(?!auto\b)/);
   assert.doesNotMatch(plugin,/backdrop-filter:\s*blur|will-change:\s+(?!auto\b)/);
   // 3. Annotation print pagination & margin fallback, plus right-margin coordination with scroll ruler.

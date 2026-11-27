@@ -21,9 +21,9 @@ body:is(.theme-light,.theme-dark) {
 .clickable-icon:hover svg {color: var(--ds-heading);}
 
 /* Left icon rail: compact, unframed tiles. */
-.workspace-ribbon.mod-left .side-dock-ribbon-action {width: 32px;height: 32px;padding: 0;border-radius: 8px;}
-.workspace-ribbon.mod-left :is(.side-dock-actions,.side-dock-settings) {gap: 4px;}
-.workspace-ribbon.mod-left .side-dock-ribbon-action svg {width: 18px;height: 18px;}
+.workspace-ribbon:is(.mod-left,.mod-primary) .side-dock-ribbon-action {width: 32px;height: 32px;padding: 0;border-radius: 8px;}
+.workspace-ribbon:is(.mod-left,.mod-primary) :is(.side-dock-actions,.side-dock-settings) {gap: 4px;}
+.workspace-ribbon:is(.mod-left,.mod-primary) .side-dock-ribbon-action svg {width: 18px;height: 18px;}
 
 /* Sidebar view switcher (files / search / bookmarks / library): subtle tile, no solid pill. */
 .workspace-split.mod-sidedock .workspace-tab-header {border-radius: 8px;}
