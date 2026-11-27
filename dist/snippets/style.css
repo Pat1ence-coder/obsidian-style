@@ -285,6 +285,162 @@ body:is(.theme-light,.theme-dark) {background-color: var(--ds-bg);}
 :is(.menu,.suggestion-container,.prompt) {border-radius: 12px;}
 .vertical-tab-header {background: var(--ds-shell);border-right: 1px solid var(--ds-border);}
 .modal-container .modal-bg {background-color: rgba(var(--ds-ink-rgb),.24);}
+
+/* Collapsed sidebars: park off-edge and glide in on window-edge hover or focus; opaque drawer surface
+   lives on ::before so native translucent windows keep sharp contrast with zero backdrop-filter. */
+body:not(.is-mobile) {
+  --aw-peek-width: 280px;
+  --aw-peek-trigger: 12px;
+  --aw-peek-delay: 80ms;
+}
+body:not(.is-mobile):not(.aw-sidebar-hover-off) .workspace-split.mod-sidedock.is-sidedock-collapsed[style*="display"] {
+  --aw-peek-offset: 0px;
+  display: flex !important;
+  width: var(--aw-peek-width) !important;
+  position: absolute;
+  inset-block: 0;
+  z-index: 15;
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 200ms cubic-bezier(.22,1,.36,1), opacity 180ms ease;
+}
+body.show-ribbon.aw-ribbon-hide-off:not(.is-mobile):not(.aw-sidebar-hover-off) .workspace-split.mod-sidedock.is-sidedock-collapsed[style*="display"].mod-left-split {
+  --aw-peek-offset: var(--ribbon-width, 44px);
+}
+body:not(.is-mobile):not(.aw-sidebar-hover-off) .workspace-split.mod-sidedock.is-sidedock-collapsed[style*="display"].mod-left-split {
+  left: 0;
+  right: auto;
+  transform: translateX(calc(var(--aw-peek-offset) + var(--aw-peek-trigger) - 100%));
+}
+body:not(.is-mobile):not(.aw-sidebar-hover-off) .workspace-split.mod-sidedock.is-sidedock-collapsed[style*="display"].mod-right-split {
+  left: auto;
+  right: 0;
+  transform: translateX(calc(100% - var(--aw-peek-trigger)));
+}
+body:not(.is-mobile):not(.aw-sidebar-hover-off) .workspace-split.mod-sidedock.is-sidedock-collapsed[style*="display"] > .workspace-tabs {
+  visibility: visible;
+}
+body:not(.is-mobile):not(.aw-sidebar-hover-off) .workspace-split.mod-sidedock.is-sidedock-collapsed[style*="display"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: var(--ds-paper);
+  box-shadow: var(--ds-elev-3);
+}
+body:not(.is-mobile):not(.aw-sidebar-hover-off) .workspace-split.mod-sidedock.is-sidedock-collapsed[style*="display"].mod-left-split::before {
+  border-right: 1px solid var(--ds-border);
+}
+body:not(.is-mobile):not(.aw-sidebar-hover-off) .workspace-split.mod-sidedock.is-sidedock-collapsed[style*="display"].mod-right-split::before {
+  border-left: 1px solid var(--ds-border);
+}
+/* Edge trigger starts below the header row so window controls are never blocked. */
+body:not(.is-mobile):not(.aw-sidebar-hover-off) .workspace-split.mod-sidedock.is-sidedock-collapsed[style*="display"]::after {
+  content: "";
+  position: absolute;
+  top: var(--header-height, 40px);
+  bottom: 0;
+  width: var(--aw-peek-trigger);
+  pointer-events: auto;
+}
+body:not(.is-mobile):not(.aw-sidebar-hover-off) .workspace-split.mod-sidedock.is-sidedock-collapsed[style*="display"].mod-left-split::after {right: 0;}
+body:not(.is-mobile):not(.aw-sidebar-hover-off) .workspace-split.mod-sidedock.is-sidedock-collapsed[style*="display"].mod-right-split::after {left: 0;}
+body:not(.is-mobile):not(.aw-sidebar-hover-off) .workspace-split.mod-sidedock.is-sidedock-collapsed[style*="display"]:hover,
+body:not(.is-mobile):not(.aw-sidebar-hover-off) .workspace-split.mod-sidedock.is-sidedock-collapsed[style*="display"]:focus-within,
+body.show-ribbon:not(.aw-ribbon-hide-off):not(.is-mobile):not(.aw-sidebar-hover-off) .workspace-ribbon:is(.mod-left,.mod-primary):is(:hover,:focus-within) + .workspace-split.mod-sidedock.is-sidedock-collapsed[style*="display"] {
+  transform: translateX(var(--aw-peek-offset));
+  opacity: 1;
+  pointer-events: auto;
+  transition-delay: var(--aw-peek-delay);
+}
+body:not(.is-mobile):not(.aw-sidebar-hover-off) .workspace-split.mod-sidedock.is-sidedock-collapsed[style*="display"]:is(:hover,:focus-within)::after,
+body.show-ribbon:not(.aw-ribbon-hide-off):not(.is-mobile):not(.aw-sidebar-hover-off) .workspace-ribbon:is(.mod-left,.mod-primary):is(:hover,:focus-within) + .workspace-split.mod-sidedock.is-sidedock-collapsed[style*="display"]::after {
+  pointer-events: none;
+}
+body.mod-macos.is-hidden-frameless:not(.is-fullscreen):not(.is-mobile):not(.aw-sidebar-hover-off) .workspace-split.mod-sidedock.mod-left-split.is-sidedock-collapsed[style*="display"] > .workspace-tabs:first-child .workspace-tab-header-container {
+  padding-left: calc(var(--size-4-2, 8px) + var(--frame-left-space, 72px));
+}
+body.is-hidden-frameless:not(.mod-macos):not(.is-fullscreen):not(.is-mobile):not(.aw-sidebar-hover-off) .workspace-split.mod-sidedock.mod-right-split.is-sidedock-collapsed[style*="display"] > .workspace-tabs:first-child .workspace-tab-header-container {
+  padding-right: var(--frame-right-space, 0px);
+}
+body:not(.is-mobile):not(.aw-sidebar-hover-off) .workspace-split.mod-sidedock.is-sidedock-collapsed .workspace-tab-header-container {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+/* Auto-hide left ribbon: parked off the left edge, opens on edge hover/focus or with the left drawer. */
+body.show-ribbon:not(.is-mobile):not(.aw-ribbon-hide-off) .workspace-ribbon:is(.mod-left,.mod-primary) {
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  z-index: 17;
+  opacity: 0;
+  transform: translateX(calc(var(--aw-peek-trigger) - 100%));
+  transition: transform 200ms cubic-bezier(.22,1,.36,1), opacity 180ms ease;
+}
+body.show-ribbon:not(.is-mobile):not(.aw-ribbon-hide-off) .workspace-ribbon:is(.mod-left,.mod-primary):has(> .sidebar-toggle-button) {
+  margin-top: 0;
+  padding-top: var(--header-height, 40px);
+}
+body.show-ribbon:not(.is-mobile):not(.aw-ribbon-hide-off) .workspace-ribbon:is(.mod-left,.mod-primary).is-collapsed::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: var(--ds-paper);
+  border-right: 1px solid var(--ds-border);
+}
+body.show-ribbon:not(.is-mobile):not(.aw-ribbon-hide-off) .workspace-ribbon:is(.mod-left,.mod-primary):is(:hover,:focus-within),
+body.show-ribbon:not(.is-mobile):not(.aw-ribbon-hide-off):not(.aw-sidebar-hover-off) .workspace-ribbon:is(.mod-left,.mod-primary):has(+ .workspace-split.mod-sidedock.is-sidedock-collapsed[style*="display"]:is(:hover,:focus-within)) {
+  opacity: 1;
+  transform: none;
+  transition-delay: var(--aw-peek-delay);
+}
+body.show-ribbon:not(.is-mobile):not(.aw-ribbon-hide-off) .workspace-ribbon:is(.mod-left,.mod-primary)::before {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+body.show-ribbon:not(.is-mobile):not(.aw-ribbon-hide-off) .workspace-ribbon:is(.mod-left,.mod-primary):is(:hover,:focus-within) ~ :is(.mod-left-split,.mod-root) :is(.workspace-tab-header-container,.workspace-tab-header-container-inner,.workspace-tab-header-spacer) {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+body.show-ribbon:not(.is-mobile):not(.aw-ribbon-hide-off):not(.aw-sidebar-hover-off) .workspace-split.mod-sidedock.mod-left-split.is-sidedock-collapsed[style*="display"] {
+  padding-left: var(--ribbon-width, 44px);
+}
+/* Open left sidebar shifts aside smoothly while the auto-hidden ribbon is revealed. */
+body.show-ribbon:not(.is-mobile):not(.aw-ribbon-hide-off) .workspace-split.mod-sidedock.mod-left-split:not(.is-sidedock-collapsed) {
+  transition: padding-left 200ms cubic-bezier(.22,1,.36,1);
+}
+body.show-ribbon:not(.is-mobile):not(.aw-ribbon-hide-off) .workspace-ribbon:is(.mod-left,.mod-primary):is(:hover,:focus-within) + .workspace-split.mod-sidedock.mod-left-split:not(.is-sidedock-collapsed) {
+  padding-left: calc(var(--ribbon-width, 44px) - 6px);
+  transition-delay: var(--aw-peek-delay);
+}
+/* macOS traffic lights: add ribbon width back when parked, release it while open sidebar shifts right. */
+body.mod-macos.is-hidden-frameless.show-ribbon:not(.is-fullscreen):not(.is-mobile):not(.aw-ribbon-hide-off) .workspace-tabs.mod-top-left-space .workspace-tab-header-container {
+  padding-left: calc(var(--size-4-2, 8px) + var(--frame-left-space, 72px) + var(--ribbon-width, 44px));
+  transition: padding-left 200ms cubic-bezier(.22,1,.36,1);
+}
+body.mod-macos.is-hidden-frameless.show-ribbon:not(.is-fullscreen):not(.is-mobile):not(.aw-ribbon-hide-off) .mod-left-split:not(.is-sidedock-collapsed) > .workspace-tabs.mod-top-left-space,
+body.mod-macos.is-hidden-frameless.show-ribbon:not(.is-fullscreen):not(.is-mobile):not(.aw-ribbon-hide-off) .mod-left-split:not(.is-sidedock-collapsed) > .workspace-tabs.mod-top-left-space > .workspace-tab-header-container {
+  transition: inherit;
+}
+body.mod-macos.is-hidden-frameless.show-ribbon:not(.is-fullscreen):not(.is-mobile):not(.aw-ribbon-hide-off) .workspace-ribbon:is(.mod-left,.mod-primary):is(:hover,:focus-within) + .workspace-split.mod-sidedock.mod-left-split:not(.is-sidedock-collapsed) .workspace-tabs.mod-top-left-space .workspace-tab-header-container {
+  padding-left: calc(var(--size-4-2, 8px) + var(--frame-left-space, 72px) + 6px);
+  transition-delay: var(--aw-peek-delay);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspace-split.mod-sidedock.is-sidedock-collapsed[style*="display"],
+  .workspace-split.mod-sidedock.mod-left-split:not(.is-sidedock-collapsed),
+  .workspace-ribbon:is(.mod-left,.mod-primary),
+  .workspace-tabs.mod-top-left-space .workspace-tab-header-container {transition: none;}
+}
+@media print {
+  .workspace-split.mod-sidedock.is-sidedock-collapsed[style*="display"],
+  .workspace-ribbon {display: none !important;}
+}
 @media (forced-colors:active) {
   :is(.menu,.suggestion-container,.prompt,.popover.hover-popover,.modal,.notice) {background: Canvas;}
 }
@@ -410,7 +566,17 @@ body {
 .markdown-preview-view,
 .markdown-source-view.mod-cm6 {font-family: var(--ds-font-body);font-size: var(--ds-body-size);line-height: var(--ds-body-leading);}
 .markdown-rendered {font-family: var(--ds-font-body);}
-.markdown-rendered :is(h1,h2,h3,h4,h5,h6) {letter-spacing: 0;margin-block-start: 1.5em;margin-block-end: .55em;}
+/* Automatic CJK-Latin/number spacing and punctuation trim; code, math and front matter stay exact. */
+:is(.markdown-rendered,.markdown-source-view.mod-cm6 .cm-content,.inline-title):not(.no-cjk,.no-cjk *) {
+  text-autospace: normal;
+  text-spacing-trim: trim-start;
+}
+:is(.markdown-rendered,.markdown-source-view.mod-cm6 .cm-content) :is(code,pre,kbd,mjx-container,.math,.cm-inline-code,.HyperMD-codeblock,.cm-hmd-frontmatter) {
+  text-autospace: no-autospace;
+}
+/* Prevent trailing single-character orphans in reading paragraphs without reflowing the live editor. */
+body:not(.is-ios) .markdown-rendered :is(p,li,blockquote,td,th,.callout-content):not(.no-cjk *) {text-wrap: pretty;}
+.markdown-rendered :is(h1,h2,h3,h4,h5,h6) {letter-spacing: 0;margin-block-start: 1.5em;margin-block-end: .55em;text-wrap: balance;}
 .markdown-rendered > :is(h1,h2,h3,h4,h5,h6):first-child {margin-block-start: 0;}
 .markdown-preview-view .inline-title,
 .markdown-source-view.mod-cm6 .inline-title {text-align: left;margin-bottom: 1em;letter-spacing: -.025em;}
@@ -878,50 +1044,50 @@ body.theme-dark .callout[data-callout="diagram"] > .callout-content > ul > li {b
       to prevent Chromium stale-frame ghosting. */
 
 /* -------------------------------------------------------------------------- */
-/* 1. Warm paper whole-window fallback (when native translucency is off)      */
+/* 1. Warm paper whole-window fallback (screen-only so print stays pure white) */
 /* -------------------------------------------------------------------------- */
-body.aw-glass:not(.is-translucent):not(.is-popout-modal) {
-  --ds-bg: #fbf8ef;
-  --ds-canvas: #fbf8ef;
-  --ds-paper: #fffdf8;
-  --ds-shell: #f4efe1;
-  --ds-surface: #f2ecdc;
-  --ds-surface-hover: rgba(34,28,18,.055);
-  --ds-text: #221e17;
-  --ds-heading: #17140f;
-  --ds-muted: #5a5346;
-  --ds-faint: #8c8474;
-  --ds-border: rgba(34,28,18,.095);
-  --ds-rule: rgba(34,28,18,.16);
-  --ds-code-bg: rgba(34,28,18,.04);
-  --ds-inset-bg: rgba(34,28,18,.045);
-  --ds-glass-paper-grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='p'><feTurbulence type='fractalNoise' baseFrequency='.7' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .42 0 0 0 0 .34 0 0 0 0 .22 0 0 0 .048 0'/></filter><rect width='100%' height='100%' filter='url(%23p)'/></svg>");
-  --ds-glass-grain-opacity: 1;
-  --divider-color: transparent;
-}
-body.aw-glass.aw-glass-fog-light:not(.is-translucent):not(.is-popout-modal) {--ds-glass-grain-opacity: .5;}
-body.aw-glass.aw-glass-fog-strong:not(.is-translucent):not(.is-popout-modal) {--ds-bg: #f8f2e2;--ds-canvas: #f8f2e2;--ds-glass-grain-opacity: 1.35;}
-
-body.theme-dark.aw-glass:not(.is-translucent):not(.is-popout-modal) {
-  --ds-bg: #191816;
-  --ds-canvas: #191816;
-  --ds-paper: #22201d;
-  --ds-shell: #1d1c19;
-  --ds-surface: #272521;
-  --ds-surface-hover: rgba(255,248,235,.055);
-  --ds-text: #e6e1d6;
-  --ds-heading: #f2eee4;
-  --ds-muted: #a69f92;
-  --ds-faint: #7a7468;
-  --ds-border: rgba(255,248,235,.09);
-  --ds-rule: rgba(255,248,235,.15);
-  --ds-code-bg: rgba(255,248,235,.04);
-  --ds-inset-bg: rgba(255,248,235,.048);
-  --ds-glass-paper-grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='p'><feTurbulence type='fractalNoise' baseFrequency='.7' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 .96 0 0 0 0 .9 0 0 0 .032 0'/></filter><rect width='100%' height='100%' filter='url(%23p)'/></svg>");
-}
-body.theme-dark.aw-glass.aw-glass-fog-strong:not(.is-translucent):not(.is-popout-modal) {--ds-bg: #161512;--ds-canvas: #161512;--ds-glass-grain-opacity: 1.35;}
-
 @media screen {
+  body.aw-glass:not(.is-translucent):not(.is-popout-modal) {
+    --ds-bg: #fbf8ef;
+    --ds-canvas: #fbf8ef;
+    --ds-paper: #fffdf8;
+    --ds-shell: #f4efe1;
+    --ds-surface: #f2ecdc;
+    --ds-surface-hover: rgba(34,28,18,.055);
+    --ds-text: #221e17;
+    --ds-heading: #17140f;
+    --ds-muted: #5a5346;
+    --ds-faint: #8c8474;
+    --ds-border: rgba(34,28,18,.095);
+    --ds-rule: rgba(34,28,18,.16);
+    --ds-code-bg: rgba(34,28,18,.04);
+    --ds-inset-bg: rgba(34,28,18,.045);
+    --ds-glass-paper-grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='p'><feTurbulence type='fractalNoise' baseFrequency='.7' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .42 0 0 0 0 .34 0 0 0 0 .22 0 0 0 .048 0'/></filter><rect width='100%' height='100%' filter='url(%23p)'/></svg>");
+    --ds-glass-grain-opacity: 1;
+    --divider-color: transparent;
+  }
+  body.aw-glass.aw-glass-fog-light:not(.is-translucent):not(.is-popout-modal) {--ds-glass-grain-opacity: .5;}
+  body.aw-glass.aw-glass-fog-strong:not(.is-translucent):not(.is-popout-modal) {--ds-bg: #f8f2e2;--ds-canvas: #f8f2e2;--ds-glass-grain-opacity: 1.35;}
+
+  body.theme-dark.aw-glass:not(.is-translucent):not(.is-popout-modal) {
+    --ds-bg: #191816;
+    --ds-canvas: #191816;
+    --ds-paper: #22201d;
+    --ds-shell: #1d1c19;
+    --ds-surface: #272521;
+    --ds-surface-hover: rgba(255,248,235,.055);
+    --ds-text: #e6e1d6;
+    --ds-heading: #f2eee4;
+    --ds-muted: #a69f92;
+    --ds-faint: #7a7468;
+    --ds-border: rgba(255,248,235,.09);
+    --ds-rule: rgba(255,248,235,.15);
+    --ds-code-bg: rgba(255,248,235,.04);
+    --ds-inset-bg: rgba(255,248,235,.048);
+    --ds-glass-paper-grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='p'><feTurbulence type='fractalNoise' baseFrequency='.7' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 .96 0 0 0 0 .9 0 0 0 .032 0'/></filter><rect width='100%' height='100%' filter='url(%23p)'/></svg>");
+  }
+  body.theme-dark.aw-glass.aw-glass-fog-strong:not(.is-translucent):not(.is-popout-modal) {--ds-bg: #161512;--ds-canvas: #161512;--ds-glass-grain-opacity: 1.35;}
+
   body.aw-glass:not(.is-translucent):not(.is-popout-modal) .app-container {position: relative;isolation: isolate;background: var(--ds-bg);}
   body.aw-glass:not(.is-translucent):not(.is-popout-modal) .app-container::before {
     content: "";
@@ -1022,6 +1188,7 @@ body.theme-dark.is-translucent.aw-glass-fog-strong:not(.is-popout-window):not(.i
   body.is-translucent:not(.is-popout-window) :is(.workspace-split,.workspace-tabs,.workspace-tab-container,.workspace-leaf,.workspace-tab-header) {
     transition: none !important;
   }
+  body.is-translucent:not(.is-popout-window) .workspace-ribbon {transition: none !important;}
 
   /* Controls on glass: translucent lens active tab and quiet rest buttons. */
   body.is-translucent:not(.is-popout-window):not(.is-popout-modal) .workspace-tab-header.is-active {

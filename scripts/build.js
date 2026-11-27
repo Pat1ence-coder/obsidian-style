@@ -28,8 +28,8 @@ const generated='/* GENERATED from src/styles. Edit the source modules, then run
 // override document print tokens (especially when exporting from dark mode).
 // The view's pane (leaf) gets the tokens too: it paints the dashboard background behind the header.
 const LEAF='.workspace-leaf-content[data-type="algorithm-workbench"]';
-// The image library pane and its tag dialog read the same tokens.
-const ROOTS=[LEAF,'.aw-view','.aw-figure-modal','.aw-lib','.aw-lib-modal'];
+// The image library, annotation center and dialogs read the same tokens.
+const ROOTS=[LEAF,'.aw-view','.aw-figure-modal','.aw-lib','.aw-lib-modal','.workspace-leaf-content[data-type="aw-annotation-center"]','.aw-annot-center','.aw-annot-modal'];
 const pluginTokens=fs.readFileSync(path.join(styleSource,'tokens.css'),'utf8')
   // body → the plugin's own roots (pane, view, modal); body.theme-dark keeps its class qualifier
   // so dark mode applies inside the plugin too.

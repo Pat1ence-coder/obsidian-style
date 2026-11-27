@@ -141,7 +141,7 @@ test('the toolbar has no palette chip; one palette ships light and dark twins wi
   const block=selector=>{const m=new RegExp(selector.replace(/\./g,'\\.')+'\\s*\\{([^}]*)\\}').exec(tokens);assert.ok(m,selector);return new Set(m[1].match(/--ds-(?:tone-\w+|bg|paper|text|heading|muted|faint|border|heat-0)(?=\s*:)/g));};
   assert.deepEqual([...block('body.theme-dark')].sort(),[...block('body')].sort());
   const plugin=fs.readFileSync(path.join(root,'dist/algorithm-workbench/styles.css'),'utf8');
-  assert.ok(plugin.includes('body.theme-dark .workspace-leaf-content[data-type="algorithm-workbench"], body.theme-dark .aw-view, body.theme-dark .aw-figure-modal, body.theme-dark .aw-lib, body.theme-dark .aw-lib-modal {'));
+  assert.ok(plugin.includes('body.theme-dark .workspace-leaf-content[data-type="algorithm-workbench"], body.theme-dark .aw-view, body.theme-dark .aw-figure-modal, body.theme-dark .aw-lib, body.theme-dark .aw-lib-modal, body.theme-dark .workspace-leaf-content[data-type="aw-annotation-center"], body.theme-dark .aw-annot-center, body.theme-dark .aw-annot-modal {'));
 });
 test('print resets outrank the token selectors and keep headings and tones dark',()=>{
   const root=path.resolve(__dirname,'..'),print=fs.readFileSync(path.join(root,'src/styles/print.css'),'utf8');
@@ -180,7 +180,7 @@ test('inside an Obsidian pane the dashboard reaches the card edge and shares one
   const leaf='.workspace .workspace-split .workspace-leaf-content[data-type="algorithm-workbench"]';
   assert.ok(css.includes(`${leaf} > .view-content.aw-view {padding:0;background:transparent;}`),'beats Obsidian default view padding');
   assert.ok(css.includes(`${leaf} > .view-header {background:transparent;`));
-  assert.ok(css.includes('.workspace-leaf-content[data-type="algorithm-workbench"], .aw-view, .aw-figure-modal, .aw-lib, .aw-lib-modal {'),'pane (and the image library) receive the tokens they paint with');
+  assert.ok(css.includes('.workspace-leaf-content[data-type="algorithm-workbench"], .aw-view, .aw-figure-modal, .aw-lib, .aw-lib-modal, .workspace-leaf-content[data-type="aw-annotation-center"], .aw-annot-center, .aw-annot-modal {'),'pane (image library, annotation center and modals) receive the tokens they paint with');
 });
 
 test('the board is a bento grid with KPI, today, trend and monthly modules; no style chip',()=>{

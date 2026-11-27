@@ -18,7 +18,7 @@ const {Library}=__awRequire("features/library.js");
 const {MarkdownPaste}=__awRequire("features/markdown-paste.js");
 const {TypingMotion}=__awRequire("features/typing-motion.js");
 // aw-palette-* and aw-style-* are listed so classes left by earlier versions are cleaned up.
-const APPEARANCE=/^aw-(?:palette|style|caption|glass-fog)-|^aw-(?:figure-tools-off|glass|annot-recall|smooth-caret)$/;
+const APPEARANCE=/^aw-(?:palette|style|caption|glass-fog)-|^aw-(?:figure-tools-off|glass|annot-recall|smooth-caret|sidebar-hover-off|ribbon-hide-off)$/;
 // A created note counts as new when it is opened within this time.
 const NEW_NOTE_OPEN_MS=10000;
 // Settings are saved soon after a change; statistics gathered while typing wait longer, so
@@ -103,7 +103,6 @@ class WorkbenchPlugin extends Plugin {
     this.figures=this.addChild(new Figures(this));
     this.figureTools=this.addChild(new FigureTools(this));
     this.screenshotNames=this.addChild(new ScreenshotNames(this));
-    this.annotations=this.addChild(new Annotations(this));
     this.scrollRuler=this.addChild(new ScrollRuler(this));
     this.decor=this.addChild(new Decor(this));
     this.windowGlass=this.addChild(new WindowGlass(this));
@@ -119,8 +118,9 @@ class WorkbenchPlugin extends Plugin {
       this.statusBarEl.addEventListener?.('click',()=>void this.openWorkbench());
     }
     this.updateStatusBar();
-    // The image library: its own pane, opened in the right sidebar.
+    // The image library and annotation center: right-sidebar panes.
     this.library=this.addChild(new Library(this));
+    this.annotations=this.addChild(new Annotations(this));
     // Palette and caption size are body classes read by both stylesheets; popout windows get
     // them too. Windows already open (plugin re-enabled, restored layout) are found via leaves.
     this.applyAppearanceEverywhere();
@@ -336,7 +336,7 @@ module.exports=WorkbenchPlugin;
 "core.js":(module,exports,__awRequire)=>{
 'use strict';
 const Library = __awRequire("features/library-data.js");
-const DEFAULT_SETTINGS = { nameScreenshots: true, folderNotes: true, openOnStartup: true, tracking: true, statusBar: true, dailyGoal: 0, recentLimit: 8, range: 90, metric: 'score', captionSize: 'normal', figureTools: true, scrollRuler: true, rulerHeadings: true, rulerHeadingLevels: 4, rulerMemory: true, pasteSource: true, smoothCaret: true, decorImage: '', glass: true, glassFog: 'normal', annotFont: '', excludedFolders: ['Templates', 'templates'] };
+const DEFAULT_SETTINGS = { nameScreenshots: true, folderNotes: true, openOnStartup: true, tracking: true, statusBar: true, dailyGoal: 0, recentLimit: 8, range: 90, metric: 'score', captionSize: 'normal', figureTools: true, scrollRuler: true, rulerHeadings: true, rulerHeadingLevels: 4, rulerMemory: true, pasteSource: true, smoothCaret: true, sidebarHover: true, autoHideRibbon: true, decorImage: '', glass: true, glassFog: 'normal', annotFont: '', annotLayout: 'smart', annotMarginWidth: 190, excludedFolders: ['Templates', 'templates'] };
 const MAX_DAILY_GOAL = 100000;
 const RANGES = [30, 90, 180, 365];
 // Figure and table caption sizes; body class aw-caption-<id>, defined in figures.css.
@@ -345,6 +345,9 @@ const CAPTION_SIZES = [{id:'small', label:'小'}, {id:'normal', label:'标准'},
 const GLASS_FOGS = [{id:'light', label:'淡'}, {id:'normal', label:'标准'}, {id:'strong', label:'浓'}];
 // Maximum heading depth indexed by the right-edge scroll ruler.
 const RULER_HEADING_LEVELS = [{id:2, label:'H1–H2'}, {id:3, label:'H1–H3'}, {id:4, label:'H1–H4'}, {id:6, label:'全部（H1–H6）'}];
+// Reading-view placement modes for handwritten annotations.
+const ANNOT_LAYOUTS = [{id:'smart', label:'智能页边'}, {id:'inline', label:'仅行内'}, {id:'left', label:'统一左页边'}, {id:'right', label:'统一右页边'}];
+const ANNOT_MARGIN_MIN = 140, ANNOT_MARGIN_MAX = 260;
 // Score weights are documented in the dashboard; values are derived, never stored.
 const METRICS = [
   {key:'score', label:'贡献分', unit:'分'},
@@ -441,7 +444,7 @@ function loadState(raw, now = new Date()) {
   const d = emptyData(now); d.started = raw.started;
   if (raw.version === 2) d.activityStarted = raw.activityStarted;
   const s = raw.settings || {};
-  for (const name of ['openOnStartup', 'tracking', 'statusBar', 'folderNotes', 'nameScreenshots', 'figureTools', 'scrollRuler', 'rulerHeadings', 'rulerMemory', 'glass', 'pasteSource', 'smoothCaret']) if (typeof s[name] === 'boolean') d.settings[name] = s[name];
+  for (const name of ['openOnStartup', 'tracking', 'statusBar', 'folderNotes', 'nameScreenshots', 'figureTools', 'scrollRuler', 'rulerHeadings', 'rulerMemory', 'glass', 'pasteSource', 'smoothCaret', 'sidebarHover', 'autoHideRibbon']) if (typeof s[name] === 'boolean') d.settings[name] = s[name];
   if (Number.isInteger(s.dailyGoal) && s.dailyGoal >= 0) d.settings.dailyGoal = Math.min(MAX_DAILY_GOAL, s.dailyGoal);
   if (RANGES.includes(s.range)) d.settings.range = s.range;
   if (METRICS.some(m => m.key === s.metric)) d.settings.metric = s.metric;
@@ -450,6 +453,8 @@ function loadState(raw, now = new Date()) {
   if (typeof s.decorImage === 'string') d.settings.decorImage = s.decorImage.trim().replace(/^\/+/, '').slice(0, 500);
   if (GLASS_FOGS.some(x => x.id === s.glassFog)) d.settings.glassFog = s.glassFog;
   if (typeof s.annotFont === 'string') d.settings.annotFont = s.annotFont.replace(/[;{}<>\\]/g, '').trim().slice(0, 200);
+  if (ANNOT_LAYOUTS.some(x => x.id === s.annotLayout)) d.settings.annotLayout = s.annotLayout;
+  if (Number.isInteger(s.annotMarginWidth)) d.settings.annotMarginWidth = Math.min(ANNOT_MARGIN_MAX, Math.max(ANNOT_MARGIN_MIN, s.annotMarginWidth));
   if (Number.isInteger(s.recentLimit)) d.settings.recentLimit = Math.min(30, Math.max(3,s.recentLimit));
   if (Array.isArray(s.excludedFolders)) d.settings.excludedFolders = s.excludedFolders.filter(x=>typeof x==='string').map(x=>x.trim().replace(/^\/+|\/+$/g,'')).filter(Boolean);
   for (const [date, value] of Object.entries(raw.days)) {
@@ -632,7 +637,7 @@ function calendarDays(now, weeks) {
   const start = shiftDay(monday,-7*(weeks-1));
   return Array.from({length:weeks*7},(_,i)=>dayKey(shiftDay(start,i)));
 }
-module.exports = {transactionCounts,pruneRecords,DEFAULT_SETTINGS,MAX_DAILY_GOAL,RANGES,METRICS,CAPTION_SIZES,GLASS_FOGS,RULER_HEADING_LEVELS,dayKey,shiftDay,countCharacters,emptyData,loadState,loadReading,setReading,isExcluded,recordChange,
+module.exports = {transactionCounts,pruneRecords,DEFAULT_SETTINGS,MAX_DAILY_GOAL,RANGES,METRICS,CAPTION_SIZES,GLASS_FOGS,RULER_HEADING_LEVELS,ANNOT_LAYOUTS,ANNOT_MARGIN_MIN,ANNOT_MARGIN_MAX,dayKey,shiftDay,countCharacters,emptyData,loadState,loadReading,setReading,isExcluded,recordChange,
   recordActivity,taskDelta,recordTasks,recordNote,retractEmptyNewNote,dayScore,metricValue,lastDays,summary,currentStreak,activeValues,intensity,percentile,renamePath,recentFiles,calendarDays};
 
 },
@@ -2463,10 +2468,13 @@ const {Component,MarkdownView,Modal,Notice,Setting,TFile,editorLivePreviewField}
 const {ViewPlugin,Decoration,WidgetType}=require('@codemirror/view');
 let syntaxTree=null;
 try{({syntaxTree}=require('@codemirror/language'));}catch{}
+const Core=__awRequire("core.js");
 const Format=__awRequire("features/annotation-format.js");
-const {parseAnnotation,findAnnotations,formatAnnotation,targetClasses,noteTree,collectNoteAnnotations,replaceSectionAnnotation,formatAnnotationSummary,sameSpec,DIRECTIONS,COLORS,LINES}=Format;
+const Center=__awRequire("features/annotation-center.js");
+const {parseAnnotation,findAnnotations,formatAnnotation,targetClasses,noteTree,collectNoteAnnotations,replaceNoteAnnotation,replaceSectionAnnotation,findAdjacentAnnotation,findClosestVisibleIndex,chooseMarginSide,distributeMarginNotes,buildMarginConnector,formatAnnotationSummary,sameSpec,DIRECTIONS,COLORS,LINES}=Format;
 const SVG='http://www.w3.org/2000/svg';
 const STYLE_KEYS=['dir','color','custom','line','highlight'];
+const MARGIN_GAP=12,MARGIN_CONNECTOR_GAP=38,MARGIN_MIN_EXTRA=52,RULER_CLEARANCE=36,FLASH_MS=900;
 
 function tint(el,spec){
   if(spec.color==='custom'&&spec.custom)el.style?.setProperty?.('--aw-annot-color',spec.custom);
@@ -2500,7 +2508,7 @@ function clampNotes(root){
   if(!(bounds.width>40))return;
   const minX=bounds.left+8,maxX=bounds.right-8,avail=maxX-minX,reads=[];
   for(const el of root.querySelectorAll('.aw-annot-pin .aw-annot-text')){
-    if(typeof el.getBoundingClientRect!=='function')continue;
+    if(el.closest?.('.aw-annot-in-margin')||typeof el.getBoundingClientRect!=='function')continue;
     const rect=el.getBoundingClientRect();
     if(!(rect.width>0))continue;
     const cur=parseFloat(el.dataset?.awNudge||'0')||0;
@@ -2646,6 +2654,39 @@ class AnnotationModal extends Modal{
   onClose(){this.contentEl.empty();}
 }
 
+// Lightweight single-line quick annotation modal: Enter submits immediately with the last chosen style.
+class QuickAnnotationModal extends Modal{
+  constructor(app,target,spec,submit){
+    super(app);this.targetText=target;this.spec={...Format.DEFAULTS,...spec};this.submit=submit;
+  }
+  onOpen(){
+    const el=this.contentEl,doc=el.ownerDocument;
+    this.setTitle(this.spec.note?'编辑快速标注':'快速标注');
+    el.addClass('aw-annot-modal');el.addClass('aw-annot-quick');
+    const chip=el.createDiv({cls:'aw-annot-quick-target'});
+    chip.createSpan({cls:'aw-annot-quick-quote',text:this.targetText});
+    new Setting(el).setClass('aw-annot-quick-field').addText(t=>{
+      t.setPlaceholder('输入标注，回车完成…').setValue(this.spec.note||'').onChange(v=>{this.spec.note=v;});
+      t.inputEl.maxLength=Format.MAX_NOTE;this.noteInput=t.inputEl;
+      t.inputEl.addEventListener('keydown',event=>{
+        if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229){event.preventDefault();this.done();}
+      });
+    });
+    new Setting(el)
+      .addButton(b=>b.setButtonText('取消').onClick(()=>this.close()))
+      .addButton(b=>b.setButtonText(this.spec.note?'保存':'添加').setCta().onClick(()=>this.done()));
+    doc.defaultView?.setTimeout(()=>{this.noteInput?.focus();this.noteInput?.select?.();},0);
+  }
+  done(){
+    if(!String(this.spec.note||'').trim()){new Notice('请填写标注内容。');this.noteInput?.focus();return;}
+    try{
+      if(this.submit(this.spec)===false){new Notice('笔记内容已变化，请重新选中文字后再试。');return;}
+      this.close();
+    }catch(error){new Notice(error?.message||'标注没有写入。');}
+  }
+  onClose(){this.noteInput=null;this.contentEl.empty();}
+}
+
 // Current-note annotation browser: filter, click to jump to line, or copy Markdown summary.
 class AnnotationSummaryModal extends Modal{
   constructor(app,{title,items,onJump,onCopy}){
@@ -2694,19 +2735,94 @@ class AnnotationSummaryModal extends Modal{
   onClose(){this.contentEl.empty();}
 }
 
+// Reset margin layout styling on a Reading-view sizer so narrow widths or inline mode stay spotless.
+function restoreMarginSizer(sizer){
+  if(!sizer)return;
+  sizer.classList?.remove?.('aw-annot-margin-sizer');
+  const content=sizer.closest?.('.view-content');
+  content?.classList?.remove?.('aw-has-right-margin-annot');
+  for(const note of sizer.querySelectorAll?.('.aw-annot.aw-annot-in-margin')||[]){
+    note.classList.remove('aw-annot-in-margin','aw-annot-margin-left','aw-annot-margin-right');
+    for(const svg of note.querySelectorAll?.('.aw-annot-margin-connector')||[])svg.remove();
+    const textEl=note.querySelector?.('.aw-annot-pin .aw-annot-text');
+    if(textEl?.style){
+      for(const prop of ['left','top','width','transform','visibility'])textEl.style.removeProperty(prop);
+    }
+  }
+}
+
+function makeMarginConnectorEl(doc,noteEl,textEl,markEl,side,lineStyle,sizerRect){
+  const pin=noteEl.querySelector?.('.aw-annot-pin');
+  if(!pin)return null;
+  const pinRect=pin.getBoundingClientRect(),markRect=markEl.getBoundingClientRect(),textRect=textEl.getBoundingClientRect();
+  const from={
+    x:(side==='left'?textRect.right+7:textRect.left-7)-pinRect.left,
+    y:textRect.top+textRect.height/2-pinRect.top,
+  };
+  // When neighbouring body text sits between the target and the margin, route through the inter-line gap.
+  const inset=sizerRect?(side==='left'?markRect.left-sizerRect.left:sizerRect.right-markRect.right):0;
+  const markMidY=markRect.top+markRect.height/2,textMidY=textRect.top+textRect.height/2;
+  const attach=inset>14?(textMidY<markMidY-6?'top':'bottom'):'side';
+  const to=attach==='side'
+    ?{x:(side==='left'?markRect.left-4:markRect.right+4)-pinRect.left,y:markMidY-pinRect.top}
+    :{x:(side==='left'?markRect.left+Math.min(18,markRect.width*0.28):markRect.right-Math.min(18,markRect.width*0.28))-pinRect.left,
+      y:(attach==='bottom'?markRect.bottom+2:markRect.top-2)-pinRect.top};
+  const geom=buildMarginConnector(side,lineStyle,from,to,attach);
+  const svg=doc.createElementNS(SVG,'svg');
+  svg.setAttribute('class','aw-annot-margin-connector'+(geom.dashed?' is-dashed':''));
+  svg.setAttribute('width','1');svg.setAttribute('height','1');
+  svg.setAttribute('aria-hidden','true');
+  const head=doc.createElementNS(SVG,'path');
+  head.setAttribute('d',geom.head);head.setAttribute('class','aw-annot-head');
+  svg.appendChild(head);
+  for(const d of geom.lines){
+    const p=doc.createElementNS(SVG,'path');
+    p.setAttribute('d',d);p.setAttribute('class','aw-annot-line');
+    svg.appendChild(p);
+  }
+  return svg;
+}
+
 class Annotations extends Component{
   constructor(plugin){
     super();this.plugin=plugin;this.app=plugin.app;
-    this.documents=new Map();this.noteMeta=new WeakMap();this.recall=false;this.lastStyle=null;
+    this.documents=new Map();this.noteMeta=new WeakMap();this.marginStates=new Map();
+    this.recall=false;this.lastStyle=null;this.lastMarkdownLeaf=null;this.readingCursor=new WeakMap();
+    this.vaultIndex=new Center.VaultAnnotationIndex(f=>this.app.vault.cachedRead(f));
+    this.vaultReady=false;this.vaultPromise=null;this.centerTimer=0;this.scrollFrames=new Map();
   }
   onload(){
     this.attachDocument(this.app?.workspace?.containerEl?.ownerDocument);
     this.registerEvent(this.app.workspace.on('window-open',(_leaf,win)=>this.attachDocument(win?.document)));
     this.registerEvent(this.app.workspace.on('window-close',(_leaf,win)=>{
-      const owner=this.documents.get(win?.document);
-      if(owner){this.removeChild?.(owner);this.documents.delete(win.document);}
+      const doc=win?.document,owner=this.documents.get(doc);
+      if(owner){this.removeChild?.(owner);this.documents.delete(doc);}
+      const frame=this.scrollFrames.get(doc);
+      if(frame){doc?.defaultView?.cancelAnimationFrame?.(frame);this.scrollFrames.delete(doc);}
     }));
-    this.registerEvent(this.app.workspace.on('layout-change',()=>this.clampAll()));
+    this.registerEvent(this.app.workspace.on('layout-change',()=>{this.clampAll();this.refreshAllMargins();this.scheduleCenterSync();}));
+    this.registerEvent(this.app.workspace.on('active-leaf-change',leaf=>{
+      if(MarkdownView&&leaf?.view instanceof MarkdownView)this.lastMarkdownLeaf=leaf;
+      this.scheduleCenterSync(true);
+    }));
+    this.registerEvent(this.app.workspace.on('file-open',()=>this.scheduleCenterSync(true)));
+    this.registerEvent(this.app.workspace.on('editor-change',()=>this.scheduleCenterSync()));
+    const vault=this.app?.vault;
+    if(typeof vault?.on==='function'){
+      this.registerEvent(vault.on('create',file=>{if(this.isMdFile(file)&&this.vaultReady)void this.updateVaultFile(file);}));
+      this.registerEvent(vault.on('modify',file=>{if(this.isMdFile(file)){if(this.vaultReady)void this.updateVaultFile(file);this.scheduleCenterSync();}}));
+      this.registerEvent(vault.on('delete',file=>{if(file?.path&&this.vaultReady){this.vaultIndex.remove(file.path);this.pushVaultToCenters();}}));
+      this.registerEvent(vault.on('rename',(file,oldPath)=>{
+        if(this.vaultReady){
+          if(this.isMdFile(file))this.vaultIndex.rename(oldPath,file);
+          else this.vaultIndex.remove(oldPath);
+          this.pushVaultToCenters();
+        }
+        this.scheduleCenterSync(true);
+      }));
+    }
+    this.plugin.registerView?.(Center.CENTER_VIEW,leaf=>new Center.AnnotationCenterView(leaf,this));
+    this.plugin.addRibbonIcon?.(Center.CENTER_ICON,'打开'+Center.CENTER_NAME,()=>void this.openCenter());
     this.plugin.registerMarkdownPostProcessor((el,ctx)=>this.process(el,ctx));
     this.plugin.registerEditorExtension(editorExtension());
     this.registerEvent(this.app.workspace.on('editor-menu',(menu,editor)=>this.menu(menu,editor)));
@@ -2719,10 +2835,37 @@ class Annotations extends Component{
         else new Notice('请先选中一段文字，或把光标放在已有标注上。');
       },
     });
+    this.plugin.addCommand?.({
+      id:'quick-annotate',name:'快速标注',
+      editorCallback:editor=>this.quickAdd(editor),
+    });
+    this.plugin.addCommand?.({id:'prev-annotation',name:'跳到上一条标注',callback:()=>void this.navigateAdjacent('prev')});
+    this.plugin.addCommand?.({id:'next-annotation',name:'跳到下一条标注',callback:()=>void this.navigateAdjacent('next')});
+    this.plugin.addCommand?.({id:'open-annotation-center',name:'打开'+Center.CENTER_NAME,callback:()=>void this.openCenter()});
     this.plugin.addCommand?.({id:'toggle-annotation-recall',name:'切换标注自测遮罩',callback:()=>this.toggleRecall()});
     this.plugin.addCommand?.({id:'open-annotation-summary',name:'查看与复制当前笔记标注',callback:()=>void this.openSummary()});
   }
-  onunload(){this.recall=false;this.documents.clear();}
+  onunload(){
+    this.recall=false;this.documents.clear();
+    clearTimeout(this.centerTimer);this.centerTimer=0;
+    for(const [doc,frame] of this.scrollFrames)doc?.defaultView?.cancelAnimationFrame?.(frame);
+    this.scrollFrames.clear();
+    for(const [sizer,st] of this.marginStates){
+      st.observer?.disconnect?.();
+      if(st.frame)sizer.ownerDocument?.defaultView?.cancelAnimationFrame?.(st.frame);
+      restoreMarginSizer(sizer);
+    }
+    this.marginStates.clear();
+  }
+  isMdFile(file){return Boolean(file?.path&&(TFile?file instanceof TFile:true)&&String(file.extension||file.path.split('.').pop()).toLowerCase()==='md');}
+  layoutMode(){
+    const v=this.plugin.data?.settings?.annotLayout;
+    return Core.ANNOT_LAYOUTS.some(x=>x.id===v)?v:'smart';
+  }
+  marginWidth(){
+    const n=this.plugin.data?.settings?.annotMarginWidth;
+    return Number.isInteger(n)?Math.min(Core.ANNOT_MARGIN_MAX,Math.max(Core.ANNOT_MARGIN_MIN,n)):190;
+  }
   attachDocument(doc){
     if(!doc||typeof doc.addEventListener!=='function'||this.documents.has(doc))return;
     const owner=this.addChild?.(new Component())??new Component();
@@ -2730,13 +2873,137 @@ class Annotations extends Component{
     owner.registerDomEvent?.(doc,'click',event=>this.onReadingClick(event));
     owner.registerDomEvent?.(doc,'dblclick',event=>this.onReadingDblClick(event));
     owner.registerDomEvent?.(doc,'keydown',event=>this.onReadingKey(event));
-    if(doc.defaultView)owner.registerDomEvent?.(doc.defaultView,'resize',()=>this.clampAll());
+    owner.registerDomEvent?.(doc,'scroll',()=>this.scheduleViewportSync(doc),{capture:true});
+    if(doc.defaultView)owner.registerDomEvent?.(doc.defaultView,'resize',()=>{this.clampAll();this.refreshAllMargins();});
   }
   clampAll(){
     this.app?.workspace?.iterateAllLeaves?.(leaf=>{
       const el=leaf?.view?.contentEl;
       if(el)scheduleClamp(el);
     });
+  }
+  scheduleMargin(root){
+    if(!root||typeof root.getBoundingClientRect!=='function')return;
+    const findSizer=()=>root.matches?.('.markdown-preview-sizer')?root:root.closest?.('.markdown-preview-sizer')??null;
+    const sizer=findSizer();
+    if(!sizer){
+      root.ownerDocument?.defaultView?.requestAnimationFrame?.(()=>{
+        const attached=findSizer();
+        if(attached)this.scheduleMarginSizer(attached);
+      });
+      return;
+    }
+    this.scheduleMarginSizer(sizer);
+  }
+  scheduleMarginSizer(sizer){
+    if(!sizer?.isConnected)return;
+    let st=this.marginStates.get(sizer);
+    if(!st){
+      const view=sizer.closest?.('.markdown-preview-view');
+      const RO=sizer.ownerDocument?.defaultView?.ResizeObserver;
+      const observer=RO?new RO(()=>this.scheduleMarginSizer(sizer)):null;
+      observer?.observe(sizer);
+      if(view)observer?.observe(view);
+      st={frame:0,observer};
+      this.marginStates.set(sizer,st);
+    }
+    if(st.frame)return;
+    const win=sizer.ownerDocument?.defaultView;
+    const run=()=>{
+      st.frame=0;
+      if(!sizer.isConnected){st.observer?.disconnect?.();this.marginStates.delete(sizer);return;}
+      this.layoutMarginSizer(sizer);
+    };
+    if(typeof win?.requestAnimationFrame==='function')st.frame=win.requestAnimationFrame(run);
+    else run();
+  }
+  refreshAllMargins(){
+    for(const [sizer,st] of [...this.marginStates]){
+      if(!sizer.isConnected){st.observer?.disconnect?.();this.marginStates.delete(sizer);continue;}
+      this.scheduleMarginSizer(sizer);
+    }
+    this.app?.workspace?.iterateAllLeaves?.(leaf=>{
+      const sizer=leaf?.view?.contentEl?.querySelector?.('.markdown-reading-view .markdown-preview-sizer');
+      if(sizer)this.scheduleMarginSizer(sizer);
+    });
+  }
+  layoutMarginSizer(sizer){
+    const doc=sizer.ownerDocument,view=sizer.closest?.('.markdown-preview-view'),content=sizer.closest?.('.view-content');
+    const mode=this.layoutMode(),marginW=this.marginWidth();
+    restoreMarginSizer(sizer);
+    if(!view||mode==='inline'||doc?.body?.classList?.contains?.('is-mobile')){
+      scheduleClamp(sizer);
+      return;
+    }
+    const notes=[...(sizer.querySelectorAll?.('.aw-annot')||[])];
+    if(!notes.length)return;
+    const sizerRect=sizer.getBoundingClientRect(),viewRect=view.getBoundingClientRect();
+    if(!(sizerRect.width>40&&viewRect.width>40))return;
+    const ruler=content?.querySelector?.('.aw-ruler:not(.is-idle)');
+    const rightRail=ruler&&ruler.getBoundingClientRect().width>0?RULER_CLEARANCE:0;
+    const required=marginW+MARGIN_MIN_EXTRA;
+    const avail={
+      left:sizerRect.left-viewRect.left>=required,
+      right:viewRect.right-sizerRect.right>=required+rightRail,
+    };
+    if(!avail.left&&!avail.right){scheduleClamp(sizer);return;}
+
+    const counts={left:0,right:0},buckets={left:[],right:[]};
+    let placedAny=false;
+    for(let i=0;i<notes.length;i++){
+      const noteEl=notes[i],markEl=noteEl.closest?.('.aw-annot-target'),textEl=noteEl.querySelector?.('.aw-annot-pin .aw-annot-text');
+      if(!markEl||!textEl)continue;
+      const meta=this.noteMeta.get(noteEl);
+      const dir=meta?.spec?.dir||(noteEl.className.match(/aw-annot-(nw|n|ne|sw|s|se)\b/)||[])[1]||'se';
+      const lineStyle=meta?.spec?.line||(noteEl.className.match(/aw-annot-(double|dashed|solid|wavy|spiral)\b/)||[])[1]||'double';
+      const targetRect=markEl.getBoundingClientRect();
+      const side=chooseMarginSide(dir,mode,avail,counts,targetRect,sizerRect);
+      if(!side)continue;
+      counts[side]++;placedAny=true;
+      noteEl.classList.add('aw-annot-in-margin','aw-annot-margin-'+side);
+      textEl.style.width=`${marginW}px`;
+      textEl.style.left='0px';textEl.style.top='0px';
+      textEl.style.transform='none';textEl.style.visibility='hidden';
+      const height=Math.max(20,Math.ceil(textEl.getBoundingClientRect().height||textEl.scrollHeight||22));
+      const x=side==='left'?-marginW-MARGIN_CONNECTOR_GAP:sizerRect.width+MARGIN_CONNECTOR_GAP;
+      const targetY=targetRect.top-sizerRect.top+targetRect.height/2;
+      buckets[side].push({id:i,noteEl,markEl,textEl,side,lineStyle,x,height,desiredY:targetY-height/2});
+    }
+    if(!placedAny){scheduleClamp(sizer);return;}
+
+    sizer.classList.add('aw-annot-margin-sizer');
+    content?.classList?.toggle?.('aw-has-right-margin-annot',buckets.right.length>0);
+    const docHeight=Math.max(sizer.scrollHeight||0,Math.ceil(sizerRect.height));
+    for(const side of ['left','right']){
+      if(!buckets[side].length)continue;
+      const positioned=distributeMarginNotes(buckets[side],docHeight,MARGIN_GAP);
+      for(const p of positioned){
+        const pin=p.noteEl.querySelector?.('.aw-annot-pin');
+        if(!pin)continue;
+        const pinRect=pin.getBoundingClientRect();
+        const pinX=pinRect.left-sizerRect.left,pinY=pinRect.top-sizerRect.top;
+        p.textEl.style.left=`${Math.round(p.x-pinX)}px`;
+        p.textEl.style.top=`${Math.round(p.y-pinY)}px`;
+        p.textEl.style.visibility='visible';
+      }
+      // Second check against live DOM heights so wrapped fonts never touch.
+      let prevBottom=-Infinity;
+      for(const p of [...positioned].sort((a,b)=>a.textEl.getBoundingClientRect().top-b.textEl.getBoundingClientRect().top)){
+        let r=p.textEl.getBoundingClientRect();
+        if(r.top<prevBottom+MARGIN_GAP){
+          const cur=parseFloat(p.textEl.style.top)||0;
+          p.textEl.style.top=`${Math.round(cur+prevBottom+MARGIN_GAP-r.top)}px`;
+          r=p.textEl.getBoundingClientRect();
+        }
+        prevBottom=r.bottom;
+      }
+      for(const p of positioned){
+        const pin=p.noteEl.querySelector?.('.aw-annot-pin');
+        const svg=makeMarginConnectorEl(doc,p.noteEl,p.textEl,p.markEl,side,p.lineStyle,sizerRect);
+        if(pin&&svg)pin.appendChild(svg);
+      }
+    }
+    scheduleClamp(sizer);
   }
   rememberStyle(spec){
     const next={};
@@ -2767,6 +3034,228 @@ class Annotations extends Component{
       mark.appendChild(note);
     }
     scheduleClamp(el);
+    this.scheduleMargin(el);
+  }
+  // Center views & cross-vault index coordination.
+  centerViews(){
+    return (this.app?.workspace?.getLeavesOfType?.(Center.CENTER_VIEW)||[])
+      .map(l=>l.view).filter(v=>v instanceof Center.AnnotationCenterView);
+  }
+  async openCenter(){
+    try{
+      const ws=this.app.workspace;
+      let leaf=ws.getLeavesOfType(Center.CENTER_VIEW)[0];
+      if(!leaf){leaf=ws.getRightLeaf(false);if(!leaf)return;await leaf.setViewState({type:Center.CENTER_VIEW,active:true});}
+      await ws.revealLeaf(leaf);
+    }catch(error){new Notice('标注中心打开失败，请尝试重新启用插件。');console.error(error);}
+  }
+  onCenterOpened(view){
+    void this.syncCenterCurrent(view);
+    if(view.scope==='vault')void this.ensureVaultIndex();
+  }
+  scheduleCenterSync(immediate=false){
+    if(!this.centerViews().length)return;
+    clearTimeout(this.centerTimer);
+    if(immediate){this.centerTimer=0;void this.syncCenterCurrent();return;}
+    this.centerTimer=setTimeout(()=>{this.centerTimer=0;void this.syncCenterCurrent();},180);
+  }
+  async syncCenterCurrent(onlyView=null){
+    const targets=onlyView?[onlyView]:this.centerViews();
+    if(!targets.length)return;
+    const view=this.activeMarkdownView(),file=view?.file;
+    if(!view||!file){
+      for(const c of targets){c.setCurrent(null,[]);c.setActive(null,null);}
+      return;
+    }
+    const raw=view.getMode?.()==='source'&&view.editor?view.editor.getValue():await this.app.vault.cachedRead(file);
+    const items=collectNoteAnnotations(raw);
+    const meta={path:file.path,basename:file.basename||file.path.split('/').pop().replace(/\.md$/i,'')};
+    for(const c of targets)c.setCurrent(meta,items);
+    this.syncViewportActive(view,items);
+  }
+  async ensureVaultIndex(){
+    if(this.vaultReady){this.pushVaultToCenters(false);return;}
+    if(!this.vaultPromise){
+      this.pushVaultToCenters(true);
+      const files=typeof this.app?.vault?.getMarkdownFiles==='function'?this.app.vault.getMarkdownFiles():[];
+      this.vaultPromise=this.vaultIndex.rebuild(files).then(()=>{this.vaultReady=true;}).finally(()=>{this.vaultPromise=null;this.pushVaultToCenters(false);});
+    }
+    await this.vaultPromise;
+  }
+  async updateVaultFile(file,source){
+    try{await this.vaultIndex.update(file,source);}catch{return;}
+    this.pushVaultToCenters(false);
+  }
+  pushVaultToCenters(loading=false){
+    const entries=this.vaultIndex.entries();
+    for(const c of this.centerViews())c.setVault(entries,loading);
+  }
+  scheduleViewportSync(doc){
+    if(!this.centerViews().length||!doc||this.scrollFrames.has(doc))return;
+    const win=doc.defaultView;
+    const run=()=>{
+      this.scrollFrames.delete(doc);
+      const view=this.activeMarkdownView();
+      if(view&&view.contentEl?.ownerDocument===doc)void this.syncViewportActive(view);
+    };
+    if(typeof win?.requestAnimationFrame==='function')this.scrollFrames.set(doc,win.requestAnimationFrame(run));
+    else run();
+  }
+  async syncViewportActive(view,knownItems){
+    const centers=this.centerViews();
+    if(!centers.length||!view?.file)return;
+    const path=view.file.path;
+    const items=knownItems??collectNoteAnnotations(view.getMode?.()==='source'&&view.editor?view.editor.getValue():await this.app.vault.cachedRead(view.file));
+    if(!items.length){for(const c of centers)c.setActive(null,null);return;}
+    let active=null;
+    if(view.getMode?.()==='source'&&view.editor){
+      const cur=view.editor.getCursor();
+      active=items.find(a=>a.lineIndex===cur.line&&a.markFrom<=cur.ch&&cur.ch<=a.to)
+        ||items.reduce((best,a)=>!best||Math.abs(a.lineIndex-cur.line)<Math.abs(best.lineIndex-cur.line)?a:best,null);
+    }else{
+      const preview=view.contentEl?.querySelector?.('.markdown-reading-view .markdown-preview-view');
+      if(preview){
+        const marks=[...(preview.querySelectorAll?.('.aw-annot-target')||[])];
+        const vr=preview.getBoundingClientRect();
+        const idx=findClosestVisibleIndex(marks.map(m=>m.getBoundingClientRect()),vr.top,vr.bottom>vr.top?vr.bottom:vr.top+preview.clientHeight);
+        if(idx>=0)active=this.matchReadingItem(marks[idx],items,marks.length===items.length?idx:-1);
+      }
+    }
+    for(const c of centers)c.setActive(active?path:null,active?active.docFrom:null);
+  }
+  matchReadingItem(markEl,items,fallbackIdx=-1){
+    const noteEl=markEl?.querySelector?.('.aw-annot'),meta=noteEl&&this.noteMeta.get(noteEl);
+    const info=meta?.ctx?.getSectionInfo?.(meta.el);
+    if(meta&&info){
+      const inSec=items.filter(a=>a.lineIndex>=info.lineStart&&a.lineIndex<=info.lineEnd&&a.target===meta.target&&sameSpec(a,meta.spec));
+      if(inSec[meta.ordinal])return inSec[meta.ordinal];
+      if(inSec.length===1)return inSec[0];
+    }
+    return fallbackIdx>=0?items[fallbackIdx]||null:null;
+  }
+  pulseTarget(el){
+    if(!el?.classList)return;
+    el.classList.remove('aw-annot-jump-flash');
+    void el.offsetWidth;
+    el.classList.add('aw-annot-jump-flash');
+    el.ownerDocument?.defaultView?.setTimeout?.(()=>el.classList.remove('aw-annot-jump-flash'),FLASH_MS);
+  }
+  async openLeafForPath(filePath){
+    const leaves=this.app?.workspace?.getLeavesOfType?.('markdown')||[];
+    if(!filePath)return this.activeMarkdownLeaf()||leaves[0]||null;
+    let leaf=leaves.find(l=>l.view?.file?.path===filePath);
+    if(!leaf){
+      const file=this.app?.vault?.getAbstractFileByPath?.(filePath);
+      if(!file)return null;
+      leaf=this.app.workspace.getLeaf('tab');
+      await leaf.openFile(file,{active:true});
+    }
+    return leaf;
+  }
+  async jumpToAnnotation(filePath,item){
+    if(!item)return false;
+    const leaf=await this.openLeafForPath(filePath);
+    const view=leaf?.view;
+    if(!leaf||!view)return false;
+    this.app?.workspace?.setActiveLeaf?.(leaf,{focus:true});
+    void this.app?.workspace?.revealLeaf?.(leaf);
+    if(view.getMode?.()==='source'&&view.editor){
+      const pos={line:item.lineIndex,ch:item.markFrom},end={line:item.lineIndex,ch:item.to};
+      view.editor.setCursor(pos);
+      view.editor.scrollIntoView?.({from:pos,to:end},true);
+      view.editor.focus?.();
+    }else{
+      const marks=[...(view.contentEl?.querySelectorAll?.('.markdown-reading-view .aw-annot-target')||[])];
+      const hit=marks.find(m=>{
+        const noteEl=m.querySelector?.('.aw-annot'),meta=noteEl&&this.noteMeta.get(noteEl);
+        const info=meta?.ctx?.getSectionInfo?.(meta.el);
+        return meta&&info&&item.lineIndex>=info.lineStart&&item.lineIndex<=info.lineEnd&&meta.target===item.target&&sameSpec(meta.spec,item);
+      });
+      if(hit&&typeof hit.scrollIntoView==='function'){
+        hit.scrollIntoView({block:'center'});
+        this.pulseTarget(hit);
+      }else{
+        view.currentMode?.applyScroll?.(item.lineIndex,{center:true,highlight:true});
+      }
+      this.readingCursor.set(view,{lineIndex:item.lineIndex,ch:item.markFrom});
+    }
+    for(const c of this.centerViews())c.setActive(view.file?.path||filePath,item.docFrom);
+    return true;
+  }
+  async navigateAdjacent(direction){
+    const view=this.activeMarkdownView(),file=view?.file;
+    if(!view||!file){new Notice('请先打开一篇 Markdown 笔记。');return null;}
+    const editing=view.getMode?.()==='source'&&Boolean(view.editor);
+    const raw=editing?view.editor.getValue():await this.app.vault.cachedRead(file);
+    const items=collectNoteAnnotations(raw);
+    if(!items.length){new Notice('当前笔记还没有手写标注。');return null;}
+    let anchorLine=0,anchorCh=-1;
+    if(editing){
+      const cur=view.editor.getCursor();
+      anchorLine=cur.line;anchorCh=cur.ch;
+    }else{
+      const tracked=this.readingCursor.get(view);
+      if(tracked){anchorLine=tracked.lineIndex;anchorCh=tracked.ch;}
+      else{
+        const preview=view.contentEl?.querySelector?.('.markdown-reading-view .markdown-preview-view');
+        const marks=preview?[...(preview.querySelectorAll?.('.aw-annot-target')||[])]:[];
+        const vr=preview?.getBoundingClientRect?.();
+        const idx=vr?findClosestVisibleIndex(marks.map(m=>m.getBoundingClientRect()),vr.top,vr.bottom>vr.top?vr.bottom:vr.top+preview.clientHeight):-1;
+        const curItem=idx>=0?this.matchReadingItem(marks[idx],items,marks.length===items.length?idx:-1):null;
+        if(curItem){anchorLine=curItem.lineIndex;anchorCh=curItem.markFrom;}
+        else{anchorLine=direction==='prev'?Infinity:-1;anchorCh=0;}
+      }
+    }
+    const target=findAdjacentAnnotation(items,anchorLine,anchorCh,direction);
+    if(target)await this.jumpToAnnotation(file.path,target);
+    return target;
+  }
+  async copyText(text,msg){
+    const clip=this.app?.workspace?.containerEl?.ownerDocument?.defaultView?.navigator?.clipboard??globalThis.navigator?.clipboard;
+    if(!clip?.writeText){new Notice('当前环境不支持剪贴板写入。');return false;}
+    try{await clip.writeText(text);if(msg)new Notice(msg);return true;}
+    catch{new Notice('复制失败。');return false;}
+  }
+  async rewriteNoteItem(filePath,item,replacement){
+    const leaf=(this.app?.workspace?.getLeavesOfType?.('markdown')||[]).find(l=>l.view?.file?.path===filePath);
+    if(leaf?.view?.getMode?.()==='source'&&leaf.view.editor){
+      const ed=leaf.view.editor,raw=ed.getValue();
+      const updated=replaceNoteAnnotation(raw,item,replacement);
+      const fromPos=ed.offsetToPos?ed.offsetToPos(item.docFrom+(item.from-item.markFrom)):{line:item.lineIndex,ch:item.from};
+      const toPos=ed.offsetToPos?ed.offsetToPos(item.docTo):{line:item.lineIndex,ch:item.to};
+      if(typeof ed.replaceRange==='function'&&updated!==raw){
+        ed.replaceRange(replacement,fromPos,toPos);
+      }
+      if(this.vaultReady&&leaf.view.file)void this.updateVaultFile(leaf.view.file,ed.getValue());
+      this.scheduleCenterSync(true);
+      return true;
+    }
+    const file=filePath?this.app?.vault?.getAbstractFileByPath?.(filePath):null;
+    if(!file){new Notice('找不到这条标注所在的笔记。');return false;}
+    try{
+      await this.app.vault.process(file,data=>replaceNoteAnnotation(data,item,replacement));
+      if(this.vaultReady)void this.updateVaultFile(file);
+      this.scheduleCenterSync(true);
+      return true;
+    }catch(error){new Notice(error?.message||'修改标注失败。');return false;}
+  }
+  async handleCenterAction(action,{filePath,item}){
+    if(!item)return;
+    if(action==='copy'){await this.copyText(`${item.target} — ${item.note}`,'已复制标注内容。');return;}
+    if(action==='remove'){await this.rewriteNoteItem(filePath,item,'');return;}
+    if(action==='toggle-highlight'){
+      await this.rewriteNoteItem(filePath,item,formatAnnotation({...item,highlight:item.highlight===false}));
+      return;
+    }
+    if(action==='edit'){
+      this.openModal(item,{
+        title:'编辑标注',action:'保存',
+        onRemove:()=>void this.rewriteNoteItem(filePath,item,''),
+      },spec=>{
+        this.rememberStyle(spec);
+        void this.rewriteNoteItem(filePath,item,formatAnnotation(spec));
+      });
+    }
   }
   readingTextOf(target){
     return target?.closest?.('.markdown-reading-view .aw-annot .aw-annot-text')??null;
@@ -2852,13 +3341,16 @@ class Annotations extends Component{
       return true;
     }catch(error){new Notice(error?.message||'修改标注失败。');return false;}
   }
-  activeMarkdownView(){
+  activeMarkdownLeaf(){
+    const leaves=this.app?.workspace?.getLeavesOfType?.('markdown')||[];
     if(MarkdownView&&typeof this.app?.workspace?.getActiveViewOfType==='function'){
       const active=this.app.workspace.getActiveViewOfType(MarkdownView);
-      if(active)return active;
+      if(active)return leaves.find(l=>l.view===active)||{view:active};
     }
-    return this.app?.workspace?.getLeavesOfType?.('markdown')?.[0]?.view??null;
+    if(this.lastMarkdownLeaf&&leaves.includes(this.lastMarkdownLeaf))return this.lastMarkdownLeaf;
+    return leaves[0]??null;
   }
+  activeMarkdownView(){return this.activeMarkdownLeaf()?.view??null;}
   async openSummary(){
     const view=this.activeMarkdownView(),file=view?.file;
     if(!view||!file){new Notice('请先打开一篇 Markdown 笔记。');return;}
@@ -2925,16 +3417,51 @@ class Annotations extends Component{
       editor.replaceRange(formatAnnotation(spec),{line:at.row,ch:at.from},{line:at.row,ch:at.to});
     });
   }
+  quickAdd(editor){
+    const at=this.annotationAt(editor);
+    const snap=typeof editor.getValue==='function'?editor.getValue():null;
+    const intact=()=>snap===null||editor.getValue()===snap;
+    if(at){
+      const target=editor.getLine(at.row).slice(at.targetFrom,at.targetTo);
+      this.openQuickModal(target,at,spec=>{
+        if(!intact())return false;
+        this.rememberStyle(spec);
+        editor.replaceRange(formatAnnotation(spec),{line:at.row,ch:at.from},{line:at.row,ch:at.to});
+      });
+      return;
+    }
+    const selected=editor.getSelection(),lead=selected.match(/^\s*/)[0],trail=selected.match(/\s*$/)[0];
+    if(!selected.trim()){new Notice('请先选中一段文字，或把光标放在已有标注上。');return;}
+    if(/[\r\n]/.test(selected.trim())){new Notice('快速标注仅支持单行选中文字。');return;}
+    const target=selected.trim().replace(/^==([\s\S]*)==$/,'$1');
+    if(!target||target.includes('==')){new Notice('请选择一段不含 == 的文字。');return;}
+    const from=editor.getCursor('from'),to=editor.getCursor('to');
+    this.openQuickModal(target,{...Format.DEFAULTS,...this.lastStyle,note:''},spec=>{
+      if(!intact())return false;
+      this.rememberStyle(spec);
+      editor.replaceRange(`${lead}==${target}==${formatAnnotation(spec)}${trail}`,from,to);
+    });
+  }
+  openQuickModal(target,spec,submit){new QuickAnnotationModal(this.app,target,spec,submit).open();}
   openModal(spec,labels,submit){new AnnotationModal(this.app,spec,labels,submit).open();}
   displaySettings(container){
     const s=this.plugin.data.settings;
+    new Setting(container).setName('标注布局')
+      .addDropdown(d=>{
+        for(const opt of Core.ANNOT_LAYOUTS)d.addOption(opt.id,opt.label);
+        d.setValue(this.layoutMode()).onChange(v=>{s.annotLayout=v;this.refreshAllMargins();this.plugin.changed();});
+      });
+    new Setting(container).setName('页边标注宽度')
+      .addSlider(sl=>sl.setLimits(Core.ANNOT_MARGIN_MIN,Core.ANNOT_MARGIN_MAX,10).setValue(this.marginWidth()).setDynamicTooltip().onChange(v=>{
+        s.annotMarginWidth=v;this.refreshAllMargins();this.plugin.changed();
+      }));
     new Setting(container).setName('标注字体').setDesc('手写标注使用的字体，填写本机已安装的字体名，多个用逗号分隔；留空依次使用手札体、翩翩体、行楷、霞鹜文楷和楷体。')
       .addText(t=>t.setPlaceholder('"LXGW WenKai", KaiTi').setValue(s.annotFont||'').onChange(v=>{
         s.annotFont=v.replace(/[;{}<>\\]/g,'').trim().slice(0,200);this.plugin.applyAppearanceEverywhere();this.plugin.changed();
       }));
   }
 }
-module.exports={Annotations,AnnotationModal,AnnotationSummaryModal,noteNode,clampNotes,targetClasses};
+module.exports={Annotations,AnnotationModal,QuickAnnotationModal,AnnotationSummaryModal,noteNode,clampNotes,targetClasses,restoreMarginSizer};
 
 },
 "features/annotation-format.js":(module,exports,__awRequire)=>{
@@ -3075,14 +3602,20 @@ function maskVerbatimInLine(line){
 }
 // Scan a Markdown document (or section), skipping YAML front matter, fenced code and $$ math blocks.
 function collectNoteAnnotations(markdown,{allowFrontMatter=true}={}){
-  const lines=String(markdown||'').split(/\r?\n/),out=[];
-  let i=0,fence=null,mathBlock=false;
-  if(allowFrontMatter&&lines[0]?.trim()==='---'){
-    let end=1;while(end<lines.length&&!/^(?:---|\.\.\.)\s*$/.test(lines[end]))end++;
-    if(end<lines.length)i=end+1;
+  const source=String(markdown||''),rawLines=source.split(/\r?\n/),out=[];
+  const starts=[];
+  let offset=0;
+  for(const line of rawLines){
+    starts.push(offset);
+    offset+=line.length+(source[offset+line.length]==='\r'?2:1);
   }
-  for(;i<lines.length;i++){
-    const raw=lines[i];
+  let i=0,fence=null,mathBlock=false;
+  if(allowFrontMatter&&rawLines[0]?.trim()==='---'){
+    let end=1;while(end<rawLines.length&&!/^(?:---|\.\.\.)\s*$/.test(rawLines[end]))end++;
+    if(end<rawLines.length)i=end+1;
+  }
+  for(;i<rawLines.length;i++){
+    const raw=rawLines[i],lineStart=starts[i];
     if(fence){
       if(new RegExp(`^\\s*${fence[0]}{${fence.length},}\\s*$`).test(raw))fence=null;
       continue;
@@ -3092,10 +3625,25 @@ function collectNoteAnnotations(markdown,{allowFrontMatter=true}={}){
     if(/^\s*\$\$\s*$/.test(raw)){mathBlock=!mathBlock;continue;}
     if(mathBlock)continue;
     for(const a of findAnnotations(maskVerbatimInLine(raw),0)){
-      out.push({...a,lineIndex:i,target:raw.slice(a.targetFrom,a.targetTo)});
+      out.push({...a,lineIndex:i,docFrom:lineStart+a.markFrom,docTo:lineStart+a.to,target:raw.slice(a.targetFrom,a.targetTo)});
     }
   }
   return out;
+}
+// Rewrite or remove one annotation inside a full Markdown document by matching its recorded target/spec.
+function replaceNoteAnnotation(markdown,ref,replacement){
+  const source=String(markdown||'');
+  const hits=collectNoteAnnotations(source);
+  const same=a=>a.target===ref.target&&sameSpec(a,ref);
+  let hit=Number.isInteger(ref.docFrom)?hits.find(a=>a.docFrom===ref.docFrom&&same(a)):null;
+  if(!hit&&Number.isInteger(ref.lineIndex))hit=hits.find(a=>a.lineIndex===ref.lineIndex&&same(a));
+  if(!hit){
+    const bySpec=hits.filter(same);
+    if(bySpec.length===1)hit=bySpec[0];
+  }
+  if(!hit)throw Error('标注内容已变化，请刷新后重试。');
+  const braceStart=hit.docFrom+(hit.from-hit.markFrom);
+  return source.slice(0,braceStart)+replacement+source.slice(hit.docTo);
 }
 // Rewrite or remove one annotation inside a Markdown section after verifying target and spec match.
 function replaceSectionAnnotation(sectionText,target,oldSpec,ordinal,replacement){
@@ -3108,6 +3656,150 @@ function replaceSectionAnnotation(sectionText,target,oldSpec,ordinal,replacement
   lines[hit.lineIndex]=line.slice(0,hit.from)+replacement+line.slice(hit.to);
   return lines.join(eol);
 }
+// Next or previous annotation relative to (lineIndex, ch), wrapping cleanly at document ends.
+function findAdjacentAnnotation(items,lineIndex,ch,direction='next'){
+  if(!items?.length)return null;
+  if(direction==='prev'){
+    for(let i=items.length-1;i>=0;i--){
+      const a=items[i];
+      if(a.lineIndex<lineIndex||(a.lineIndex===lineIndex&&a.markFrom<ch))return a;
+    }
+    return items[items.length-1];
+  }
+  return items.find(a=>a.lineIndex>lineIndex||(a.lineIndex===lineIndex&&a.markFrom>ch))??items[0];
+}
+// Index of the visible rect closest to the vertical viewport center, or -1 if none are in view.
+function findClosestVisibleIndex(rects,viewTop,viewBottom){
+  if(!rects?.length||!(viewBottom>viewTop))return -1;
+  const center=(viewTop+viewBottom)/2;
+  let best=-1,bestDist=Infinity;
+  for(let i=0;i<rects.length;i++){
+    const r=rects[i];
+    if(!r||r.bottom<viewTop||r.top>viewBottom)continue;
+    const dist=Math.abs((r.top+r.bottom)/2-center);
+    if(dist<bestDist){bestDist=dist;best=i;}
+  }
+  return best;
+}
+// Choose left/right margin or inline (null) for one Reading-view annotation.
+// In "smart" mode, mid-line targets (36%–64%) stay inline so connectors never cut across body text.
+function chooseMarginSide(dir,layout,avail,counts,targetRect,sizerRect){
+  if(layout==='inline')return null;
+  if(layout==='left')return avail.left?'left':null;
+  if(layout==='right')return avail.right?'right':null;
+  if(targetRect&&sizerRect&&sizerRect.width>0){
+    const ratio=Math.max(0,Math.min(1,(targetRect.left+targetRect.width/2-sizerRect.left)/sizerRect.width));
+    if(ratio<0.36)return avail.left?'left':avail.right?'right':null;
+    if(ratio>0.64)return avail.right?'right':avail.left?'left':null;
+    return null;
+  }
+  const prefer=dir==='nw'||dir==='sw'?'left':dir==='ne'||dir==='se'?'right':null;
+  if(prefer&&avail[prefer])return prefer;
+  if(avail.left&&avail.right)return (counts?.left||0)<=(counts?.right||0)?'left':'right';
+  return avail.left?'left':avail.right?'right':null;
+}
+// Deterministic vertical stacking for margin notes on one side: top-down push, bottom-up pull, top clamp.
+function distributeMarginNotes(notes,containerHeight,gap=12,pad=8){
+  if(!notes?.length)return [];
+  const sorted=[...notes].sort((a,b)=>a.desiredY-b.desiredY);
+  const placed=[];
+  let nextY=pad;
+  for(const n of sorted){
+    const maxY=Math.max(pad,containerHeight-pad-n.height);
+    const y=Math.min(maxY,Math.max(nextY,n.desiredY));
+    placed.push({...n,y});
+    nextY=y+n.height+gap;
+  }
+  for(let i=placed.length-2;i>=0;i--){
+    placed[i].y=Math.min(placed[i].y,placed[i+1].y-gap-placed[i].height);
+  }
+  if(placed[0].y<pad){
+    placed[0].y=pad;
+    for(let i=1;i<placed.length;i++){
+      placed[i].y=Math.max(placed[i].y,placed[i-1].y+placed[i-1].height+gap);
+    }
+  }
+  return placed;
+}
+const fmtNum=v=>Number(v.toFixed(1)).toString();
+const fmtPt=p=>`${fmtNum(p.x)} ${fmtNum(p.y)}`;
+// Smooth polyline through sampled points using quadratic midpoints.
+function smoothPolyline(pts){
+  if(pts.length<2)return '';
+  let d=`M${fmtPt(pts[0])}`;
+  for(let i=1;i<pts.length-1;i++){
+    const mid={x:(pts[i].x+pts[i+1].x)/2,y:(pts[i].y+pts[i+1].y)/2};
+    d+=` Q${fmtPt(pts[i])} ${fmtPt(mid)}`;
+  }
+  return `${d} L${fmtPt(pts[pts.length-1])}`;
+}
+// Evaluate a cubic Bezier point and unit tangent at parameter t in [0, 1].
+function cubicAt(p0,c1,c2,p3,t){
+  const u=1-t,uu=u*u,tt=t*t;
+  const x=uu*u*p0.x+3*uu*t*c1.x+3*u*tt*c2.x+tt*t*p3.x;
+  const y=uu*u*p0.y+3*uu*t*c1.y+3*u*tt*c2.y+tt*t*p3.y;
+  const dx=3*uu*(c1.x-p0.x)+6*u*t*(c2.x-c1.x)+3*tt*(p3.x-c2.x);
+  const dy=3*uu*(c1.y-p0.y)+6*u*t*(c2.y-c1.y)+3*tt*(p3.y-c2.y);
+  const m=Math.hypot(dx,dy)||1;
+  return {x,y,tx:dx/m,ty:dy/m};
+}
+// Open hand-drawn arrowhead pointing into `to` along unit arrival direction (ux, uy).
+function arrowHeadAt(to,ux,uy){
+  const nx=-uy,ny=ux;
+  const back=(d,w)=>({x:to.x-ux*d+nx*w,y:to.y-uy*d+ny*w});
+  const a=back(8.5,4.6),m1=back(3.6,2.1),m2=back(3.6,-2.1),b=back(8.5,-4.6);
+  return `M${fmtPt(a)} Q${fmtPt(m1)} ${fmtPt(to)} Q${fmtPt(m2)} ${fmtPt(b)}`;
+}
+// Long SVG connector from margin note (from) to target (to), supporting all 5 line styles.
+// attach: 'side' (edge-flush target) | 'top' | 'bottom' (inset target, routed through inter-line gap).
+function buildMarginConnector(side,lineStyle,from,to,attach='side'){
+  const dx=to.x-from.x,dy=to.y-from.y,len=Math.max(1,Math.hypot(dx,dy));
+  const sign=side==='left'?1:-1;
+  let c1,c2;
+  if(attach==='bottom'||attach==='top'){
+    const ch=attach==='bottom'?15:-15;
+    c1={x:from.x+dx*0.36,y:from.y+(to.y+ch-from.y)*0.35};
+    c2={x:to.x-sign*14,y:to.y+ch};
+  }else{
+    const bend=Math.max(-22,Math.min(22,(dy>=0?1:-1)*Math.min(10,Math.abs(dy)*0.12+6)));
+    c1={x:from.x+dx*0.36,y:from.y+bend};
+    c2={x:from.x+dx*0.72,y:to.y-bend*0.6};
+  }
+  const endT=cubicAt(from,c1,c2,to,0.98);
+  const head=arrowHeadAt(to,endT.tx,endT.ty);
+  const offsetCurve=off=>{
+    if(!off)return `M${fmtPt(from)} C${fmtPt(c1)} ${fmtPt(c2)} ${fmtPt(to)}`;
+    const pts=[];
+    for(let i=0;i<=18;i++){
+      const p=cubicAt(from,c1,c2,to,i/18);
+      pts.push({x:p.x-p.ty*off,y:p.y+p.tx*off});
+    }
+    return smoothPolyline(pts);
+  };
+  if(lineStyle==='double')return {lines:[offsetCurve(-1.5),offsetCurve(1.5)],head,dashed:true};
+  if(lineStyle==='dashed')return {lines:[offsetCurve(0)],head,dashed:true};
+  if(lineStyle==='solid')return {lines:[offsetCurve(0)],head,dashed:false};
+  if(lineStyle==='wavy'){
+    const waves=Math.max(2,Math.round(len/28)),samples=waves*8,pts=[];
+    for(let i=0;i<=samples;i++){
+      const t=i/samples,p=cubicAt(from,c1,c2,to,t),env=Math.sin(t*Math.PI);
+      const across=Math.sin(t*waves*Math.PI*2)*3.8*env;
+      pts.push({x:p.x-p.ty*across,y:p.y+p.tx*across});
+    }
+    return {lines:[smoothPolyline(pts)],head,dashed:false};
+  }
+  if(lineStyle==='spiral'){
+    const turns=Math.min(2.4,Math.max(1.2,len/125)),amp=Math.min(11,Math.max(5.5,len*0.036));
+    const alongR=Math.min(len*0.085,(len/turns)*0.3),samples=Math.max(40,Math.ceil(turns*22)),pts=[];
+    for(let i=0;i<=samples;i++){
+      const t=i/samples,p=cubicAt(from,c1,c2,to,t),ang=t*turns*Math.PI*2,rad=Math.sin(t*Math.PI)*(0.4+t*0.6);
+      const along=Math.sin(ang)*alongR*rad,across=Math.cos(ang)*amp*rad;
+      pts.push({x:p.x+p.tx*along-p.ty*across,y:p.y+p.ty*along+p.tx*across});
+    }
+    return {lines:[smoothPolyline(pts)],head,dashed:false};
+  }
+  return {lines:[offsetCurve(0)],head,dashed:false};
+}
 // Markdown list of all annotations in a note for copying or review.
 function formatAnnotationSummary(title,items){
   const heading=`## 标注汇总：${String(title||'当前笔记').trim()||'当前笔记'}`;
@@ -3118,7 +3810,303 @@ function formatAnnotationSummary(title,items){
   });
   return `${heading}\n\n${rows.join('\n')}`;
 }
-module.exports={parseAnnotation,findAnnotations,formatAnnotation,parseBody,targetClasses,noteLines,noteTree,collectNoteAnnotations,replaceSectionAnnotation,formatAnnotationSummary,sameSpec,DIRECTIONS,COLORS,LINES,DEFAULTS,MAX_NOTE,KEEP};
+module.exports={parseAnnotation,findAnnotations,formatAnnotation,parseBody,targetClasses,noteLines,noteTree,collectNoteAnnotations,replaceNoteAnnotation,replaceSectionAnnotation,findAdjacentAnnotation,findClosestVisibleIndex,chooseMarginSide,distributeMarginNotes,buildMarginConnector,formatAnnotationSummary,sameSpec,DIRECTIONS,COLORS,LINES,DEFAULTS,MAX_NOTE,KEEP};
+
+},
+"features/annotation-center.js":(module,exports,__awRequire)=>{
+'use strict';
+const {ItemView,setIcon}=require('obsidian');
+const Format=__awRequire("features/annotation-format.js");
+const {collectNoteAnnotations,DIRECTIONS,COLORS}=Format;
+
+const CENTER_VIEW='aw-annotation-center';
+const CENTER_NAME='标注中心';
+const CENTER_ICON='message-square-text';
+const INDEX_BATCH=24;
+
+// Incremental cross-vault index of Markdown annotations with per-path revision guards.
+class VaultAnnotationIndex{
+  constructor(readFile){
+    this.readFile=readFile;
+    this.files=new Map();
+    this.revisions=new Map();
+  }
+  async rebuild(files){
+    const current=new Set(files.map(f=>f.path));
+    for(const path of [...this.files.keys()])if(!current.has(path))this.remove(path);
+    for(let i=0;i<files.length;i+=INDEX_BATCH){
+      await Promise.all(files.slice(i,i+INDEX_BATCH).map(f=>this.update(f).catch(()=>{})));
+    }
+  }
+  async update(file,source){
+    if(!file?.path)return;
+    const rev=(this.revisions.get(file.path)||0)+1;
+    this.revisions.set(file.path,rev);
+    let raw;
+    try{raw=source!==undefined?source:await this.readFile(file);}
+    catch(error){
+      if(this.revisions.get(file.path)===rev)this.remove(file.path);
+      throw error;
+    }
+    if(this.revisions.get(file.path)!==rev)return;
+    const items=collectNoteAnnotations(raw);
+    if(items.length)this.files.set(file.path,{file:{path:file.path,basename:file.basename||file.path.split('/').pop().replace(/\.md$/i,'')},items});
+    else this.files.delete(file.path);
+  }
+  remove(path){
+    this.revisions.set(path,(this.revisions.get(path)||0)+1);
+    this.files.delete(path);
+  }
+  rename(oldPath,file){
+    const prev=this.files.get(oldPath);
+    this.remove(oldPath);
+    if(!prev||!file?.path)return;
+    this.revisions.set(file.path,(this.revisions.get(file.path)||0)+1);
+    this.files.set(file.path,{file:{path:file.path,basename:file.basename||file.path.split('/').pop().replace(/\.md$/i,'')},items:prev.items});
+  }
+  entries(){
+    const out=[];
+    for(const {file,items} of this.files.values()){
+      for(const item of items)out.push({file,item});
+    }
+    out.sort((a,b)=>a.file.path.localeCompare(b.file.path)||a.item.docFrom-b.item.docFrom);
+    return out;
+  }
+}
+
+function filterAnnotationEntries(entries,query='',color='all'){
+  const terms=String(query||'').trim().toLowerCase().split(/\s+/).filter(Boolean);
+  return (entries||[]).filter(entry=>{
+    const a=entry.item;
+    if(color&&color!=='all'&&a.color!==color)return false;
+    if(!terms.length)return true;
+    const haystack=`${a.target}\n${a.note}\n${entry.file?.path||''}`.toLowerCase();
+    return terms.every(t=>haystack.includes(t));
+  });
+}
+
+function folderOf(path){
+  const i=String(path||'').lastIndexOf('/');
+  return i>0?path.slice(0,i):'';
+}
+
+class AnnotationCenterView extends ItemView{
+  constructor(leaf,owner){
+    super(leaf);
+    this.owner=owner;
+    this.scope='current';
+    this.query='';
+    this.color='all';
+    this.currentFile=null;
+    this.currentItems=[];
+    this.vaultEntries=[];
+    this.vaultLoading=false;
+    this.active=null;
+    this.renderedScope=null;
+  }
+  getViewType(){return CENTER_VIEW;}
+  getDisplayText(){return CENTER_NAME;}
+  getIcon(){return CENTER_ICON;}
+  async onOpen(){
+    const root=this.contentEl;
+    root.empty();
+    root.addClass('aw-ac');
+    root.addClass('aw-annot-center');
+    this.buildChrome(root);
+    this.renderList();
+    this.owner.onCenterOpened(this);
+  }
+  async onClose(){
+    this.listEl=null;this.countEl=null;this.scopeBtns=null;this.searchEl=null;this.colorEl=null;this.copyBtn=null;
+    this.contentEl.empty();
+  }
+  buildChrome(root){
+    const head=root.createDiv({cls:'aw-ac-head'});
+    const titleRow=head.createDiv({cls:'aw-ac-title-row'});
+    const title=titleRow.createDiv({cls:'aw-ac-title'});
+    setIcon(title.createSpan({cls:'aw-ac-title-icon'}),CENTER_ICON);
+    title.createSpan({text:CENTER_NAME});
+    this.countEl=title.createSpan({cls:'aw-ac-count',text:'0'});
+    this.copyBtn=titleRow.createEl('button',{cls:'aw-ac-tool',attr:{type:'button','aria-label':'复制当前列表汇总',title:'复制 Markdown 汇总'}});
+    setIcon(this.copyBtn.createSpan({cls:'aw-ac-tool-icon'}),'copy');
+    this.copyBtn.createSpan({text:'复制汇总'});
+    this.copyBtn.addEventListener('click',()=>void this.copyVisibleSummary());
+
+    const scopeBar=head.createDiv({cls:'aw-ac-scope',attr:{role:'group','aria-label':'标注范围'}});
+    this.scopeBtns=[];
+    for(const opt of [{id:'current',label:'当前笔记'},{id:'vault',label:'整个笔记库'}]){
+      const btn=scopeBar.createEl('button',{cls:'aw-ac-scope-btn',text:opt.label,attr:{type:'button'}});
+      btn.dataset.scope=opt.id;
+      btn.setAttribute('aria-pressed',String(this.scope===opt.id));
+      btn.addEventListener('click',()=>{
+        if(this.scope===opt.id)return;
+        this.scope=opt.id;
+        for(const b of this.scopeBtns)b.setAttribute('aria-pressed',String(b.dataset.scope===this.scope));
+        if(this.scope==='vault')void this.owner.ensureVaultIndex();
+        this.renderList();
+      });
+      this.scopeBtns.push(btn);
+    }
+
+    const filters=head.createDiv({cls:'aw-ac-filters'});
+    const searchWrap=filters.createDiv({cls:'aw-ac-search'});
+    setIcon(searchWrap.createSpan({cls:'aw-ac-search-icon'}),'search');
+    this.searchEl=searchWrap.createEl('input',{attr:{type:'search',placeholder:'搜索原文、标注或文件…','aria-label':'搜索标注'}});
+    this.searchEl.value=this.query;
+    this.searchEl.addEventListener('input',event=>{
+      this.query=this.searchEl.value;
+      if(!event.isComposing)this.renderList();
+    });
+    this.searchEl.addEventListener('compositionend',()=>{
+      this.query=this.searchEl.value;
+      this.renderList();
+    });
+
+    this.colorEl=filters.createEl('select',{cls:'dropdown aw-ac-color',attr:{'aria-label':'按颜色筛选'}});
+    for(const opt of [{id:'all',label:'全部颜色'},...COLORS,{id:'custom',label:'自定义'}]){
+      const o=this.colorEl.createEl('option',{text:opt.label,attr:{value:opt.id}});
+      if(opt.id===this.color)o.selected=true;
+    }
+    this.colorEl.addEventListener('change',()=>{this.color=this.colorEl.value;this.renderList();});
+
+    this.listEl=root.createDiv({cls:'aw-ac-list'});
+  }
+  setCurrent(file,items){
+    this.currentFile=file;
+    this.currentItems=items||[];
+    if(this.scope==='current')this.renderList();
+  }
+  setVault(entries,loading=false){
+    this.vaultEntries=entries||[];
+    this.vaultLoading=loading;
+    if(this.scope==='vault')this.renderList();
+  }
+  setActive(filePath,docFrom){
+    if(this.active&&this.active.filePath===filePath&&this.active.docFrom===docFrom)return;
+    this.active=filePath!=null&&Number.isInteger(docFrom)?{filePath,docFrom}:null;
+    this.applyActive();
+  }
+  applyActive(){
+    if(!this.listEl)return;
+    let activeEl=null;
+    for(const el of this.listEl.querySelectorAll('.aw-ac-item')){
+      const hit=Boolean(this.active&&el.dataset.file===this.active.filePath&&Number(el.dataset.from)===this.active.docFrom);
+      el.classList.toggle('is-active',hit);
+      if(hit){activeEl=el;el.setAttribute('aria-current','true');}
+      else el.removeAttribute('aria-current');
+    }
+    if(activeEl&&typeof activeEl.scrollIntoView==='function')activeEl.scrollIntoView({block:'nearest'});
+  }
+  visibleEntries(){
+    const base=this.scope==='vault'
+      ?this.vaultEntries
+      :this.currentItems.map(item=>({file:this.currentFile||{path:'',basename:'当前笔记'},item}));
+    return {total:base.length,shown:filterAnnotationEntries(base,this.query,this.color)};
+  }
+  renderList(){
+    if(!this.listEl)return;
+    const preserveScroll=this.renderedScope===this.scope?this.listEl.scrollTop:0;
+    this.renderedScope=this.scope;
+    const {total,shown}=this.visibleEntries();
+    if(this.countEl)this.countEl.textContent=shown.length===total?String(total):`${shown.length} / ${total}`;
+    if(this.copyBtn)this.copyBtn.disabled=!shown.length;
+    this.listEl.empty();
+
+    if(!shown.length){
+      const msg=this.scope==='vault'&&this.vaultLoading
+        ?'正在索引笔记库标注…'
+        :(this.query.trim()||this.color!=='all')
+          ?'没有匹配的标注。'
+          :this.scope==='vault'?'笔记库中还没有手写标注。':'当前笔记还没有手写标注。';
+      this.listEl.createDiv({cls:'aw-ac-empty',text:msg});
+      return;
+    }
+
+    if(this.scope==='vault'){
+      const groups=new Map();
+      for(const entry of shown){
+        const list=groups.get(entry.file.path)||[];
+        list.push(entry);
+        groups.set(entry.file.path,list);
+      }
+      for(const [path,groupEntries] of groups){
+        const group=this.listEl.createDiv({cls:'aw-ac-group'});
+        const head=group.createDiv({cls:'aw-ac-group-head'});
+        const nameBtn=head.createEl('button',{cls:'aw-ac-group-name',text:groupEntries[0].file.basename,attr:{type:'button',title:path}});
+        nameBtn.addEventListener('click',()=>void this.owner.jumpToAnnotation(path,groupEntries[0].item));
+        const folder=folderOf(path);
+        if(folder)head.createSpan({cls:'aw-ac-group-folder',text:folder,attr:{title:path}});
+        head.createSpan({cls:'aw-ac-group-count',text:String(groupEntries.length)});
+        for(const entry of groupEntries)this.renderItem(group,entry);
+      }
+    }else{
+      for(const entry of shown)this.renderItem(this.listEl,entry);
+    }
+    this.listEl.scrollTop=preserveScroll;
+    this.applyActive();
+  }
+  renderItem(parent,entry){
+    const {file,item}=entry;
+    const card=parent.createDiv({cls:`aw-ac-item aw-annot-c-${item.color}`});
+    if(item.color==='custom'&&item.custom)card.style.setProperty('--aw-annot-color',item.custom);
+    card.dataset.file=file?.path||'';
+    card.dataset.from=String(item.docFrom);
+    card.tabIndex=0;
+
+    const top=card.createDiv({cls:'aw-ac-item-top'});
+    top.createSpan({cls:'aw-ac-dot'});
+    top.createSpan({cls:'aw-ac-target',text:item.target});
+    const actions=top.createDiv({cls:'aw-ac-actions'});
+    const buttons=[
+      {id:'edit',label:'编辑标注',icon:'pencil'},
+      {id:'toggle-highlight',label:item.highlight===false?'开启目标高亮':'关闭目标高亮',icon:'highlighter'},
+      {id:'copy',label:'复制标注',icon:'copy'},
+      {id:'remove',label:'删除标注',icon:'trash-2'},
+    ];
+    for(const act of buttons){
+      const b=actions.createEl('button',{cls:`aw-ac-act aw-ac-act-${act.id}`,attr:{type:'button','aria-label':act.label,title:act.label}});
+      setIcon(b,act.icon);
+      b.addEventListener('pointerdown',e=>e.stopPropagation());
+      b.addEventListener('click',e=>{e.stopPropagation();void this.owner.handleCenterAction(act.id,{filePath:file?.path||null,item});});
+    }
+
+    card.createDiv({cls:'aw-ac-note',text:item.note});
+    const meta=card.createDiv({cls:'aw-ac-meta'});
+    const dirLabel=DIRECTIONS.find(d=>d.id===item.dir)?.label||'右下';
+    meta.createSpan({cls:'aw-ac-line',text:`L${item.lineIndex+1}`});
+    meta.createSpan({cls:'aw-ac-tag',text:dirLabel});
+    if(item.highlight===false)meta.createSpan({cls:'aw-ac-tag',text:'无高亮'});
+
+    card.addEventListener('click',()=>void this.owner.jumpToAnnotation(file?.path||null,item));
+    card.addEventListener('keydown',e=>{
+      if(e.key==='Enter'&&e.target===card){e.preventDefault();void this.owner.jumpToAnnotation(file?.path||null,item);}
+    });
+  }
+  async copyVisibleSummary(){
+    const {shown}=this.visibleEntries();
+    if(!shown.length)return;
+    const title=this.scope==='vault'?'笔记库标注':(this.currentFile?.basename||'当前笔记');
+    let md;
+    if(this.scope==='vault'){
+      const groups=new Map();
+      for(const e of shown){const g=groups.get(e.file.path)||[];g.push(e);groups.set(e.file.path,g);}
+      const blocks=[`## 标注汇总：${title}（共 ${shown.length} 条）`];
+      for(const [path,list] of groups){
+        blocks.push(`\n### ${list[0].file.basename} \`${path}\``);
+        list.forEach((e,i)=>{
+          const dir=DIRECTIONS.find(d=>d.id===e.item.dir)?.label||'右下';
+          blocks.push(`${i+1}. **${e.item.target}**（${dir}）：${e.item.note} *(第 ${e.item.lineIndex+1} 行)*`);
+        });
+      }
+      md=blocks.join('\n');
+    }else{
+      md=Format.formatAnnotationSummary(title,shown.map(e=>e.item));
+    }
+    await this.owner.copyText(md,`已复制 ${shown.length} 条标注汇总。`);
+  }
+}
+
+module.exports={CENTER_VIEW,CENTER_NAME,CENTER_ICON,VaultAnnotationIndex,AnnotationCenterView,filterAnnotationEntries};
 
 },
 "features/scroll-ruler.js":(module,exports,__awRequire)=>{
@@ -3682,8 +4670,11 @@ class WindowGlass extends Component{
     }catch{}
   }
   classes(){
-    const {glass,glassFog}=this.plugin.data.settings;
-    return glass?['aw-glass','aw-glass-fog-'+(Core.GLASS_FOGS.some(f=>f.id===glassFog)?glassFog:'normal')]:[];
+    const {glass,glassFog,sidebarHover,autoHideRibbon}=this.plugin.data.settings;
+    const list=glass?['aw-glass','aw-glass-fog-'+(Core.GLASS_FOGS.some(f=>f.id===glassFog)?glassFog:'normal')]:[];
+    if(sidebarHover===false)list.push('aw-sidebar-hover-off');
+    if(autoHideRibbon===false)list.push('aw-ribbon-hide-off');
+    return list;
   }
   displaySettings(container,Setting){
     const s=this.plugin.data.settings,apply=()=>{this.syncNativeTheme();this.plugin.applyAppearanceEverywhere();this.plugin.changed();};
@@ -3694,6 +4685,10 @@ class WindowGlass extends Component{
         for(const f of Core.GLASS_FOGS)d.addOption(f.id,f.label);
         d.setValue(s.glassFog||'normal').onChange(v=>{s.glassFog=v;apply();});
       });
+    new Setting(container).setName('侧栏边缘悬停滑出')
+      .addToggle(t=>t.setValue(s.sidebarHover!==false).onChange(v=>{s.sidebarHover=v;apply();}));
+    new Setting(container).setName('左侧功能区自动隐藏')
+      .addToggle(t=>t.setValue(s.autoHideRibbon!==false).onChange(v=>{s.autoHideRibbon=v;apply();}));
   }
 }
 module.exports={WindowGlass};

@@ -69,12 +69,13 @@ function loadModule(file,extra={}){
   vm.runInNewContext(fs.readFileSync(path.join(root,'src/features',file),'utf8'),{module:mod,require:name=>{
     if(name in extra)return extra[name];
     if(name==='./annotation-format')return A;
+    if(name==='./annotation-center')return loadModule('annotation-center.js',extra);
     if(name==='../core')return require('../src/core');
     throw Error(name);
-  },requestAnimationFrame:fn=>setTimeout(fn,0),cancelAnimationFrame:clearTimeout});
+  },requestAnimationFrame:fn=>setTimeout(fn,0),cancelAnimationFrame:clearTimeout,setTimeout,clearTimeout});
   return mod.exports;
 }
-const obsidianStub={Component:class{registerEvent(){}},Modal:class{},Notice:class{},Setting:class{}};
+const obsidianStub={Component:class{registerEvent(){}},ItemView:class{},Modal:class{},Notice:class{},Setting:class{},setIcon(){}};
 function readingView(source){
   const {Annotations}=loadModule('annotations.js',{obsidian:obsidianStub,'@codemirror/view':{},'@codemirror/language':{}});
   const doc=fakeDocument(),p=doc.createElement('p');
@@ -336,7 +337,7 @@ test('annotation styles ship with the plugin: six pinned positions, print kept, 
   assert.match(plugin,/\.aw-annot-compass-center \{grid-column: 1 \/ -1;/);
   for(const c of ['blue','neutral','amber','orange','green','red','purple','rainbow'])assert.match(plugin,new RegExp(`\\.aw-annot-c-${c} \\{--aw-annot-color:`),c);
   const print=plugin.slice(plugin.lastIndexOf('@media print'));
-  assert.doesNotMatch(print,/aw-annot[^{]*\{[^}]*display: none/,'annotations print as they look');
+  assert.doesNotMatch(print,/(?:\.aw-annot(?![\w-])|\.aw-annot-(?:text|arrow|target|pin|room))[^{]*\{[^}]*display:\s*none/,'annotations print as they look (only screen margin connectors hide)');
   assert.doesNotMatch(snippet,/\.aw-annot/,'the theme snippet no longer styles annotations');
   assert.match(snippet,/--ds-tone-amber: 180,83,9;/);assert.match(snippet,/--ds-tone-amber: 226,163,54;/);
 });
@@ -538,4 +539,119 @@ test('annotation summary, section rewrite, style memory, recall toggle and edge 
   ra.editReading(noteNodeEl);
   await new Promise(r=>setImmediate(r));
   assert.equal(fileContent,'标题\n\n前文 ==目标=={新注|螺旋}。');
+});
+
+test('typography auto-spacing, orphan prevention, hover-slide sidebars, auto-hide ribbon and annotation print pagination',()=>{
+  const snippet=fs.readFileSync(path.join(root,'dist/snippets/style.css'),'utf8').replace(/\/\*[\s\S]*?\*\//g,'');
+  const plugin=fs.readFileSync(path.join(root,'dist/algorithm-workbench/styles.css'),'utf8').replace(/\/\*[\s\S]*?\*\//g,'');
+  // 1. CJK typography: text-autospace & text-wrap: pretty; code/math reset spacing.
+  assert.match(snippet,/text-autospace:\s*normal;/);
+  assert.match(snippet,/text-spacing-trim:\s*trim-start;/);
+  assert.match(snippet,/code,pre,kbd,mjx-container,\.math,\.cm-inline-code,\.HyperMD-codeblock,\.cm-hmd-frontmatter\)\s*\{\s*text-autospace:\s*no-autospace;/);
+  assert.match(snippet,/body:not\(\.is-ios\) \.markdown-rendered :is\(p,li,blockquote,td,th,\.callout-content\):not\(\.no-cjk \*\) \{text-wrap: pretty;\}/);
+  // 2. Collapsed sidebars hover slide & auto-hide left ribbon; zero backdrop blur or will-change.
+  assert.match(snippet,/body:not\(\.is-mobile\):not\(\.aw-sidebar-hover-off\) \.workspace-split\.mod-sidedock\.is-sidedock-collapsed\[style\*="display"\]/);
+  assert.match(snippet,/\.workspace-split\.mod-sidedock\.is-sidedock-collapsed\[style\*="display"\] > \.workspace-tabs \{\s*visibility: visible;/);
+  assert.match(snippet,/body\.show-ribbon:not\(\.is-mobile\):not\(\.aw-ribbon-hide-off\) \.workspace-ribbon:is\(\.mod-left,\.mod-primary\)/);
+  assert.match(snippet,/body\.mod-macos\.is-hidden-frameless\.show-ribbon:not\(\.is-fullscreen\):not\(\.is-mobile\):not\(\.aw-ribbon-hide-off\)/);
+  assert.doesNotMatch(snippet,/backdrop-filter:\s*blur|will-change:\s+(?!auto\b)/);
+  assert.doesNotMatch(plugin,/backdrop-filter:\s*blur|will-change:\s+(?!auto\b)/);
+  // 3. Annotation print pagination & margin fallback, plus right-margin coordination with scroll ruler.
+  const printBlock=plugin.slice(plugin.lastIndexOf('@media print'));
+  assert.match(printBlock,/:is\(p,li,blockquote,td,th,\.callout-content\):has\(\.aw-annot\),[\s\S]*?break-inside: avoid;page-break-inside: avoid;/);
+  assert.match(printBlock,/\.aw-annot-margin-connector \{display: none !important;\}/);
+  assert.match(plugin,/\.aw-has-right-margin-annot \.aw-ruler \.aw-ruler-heads \{visibility: hidden;opacity: 0;/);
+});
+
+test('adjacent annotation navigation, quick annotate, cross-vault index, rewrite and margin layout math',async()=>{
+  // 1. Adjacent navigation (next / prev with wrap-around) & visible viewport matching.
+  const src='首行\n甲 ==第一=={注一} 乙 ==第二=={注二|红}\n末行 ==第三=={注三|绿}';
+  const items=A.collectNoteAnnotations(src);
+  assert.equal(items.length,3);
+  assert.equal(A.findAdjacentAnnotation(items,0,0,'next').target,'第一');
+  assert.equal(A.findAdjacentAnnotation(items,1,items[0].markFrom,'next').target,'第二');
+  assert.equal(A.findAdjacentAnnotation(items,2,items[2].markFrom,'next').target,'第一','wraps forward');
+  assert.equal(A.findAdjacentAnnotation(items,0,0,'prev').target,'第三','wraps backward');
+  assert.equal(A.findAdjacentAnnotation(items,2,items[2].markFrom,'prev').target,'第二');
+  assert.equal(A.findClosestVisibleIndex([{top:-80,bottom:-20},{top:60,bottom:90},{top:180,bottom:210},{top:420,bottom:460}],0,400),2,'closest to viewport center 200');
+  assert.equal(A.findClosestVisibleIndex([{top:500,bottom:540}],0,400),-1);
+
+  // 2. Full-note annotation rewrite (used by Annotation Center hover edit / toggle-highlight / delete).
+  const toggled=A.replaceNoteAnnotation(src,items[1],A.formatAnnotation({...items[1],highlight:false}));
+  assert.equal(toggled,'首行\n甲 ==第一=={注一} 乙 ==第二=={注二|红 无高亮}\n末行 ==第三=={注三|绿}');
+  const removed=A.replaceNoteAnnotation(toggled,items[0],'');
+  assert.equal(removed,'首行\n甲 ==第一== 乙 ==第二=={注二|红 无高亮}\n末行 ==第三=={注三|绿}');
+
+  // 3. Cross-vault annotation index: batch rebuild, incremental update/rename/delete, revision race & filtering.
+  const {VaultAnnotationIndex,filterAnnotationEntries}=loadModule('annotation-center.js',{obsidian:obsidianStub});
+  const contents=new Map([
+    ['a/note1.md','测试 ==梯度消失=={用残差缓解|红}'],
+    ['b/note2.md','这里 ==注意力=={缩放点积|绿}\n与 ==归一=={LayerNorm|#d0428a}'],
+  ]);
+  const index=new VaultAnnotationIndex(async f=>contents.get(f.path)||'');
+  await index.rebuild([...contents.keys()].map(p=>({path:p,basename:p.split('/').pop().replace(/\.md$/,'')})));
+  assert.equal(index.entries().length,3);
+  assert.equal(filterAnnotationEntries(index.entries(),'残差','all').length,1);
+  assert.equal(filterAnnotationEntries(index.entries(),'','green').length,1);
+  assert.equal(filterAnnotationEntries(index.entries(),'','custom').length,1);
+  assert.equal(filterAnnotationEntries(index.entries(),'note2 LayerNorm','all').length,1);
+  index.rename('a/note1.md',{path:'c/renamed.md',basename:'renamed'});
+  assert.deepEqual(Array.from(index.entries(),e=>e.file.path),['b/note2.md','b/note2.md','c/renamed.md']);
+  index.remove('b/note2.md');
+  assert.equal(index.entries().length,1);
+  // Stale async read must not overwrite a newer update.
+  let releaseOld;
+  const slowIndex=new VaultAnnotationIndex(()=>new Promise(r=>{releaseOld=r;}));
+  const f1={path:'race.md',basename:'race'};
+  const pOld=slowIndex.update(f1);
+  await slowIndex.update(f1,'新 ==A=={最新}');
+  releaseOld('旧 ==A=={过时}');
+  await pOld;
+  assert.equal(slowIndex.entries()[0].item.note,'最新');
+
+  // 4. Quick annotate: reuses last style, aborts if doc changed while modal was open.
+  const {Annotations}=loadModule('annotations.js',{obsidian:obsidianStub,'@codemirror/view':{},'@codemirror/language':{}});
+  const a=new Annotations({app:{workspace:{on(){}},vault:{}},data:{settings:{}}});
+  a.rememberStyle({dir:'ne',color:'orange',line:'wavy',highlight:true});
+  let docText='前置 目标词 后置';
+  const ed={
+    getValue:()=>docText,
+    getSelection:()=>'目标词',
+    getLine:()=>docText,
+    getCursor:which=>({line:0,ch:which==='to'?6:3}),
+    replaceRange(t,f,to){docText=docText.slice(0,f.ch)+t+docText.slice(to.ch);},
+  };
+  let quickSub=null;
+  a.openQuickModal=(target,spec,submit)=>{assert.equal(target,'目标词');assert.equal(spec.color,'orange');quickSub=submit;};
+  a.quickAdd(ed);
+  assert.notEqual(quickSub({...a.lastStyle,note:'一眼要点'}),false);
+  assert.equal(docText,'前置 ==目标词=={一眼要点|右上 橙 波浪} 后置');
+  // Editing existing annotation via quickAdd when document changed underneath returns false.
+  ed.getCursor=()=>({line:0,ch:7});
+  a.openQuickModal=(_t,_s,submit)=>{quickSub=submit;};
+  a.quickAdd(ed);
+  docText='外部已修改';
+  assert.equal(quickSub({note:'不会覆盖'}),false);
+  assert.equal(docText,'外部已修改');
+
+  // 5. Margin layout math: smart mid-line stays inline, edges go to margins, collision stacking, 5 connector paths.
+  const sizer={left:200,width:800};
+  assert.equal(A.chooseMarginSide('se','smart',{left:true,right:true},{left:0,right:0},{left:220,width:60},sizer),'left');
+  assert.equal(A.chooseMarginSide('se','smart',{left:true,right:true},{left:0,right:0},{left:860,width:80},sizer),'right');
+  assert.equal(A.chooseMarginSide('se','smart',{left:true,right:true},{left:0,right:0},{left:560,width:60},sizer),null,'middle stays inline so connectors never cross body text');
+  assert.equal(A.chooseMarginSide('se','inline',{left:true,right:true},{left:0,right:0},{left:220,width:60},sizer),null);
+  assert.equal(A.chooseMarginSide('se','left',{left:true,right:true},{left:0,right:0},{left:860,width:80},sizer),'left');
+  assert.equal(A.chooseMarginSide('se','right',{left:false,right:true},{left:0,right:0},{left:220,width:60},sizer),'right');
+  const stacked=A.distributeMarginNotes([
+    {id:1,desiredY:100,height:40},
+    {id:2,desiredY:110,height:40},
+    {id:3,desiredY:120,height:40},
+  ],600,12,8);
+  assert.ok(stacked[1].y>=stacked[0].y+40+12,'no overlap between note 1 and 2');
+  assert.ok(stacked[2].y>=stacked[1].y+40+12,'no overlap between note 2 and 3');
+  for(const style of ['double','dashed','solid','wavy','spiral']){
+    const c=A.buildMarginConnector('right',style,{x:160,y:40},{x:10,y:10});
+    assert.ok(c.lines.length>=1&&c.head.startsWith('M'),style);
+    if(style==='double')assert.equal(c.lines.length,2);
+  }
 });

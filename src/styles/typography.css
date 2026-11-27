@@ -44,7 +44,17 @@ body {
 .markdown-preview-view,
 .markdown-source-view.mod-cm6 {font-family: var(--ds-font-body);font-size: var(--ds-body-size);line-height: var(--ds-body-leading);}
 .markdown-rendered {font-family: var(--ds-font-body);}
-.markdown-rendered :is(h1,h2,h3,h4,h5,h6) {letter-spacing: 0;margin-block-start: 1.5em;margin-block-end: .55em;}
+/* Automatic CJK-Latin/number spacing and punctuation trim; code, math and front matter stay exact. */
+:is(.markdown-rendered,.markdown-source-view.mod-cm6 .cm-content,.inline-title):not(.no-cjk,.no-cjk *) {
+  text-autospace: normal;
+  text-spacing-trim: trim-start;
+}
+:is(.markdown-rendered,.markdown-source-view.mod-cm6 .cm-content) :is(code,pre,kbd,mjx-container,.math,.cm-inline-code,.HyperMD-codeblock,.cm-hmd-frontmatter) {
+  text-autospace: no-autospace;
+}
+/* Prevent trailing single-character orphans in reading paragraphs without reflowing the live editor. */
+body:not(.is-ios) .markdown-rendered :is(p,li,blockquote,td,th,.callout-content):not(.no-cjk *) {text-wrap: pretty;}
+.markdown-rendered :is(h1,h2,h3,h4,h5,h6) {letter-spacing: 0;margin-block-start: 1.5em;margin-block-end: .55em;text-wrap: balance;}
 .markdown-rendered > :is(h1,h2,h3,h4,h5,h6):first-child {margin-block-start: 0;}
 .markdown-preview-view .inline-title,
 .markdown-source-view.mod-cm6 .inline-title {text-align: left;margin-bottom: 1em;letter-spacing: -.025em;}

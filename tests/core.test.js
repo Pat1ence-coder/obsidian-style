@@ -170,6 +170,10 @@ test('scroll ruler and decoration settings validate; a style saved by an older v
   assert.equal(d.settings.glass,true);assert.equal(load({glass:false}).glass,false);assert.equal(load({glass:'no'}).glass,true);
   assert.equal(d.settings.pasteSource,true);assert.equal(load({pasteSource:false}).pasteSource,false);assert.equal(load({pasteSource:'x'}).pasteSource,true);
   assert.equal(d.settings.smoothCaret,true);assert.equal(load({smoothCaret:false}).smoothCaret,false);assert.equal(load({smoothCaret:'no'}).smoothCaret,true);
+  assert.equal(d.settings.sidebarHover,true);assert.equal(load({sidebarHover:false}).sidebarHover,false);assert.equal(load({sidebarHover:'no'}).sidebarHover,true);
+  assert.equal(d.settings.autoHideRibbon,true);assert.equal(load({autoHideRibbon:false}).autoHideRibbon,false);assert.equal(load({autoHideRibbon:0}).autoHideRibbon,true);
+  assert.equal(d.settings.annotLayout,'smart');assert.equal(load({annotLayout:'inline'}).annotLayout,'inline');assert.equal(load({annotLayout:'bogus'}).annotLayout,'smart');
+  assert.equal(d.settings.annotMarginWidth,190);assert.equal(load({annotMarginWidth:240}).annotMarginWidth,240);assert.equal(load({annotMarginWidth:999}).annotMarginWidth,260);assert.equal(load({annotMarginWidth:50}).annotMarginWidth,140);
   assert.equal(d.settings.rulerMemory,true);assert.equal(load({rulerMemory:false}).rulerMemory,false);assert.equal(load({rulerMemory:'x'}).rulerMemory,true);
   assert.equal(load({glassImage:'assets/wall.jpg'}).glassImage,undefined);assert.equal(load({glassFog:'strong'}).glassFog,'strong');
 });

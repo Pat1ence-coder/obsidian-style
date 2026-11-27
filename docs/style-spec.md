@@ -44,7 +44,7 @@ PDF 中文正文使用宋体，英文使用 Times New Roman；中文标题使用
 
 浮层与卡片材质：菜单、弹窗、提示框和看板卡片保持不透明，表面为 --ds-frost（微颗粒 + 微光 + 纸面色），配顶部高光（--ds-glass-highlight）、发丝描边（--ds-glass-edge）与三级柔和阴影（--ds-elev-1 至 --ds-elev-3）。凹陷部件（分段控件轨道、搜索框、进度条底槽、代码块）使用 --ds-inset-bg 与内阴影 --ds-inset。全项目样式（含弹窗遮罩）不使用 backdrop-filter，避免半透明窗口下产生合成层重影或黑底。
 
-整窗平铺外壳（shell.css）：左右侧栏、功能区、标签栏、笔记区和状态栏处于同一连续平面，不设悬浮卡片边距、圆角外框或常驻竖向分栏线；分栏拖拽手柄静止透明（--divider-color: transparent），仅悬停或按住时显色；笔记顶部面包屑标题（.view-header-title-container）默认隐藏，悬停页眉时渐显；当前标签为垂直居中的扁平透镜块，底部状态栏无描边。
+整窗平铺外壳（shell.css）：左右侧栏、功能区、标签栏、笔记区和状态栏处于同一连续平面，不设悬浮卡片边距、圆角外框或常驻竖向分栏线；分栏拖拽手柄静止透明（--divider-color: transparent），仅悬停或按住时显色；笔记顶部面包屑标题（.view-header-title-container）默认隐藏，悬停页眉时渐显；当前标签为垂直居中的扁平透镜块，底部状态栏无描边。桌面端默认启用收起侧栏边缘悬停滑出（停靠触发带避开顶栏窗口按钮，不透明纸面画在 `::before` 上，零 `backdrop-filter`，可通过 `aw-sidebar-hover-off` 关闭）与左侧功能区自动隐藏（悬停或随左抽屉同步滑出，展开态左侧栏让出宽度，可通过 `aw-ribbon-hide-off` 关闭）。中文排版（typography.css）默认启用 `text-autospace: normal`（代码、公式与 frontmatter 设为 `no-autospace`）、阅读视图段落 `text-wrap: pretty` 与标题 `text-wrap: balance`。
 
 整窗类纸与半透明玻璃（window-glass.css、window-glass.js）：
 
@@ -77,7 +77,7 @@ glass.css 中的规则全部写在 @media screen 中，打印与 PDF 不受影�
 - 图表：坐标轴 4 等分且取整（步长为 1、1.5、2、2.5、3、4、5、6、8 乘以 10 的幂）；日柱为指标色 22% 不透明度，7 日均线 2px 实线加 10% 面积；网格线为墨色 7%。月度柱斜纹 135°，本月实色叠白色斜纹，数值胶囊为深色底。
 - 主按钮（.aw-primary 与工具栏的「新建笔记」）用主色由上而下加深的渐变、白字，底部加深以保证白字对比度。
 
-标注（.aw-annot）由插件绘制，样式在插件的 annotations.css：标注字号为正文的 0.86 倍，支持六个行外位置（左上、上、右上、左下、下、右下）与双线、虚线、实线、波浪、螺旋五种有机微弧箭头，偏移和预留空间都以标注自身的 em 计；每个标注用一个空的行内块从基线向下（或向上）偏移来撑高所在行（长标注在 13.5em 内折行并按行数增加 --aw-annot-room，行首尾通过 --aw-annot-nudge 防裁切），同一行里上下标注混排也不会重叠；颜色取 tone 色（琥珀为 --ds-tone-amber），目标浅底为标注色 15%；阅读视图支持模糊遮罩自测，打印时自动恢复清晰显示。平滑光标（typing-motion.css）使用纯 2D `transform: translate(x, y)` 90ms 缓出滑移与静止透明呼吸闪烁，不使用 3D 变换、will-change 或 backdrop-filter，在框选、多光标、Vim 模式、减少动态与打印时自动交回原生光标。图解（[!diagram]）在 blocks.css 中定义。图解卡片颜色依次取 tone-3、tone-1、tone-4、tone-2，背景为 9% 色调混入纸面色，18px 方格纸底纹。
+标注（.aw-annot）由插件绘制，样式在插件的 annotations.css：标注字号为正文的 0.86 倍，支持六个行外位置（左上、上、右上、左下、下、右下）与双线、虚线、实线、波浪、螺旋五种有机微弧箭头，偏移和预留空间都以标注自身的 em 计；每个标注用一个空的行内块从基线向下（或向上）偏移来撑高所在行（长标注在 13.5em 内折行并按行数增加 --aw-annot-room，行首尾通过 --aw-annot-nudge 防裁切），同一行里上下标注混排也不会重叠；宽屏阅读视图支持智能/左/右页边布局（同侧纵向避让碰撞、长手绘 SVG 连线遇邻近正文自动沿行间空隙绕入、窄屏自动回退行内、有右页边标注时右侧刻度尺自动收起页边文字）；配套右侧边栏「标注中心」（.aw-ac）与轻量单行「快速标注」弹窗；颜色取 tone 色（琥珀为 --ds-tone-amber），目标浅底为标注色 15%；阅读视图支持模糊遮罩自测；打印时含标注段落加 `break-inside: avoid` 防止跨页断开，页边标注自动回退为 A4 页内 6 方向排布并恢复清晰显示。平滑光标（typing-motion.css）使用纯 2D `transform: translate(x, y)` 90ms 缓出滑移与静止透明呼吸闪烁，不使用 3D 变换、will-change 或 backdrop-filter，在框选、多光标、Vim 模式、减少动态与打印时自动交回原生光标。图解（[!diagram]）在 blocks.css 中定义。图解卡片颜色依次取 tone-3、tone-1、tone-4、tone-2，背景为 9% 色调混入纸面色，18px 方格纸底纹。
 
 ## 文档宽度与视图适配
 

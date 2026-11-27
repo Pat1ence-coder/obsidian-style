@@ -16,7 +16,7 @@ const {Library}=require('./features/library');
 const {MarkdownPaste}=require('./features/markdown-paste');
 const {TypingMotion}=require('./features/typing-motion');
 // aw-palette-* and aw-style-* are listed so classes left by earlier versions are cleaned up.
-const APPEARANCE=/^aw-(?:palette|style|caption|glass-fog)-|^aw-(?:figure-tools-off|glass|annot-recall|smooth-caret)$/;
+const APPEARANCE=/^aw-(?:palette|style|caption|glass-fog)-|^aw-(?:figure-tools-off|glass|annot-recall|smooth-caret|sidebar-hover-off|ribbon-hide-off)$/;
 // A created note counts as new when it is opened within this time.
 const NEW_NOTE_OPEN_MS=10000;
 // Settings are saved soon after a change; statistics gathered while typing wait longer, so
@@ -101,7 +101,6 @@ class WorkbenchPlugin extends Plugin {
     this.figures=this.addChild(new Figures(this));
     this.figureTools=this.addChild(new FigureTools(this));
     this.screenshotNames=this.addChild(new ScreenshotNames(this));
-    this.annotations=this.addChild(new Annotations(this));
     this.scrollRuler=this.addChild(new ScrollRuler(this));
     this.decor=this.addChild(new Decor(this));
     this.windowGlass=this.addChild(new WindowGlass(this));
@@ -117,8 +116,9 @@ class WorkbenchPlugin extends Plugin {
       this.statusBarEl.addEventListener?.('click',()=>void this.openWorkbench());
     }
     this.updateStatusBar();
-    // The image library: its own pane, opened in the right sidebar.
+    // The image library and annotation center: right-sidebar panes.
     this.library=this.addChild(new Library(this));
+    this.annotations=this.addChild(new Annotations(this));
     // Palette and caption size are body classes read by both stylesheets; popout windows get
     // them too. Windows already open (plugin re-enabled, restored layout) are found via leaves.
     this.applyAppearanceEverywhere();

@@ -154,9 +154,12 @@ body.theme-dark .aw-ruler-hmark.is-passed {background: rgba(255,255,255,.52);}
 .aw-ruler.is-compact.is-on-heading:is(:hover,.is-dragging) .aw-ruler-label,
 .aw-ruler.is-dense:is(:hover,.is-dragging) .aw-ruler-label {visibility: hidden;}
 /* Narrow margin (when all headings fit proportionally): headings show over the text as small white cards on hover. */
-.aw-ruler.is-compact .aw-ruler-heads {visibility: hidden;opacity: 0;transition: opacity 160ms ease, visibility 0s 160ms;}
-.aw-ruler.is-compact:not(.is-dense):is(:hover,.is-dragging) .aw-ruler-heads {visibility: visible;opacity: 1;transition: opacity 160ms ease;}
-.aw-ruler.is-compact .aw-ruler-head-text {
+.aw-ruler.is-compact .aw-ruler-heads,
+.aw-has-right-margin-annot .aw-ruler .aw-ruler-heads {visibility: hidden;opacity: 0;transition: opacity 160ms ease, visibility 0s 160ms;}
+.aw-ruler.is-compact:not(.is-dense):is(:hover,.is-dragging) .aw-ruler-heads,
+.aw-has-right-margin-annot .aw-ruler:not(.is-dense):is(:hover,.is-dragging) .aw-ruler-heads {visibility: visible;opacity: 1;transition: opacity 160ms ease;}
+.aw-ruler.is-compact .aw-ruler-head-text,
+.aw-has-right-margin-annot .aw-ruler .aw-ruler-head-text {
   padding: 0 6px;
   border-radius: 5px;
   background: var(--ds-bg, var(--background-primary));

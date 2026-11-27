@@ -222,6 +222,10 @@ test('appearance is a body class: applied on load, stale palette and style class
   assert.equal(plugin.commands['cycle-style'],undefined,'one interface style, no switch');assert.equal(plugin.setStyle,undefined);
   plugin.data.settings.smoothCaret=false;plugin.applyAppearanceEverywhere();assert.equal(classes.has('aw-smooth-caret'),false);
   plugin.data.settings.smoothCaret=true;plugin.applyAppearanceEverywhere();assert.equal(classes.has('aw-smooth-caret'),true);
+  plugin.data.settings.sidebarHover=false;plugin.data.settings.autoHideRibbon=false;plugin.applyAppearanceEverywhere();
+  assert.ok(classes.has('aw-sidebar-hover-off')&&classes.has('aw-ribbon-hide-off'));
+  plugin.data.settings.sidebarHover=true;plugin.data.settings.autoHideRibbon=true;plugin.applyAppearanceEverywhere();
+  assert.ok(!classes.has('aw-sidebar-hover-off')&&!classes.has('aw-ribbon-hide-off'));
   plugin.onunload();assert.deepEqual([...classes],['theme-light']);await plugin.saveQueue;
 });
 
@@ -252,10 +256,15 @@ test('caption size and figure tools are body classes that follow settings and le
 
 test('ribbon and command use the 写作工作台 name and icon',async()=>{
   const {plugin}=fixture();await plugin.onload();
-  assert.deepEqual(plugin.ribbons,[['notebook-pen','打开写作工作台'],['images','打开素材库']],'the workbench first, then the image library');
+  assert.deepEqual(plugin.ribbons,[['notebook-pen','打开写作工作台'],['images','打开素材库'],['message-square-text','打开标注中心']],'workbench, image library, then annotation center');
   assert.equal(plugin.commands['open-workbench'].name,'打开写作工作台');
   assert.equal(plugin.commands['open-library'].name,'打开素材库');
+  assert.equal(plugin.commands['open-annotation-center'].name,'打开标注中心');
+  assert.equal(plugin.commands['quick-annotate'].name,'快速标注');
+  assert.equal(plugin.commands['prev-annotation'].name,'跳到上一条标注');
+  assert.equal(plugin.commands['next-annotation'].name,'跳到下一条标注');
   assert.equal(typeof plugin.views['aw-library'],'function');
+  assert.equal(typeof plugin.views['aw-annotation-center'],'function');
   plugin.onunload();await plugin.saveQueue;
 });
 

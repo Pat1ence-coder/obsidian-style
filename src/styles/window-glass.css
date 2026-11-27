@@ -7,50 +7,50 @@
       to prevent Chromium stale-frame ghosting. */
 
 /* -------------------------------------------------------------------------- */
-/* 1. Warm paper whole-window fallback (when native translucency is off)      */
+/* 1. Warm paper whole-window fallback (screen-only so print stays pure white) */
 /* -------------------------------------------------------------------------- */
-body.aw-glass:not(.is-translucent):not(.is-popout-modal) {
-  --ds-bg: #fbf8ef;
-  --ds-canvas: #fbf8ef;
-  --ds-paper: #fffdf8;
-  --ds-shell: #f4efe1;
-  --ds-surface: #f2ecdc;
-  --ds-surface-hover: rgba(34,28,18,.055);
-  --ds-text: #221e17;
-  --ds-heading: #17140f;
-  --ds-muted: #5a5346;
-  --ds-faint: #8c8474;
-  --ds-border: rgba(34,28,18,.095);
-  --ds-rule: rgba(34,28,18,.16);
-  --ds-code-bg: rgba(34,28,18,.04);
-  --ds-inset-bg: rgba(34,28,18,.045);
-  --ds-glass-paper-grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='p'><feTurbulence type='fractalNoise' baseFrequency='.7' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .42 0 0 0 0 .34 0 0 0 0 .22 0 0 0 .048 0'/></filter><rect width='100%' height='100%' filter='url(%23p)'/></svg>");
-  --ds-glass-grain-opacity: 1;
-  --divider-color: transparent;
-}
-body.aw-glass.aw-glass-fog-light:not(.is-translucent):not(.is-popout-modal) {--ds-glass-grain-opacity: .5;}
-body.aw-glass.aw-glass-fog-strong:not(.is-translucent):not(.is-popout-modal) {--ds-bg: #f8f2e2;--ds-canvas: #f8f2e2;--ds-glass-grain-opacity: 1.35;}
-
-body.theme-dark.aw-glass:not(.is-translucent):not(.is-popout-modal) {
-  --ds-bg: #191816;
-  --ds-canvas: #191816;
-  --ds-paper: #22201d;
-  --ds-shell: #1d1c19;
-  --ds-surface: #272521;
-  --ds-surface-hover: rgba(255,248,235,.055);
-  --ds-text: #e6e1d6;
-  --ds-heading: #f2eee4;
-  --ds-muted: #a69f92;
-  --ds-faint: #7a7468;
-  --ds-border: rgba(255,248,235,.09);
-  --ds-rule: rgba(255,248,235,.15);
-  --ds-code-bg: rgba(255,248,235,.04);
-  --ds-inset-bg: rgba(255,248,235,.048);
-  --ds-glass-paper-grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='p'><feTurbulence type='fractalNoise' baseFrequency='.7' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 .96 0 0 0 0 .9 0 0 0 .032 0'/></filter><rect width='100%' height='100%' filter='url(%23p)'/></svg>");
-}
-body.theme-dark.aw-glass.aw-glass-fog-strong:not(.is-translucent):not(.is-popout-modal) {--ds-bg: #161512;--ds-canvas: #161512;--ds-glass-grain-opacity: 1.35;}
-
 @media screen {
+  body.aw-glass:not(.is-translucent):not(.is-popout-modal) {
+    --ds-bg: #fbf8ef;
+    --ds-canvas: #fbf8ef;
+    --ds-paper: #fffdf8;
+    --ds-shell: #f4efe1;
+    --ds-surface: #f2ecdc;
+    --ds-surface-hover: rgba(34,28,18,.055);
+    --ds-text: #221e17;
+    --ds-heading: #17140f;
+    --ds-muted: #5a5346;
+    --ds-faint: #8c8474;
+    --ds-border: rgba(34,28,18,.095);
+    --ds-rule: rgba(34,28,18,.16);
+    --ds-code-bg: rgba(34,28,18,.04);
+    --ds-inset-bg: rgba(34,28,18,.045);
+    --ds-glass-paper-grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='p'><feTurbulence type='fractalNoise' baseFrequency='.7' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .42 0 0 0 0 .34 0 0 0 0 .22 0 0 0 .048 0'/></filter><rect width='100%' height='100%' filter='url(%23p)'/></svg>");
+    --ds-glass-grain-opacity: 1;
+    --divider-color: transparent;
+  }
+  body.aw-glass.aw-glass-fog-light:not(.is-translucent):not(.is-popout-modal) {--ds-glass-grain-opacity: .5;}
+  body.aw-glass.aw-glass-fog-strong:not(.is-translucent):not(.is-popout-modal) {--ds-bg: #f8f2e2;--ds-canvas: #f8f2e2;--ds-glass-grain-opacity: 1.35;}
+
+  body.theme-dark.aw-glass:not(.is-translucent):not(.is-popout-modal) {
+    --ds-bg: #191816;
+    --ds-canvas: #191816;
+    --ds-paper: #22201d;
+    --ds-shell: #1d1c19;
+    --ds-surface: #272521;
+    --ds-surface-hover: rgba(255,248,235,.055);
+    --ds-text: #e6e1d6;
+    --ds-heading: #f2eee4;
+    --ds-muted: #a69f92;
+    --ds-faint: #7a7468;
+    --ds-border: rgba(255,248,235,.09);
+    --ds-rule: rgba(255,248,235,.15);
+    --ds-code-bg: rgba(255,248,235,.04);
+    --ds-inset-bg: rgba(255,248,235,.048);
+    --ds-glass-paper-grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='p'><feTurbulence type='fractalNoise' baseFrequency='.7' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 .96 0 0 0 0 .9 0 0 0 .032 0'/></filter><rect width='100%' height='100%' filter='url(%23p)'/></svg>");
+  }
+  body.theme-dark.aw-glass.aw-glass-fog-strong:not(.is-translucent):not(.is-popout-modal) {--ds-bg: #161512;--ds-canvas: #161512;--ds-glass-grain-opacity: 1.35;}
+
   body.aw-glass:not(.is-translucent):not(.is-popout-modal) .app-container {position: relative;isolation: isolate;background: var(--ds-bg);}
   body.aw-glass:not(.is-translucent):not(.is-popout-modal) .app-container::before {
     content: "";
@@ -151,6 +151,7 @@ body.theme-dark.is-translucent.aw-glass-fog-strong:not(.is-popout-window):not(.i
   body.is-translucent:not(.is-popout-window) :is(.workspace-split,.workspace-tabs,.workspace-tab-container,.workspace-leaf,.workspace-tab-header) {
     transition: none !important;
   }
+  body.is-translucent:not(.is-popout-window) .workspace-ribbon {transition: none !important;}
 
   /* Controls on glass: translucent lens active tab and quiet rest buttons. */
   body.is-translucent:not(.is-popout-window):not(.is-popout-modal) .workspace-tab-header.is-active {

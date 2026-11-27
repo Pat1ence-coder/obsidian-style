@@ -38,8 +38,11 @@ class WindowGlass extends Component{
     }catch{}
   }
   classes(){
-    const {glass,glassFog}=this.plugin.data.settings;
-    return glass?['aw-glass','aw-glass-fog-'+(Core.GLASS_FOGS.some(f=>f.id===glassFog)?glassFog:'normal')]:[];
+    const {glass,glassFog,sidebarHover,autoHideRibbon}=this.plugin.data.settings;
+    const list=glass?['aw-glass','aw-glass-fog-'+(Core.GLASS_FOGS.some(f=>f.id===glassFog)?glassFog:'normal')]:[];
+    if(sidebarHover===false)list.push('aw-sidebar-hover-off');
+    if(autoHideRibbon===false)list.push('aw-ribbon-hide-off');
+    return list;
   }
   displaySettings(container,Setting){
     const s=this.plugin.data.settings,apply=()=>{this.syncNativeTheme();this.plugin.applyAppearanceEverywhere();this.plugin.changed();};
@@ -50,6 +53,10 @@ class WindowGlass extends Component{
         for(const f of Core.GLASS_FOGS)d.addOption(f.id,f.label);
         d.setValue(s.glassFog||'normal').onChange(v=>{s.glassFog=v;apply();});
       });
+    new Setting(container).setName('侧栏边缘悬停滑出')
+      .addToggle(t=>t.setValue(s.sidebarHover!==false).onChange(v=>{s.sidebarHover=v;apply();}));
+    new Setting(container).setName('左侧功能区自动隐藏')
+      .addToggle(t=>t.setValue(s.autoHideRibbon!==false).onChange(v=>{s.autoHideRibbon=v;apply();}));
   }
 }
 module.exports={WindowGlass};

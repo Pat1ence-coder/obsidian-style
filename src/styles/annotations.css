@@ -195,8 +195,220 @@ body.aw-annot-recall .markdown-reading-view .aw-annot:not(.aw-annot-c-rainbow) .
 .aw-annot-summary-empty {padding: 20px 0;text-align: center;font-size: 13px;color: var(--text-muted);}
 @media (max-width: 520px) {.aw-annot-modal .aw-annot-pickers {grid-template-columns: 1fr;}}
 
+/* Jump flash highlight when navigating from Annotation Center or prev/next commands. */
+@keyframes aw-annot-flash {
+  0% {box-shadow: 0 0 0 0 color-mix(in srgb, var(--aw-annot-color) 42%, transparent);}
+  35% {box-shadow: 0 0 0 5px color-mix(in srgb, var(--aw-annot-color) 28%, transparent);}
+  100% {box-shadow: 0 0 0 0 transparent;}
+}
+.aw-annot-target.aw-annot-jump-flash {animation: aw-annot-flash 850ms ease-out;}
+
+/* Wide-screen margin layout (Reading view, screen-only so print reverts cleanly to inline 6-direction pins). */
+@media screen {
+  .markdown-preview-sizer.aw-annot-margin-sizer {position: relative;overflow: visible;}
+  .aw-annot.aw-annot-in-margin .aw-annot-room,
+  .aw-annot.aw-annot-in-margin .aw-annot-arrow {display: none;}
+  .aw-annot.aw-annot-in-margin .aw-annot-pin {position: absolute;left: 0;top: 0;width: 0;height: 0;pointer-events: none;}
+  .aw-annot.aw-annot-in-margin .aw-annot-pin .aw-annot-text {
+    max-width: none;
+    white-space: normal;
+    overflow-wrap: break-word;
+    line-height: 1.38;
+    padding: 4px 8px;
+    border-radius: 7px;
+    border-left: 2px solid color-mix(in srgb, var(--aw-annot-color) 55%, transparent);
+  }
+  .aw-annot.aw-annot-in-margin:not(.aw-annot-c-rainbow) .aw-annot-pin .aw-annot-text {
+    background: color-mix(in srgb, var(--ds-paper, var(--background-primary)) 86%, transparent);
+  }
+  .aw-annot.aw-annot-in-margin.aw-annot-margin-left .aw-annot-pin .aw-annot-text {
+    text-align: right;
+    border-left: 0;
+    border-right: 2px solid color-mix(in srgb, var(--aw-annot-color) 55%, transparent);
+  }
+}
+.aw-annot-margin-connector {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: visible;
+  pointer-events: none;
+  fill: none;
+  stroke: var(--aw-annot-color);
+  stroke-width: 1.15;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-opacity: .72;
+}
+.aw-annot-margin-connector.is-dashed .aw-annot-line {stroke-dasharray: 3.4 2.8;}
+
+/* Quick single-line annotation dialog. */
+.aw-annot-quick .aw-annot-quick-target {
+  margin-bottom: 10px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--ds-inset-bg, var(--background-secondary));
+  border: 1px solid var(--ds-border, var(--background-modifier-border));
+  font-size: 13px;
+  color: var(--ds-heading, var(--text-normal));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.aw-annot-quick .aw-annot-quick-field {border-top: 0;padding-top: 0;}
+.aw-annot-quick .aw-annot-quick-field .setting-item-info {display: none;}
+.aw-annot-quick .aw-annot-quick-field .setting-item-control {width: 100%;}
+.aw-annot-quick .aw-annot-quick-field input {width: 100%;outline: none;transition: border-color 120ms ease, box-shadow 120ms ease;}
+.aw-annot-quick .aw-annot-quick-field input:is(:focus,:focus-visible),
+.aw-ac .aw-ac-search input:is(:focus,:focus-visible) {border-color: var(--ds-accent, var(--interactive-accent));box-shadow: 0 0 0 2px var(--ds-accent-soft, rgba(72,86,175,.2));outline: none;}
+
+/* Cross-vault Annotation Center sidebar (标注中心). */
+.workspace-leaf-content[data-type="aw-annotation-center"] .view-content.aw-ac {padding: 0;overflow: hidden;}
+.aw-ac {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  font-family: var(--ds-font-ui, var(--font-interface));
+  color: var(--ds-text, var(--text-normal));
+}
+.aw-ac-head {flex: none;display: flex;flex-direction: column;gap: 8px;padding: 12px 12px 10px;border-bottom: 1px solid var(--ds-border, var(--background-modifier-border));}
+.aw-ac-title-row {display: flex;align-items: center;justify-content: space-between;gap: 8px;}
+.aw-ac-title {display: inline-flex;align-items: center;gap: 6px;font-size: 13.5px;font-weight: 650;color: var(--ds-heading, var(--text-normal));}
+.aw-ac-title-icon {display: flex;color: var(--ds-accent, var(--interactive-accent));}
+.aw-ac-title-icon svg {width: 15px;height: 15px;}
+.aw-ac-count {font: 500 11px var(--ds-font-mono, var(--font-monospace));color: var(--ds-faint, var(--text-faint));}
+.aw-ac .aw-ac-tool {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 7px;
+  border: 1px solid var(--ds-border, var(--background-modifier-border));
+  background: var(--ds-paper, var(--background-primary));
+  box-shadow: none;
+  font-size: 11px;
+  color: var(--ds-muted, var(--text-muted));
+  cursor: pointer;
+}
+.aw-ac .aw-ac-tool:hover:not(:disabled) {color: var(--ds-heading, var(--text-normal));background: var(--ds-surface-hover, var(--background-modifier-hover));}
+.aw-ac .aw-ac-tool:disabled {opacity: .45;cursor: default;}
+.aw-ac-tool-icon {display: flex;}
+.aw-ac-tool-icon svg {width: 12px;height: 12px;}
+.aw-ac-scope {display: grid;grid-template-columns: 1fr 1fr;gap: 2px;padding: 2px;border-radius: 9px;background: var(--ds-inset-bg, var(--background-secondary));box-shadow: var(--ds-inset, none);}
+.aw-ac .aw-ac-scope-btn {
+  height: 26px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  box-shadow: none;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ds-muted, var(--text-muted));
+  cursor: pointer;
+}
+.aw-ac .aw-ac-scope-btn[aria-pressed="true"] {
+  background: var(--ds-paper, var(--background-primary));
+  color: var(--ds-heading, var(--text-normal));
+  box-shadow: var(--ds-elev-1, 0 1px 2px rgba(0,0,0,.08));
+}
+.aw-ac-filters {display: flex;align-items: center;gap: 6px;}
+.aw-ac-search {position: relative;flex: 1;min-width: 0;display: flex;align-items: center;}
+.aw-ac-search-icon {position: absolute;left: 9px;display: flex;color: var(--ds-faint, var(--text-faint));pointer-events: none;}
+.aw-ac-search-icon svg {width: 13px;height: 13px;}
+.aw-ac .aw-ac-search input {width: 100%;height: 28px;padding: 0 8px 0 28px;border-radius: 8px;font-size: 12px;}
+.aw-ac select.aw-ac-color {flex: none;height: 28px;padding: 0 22px 0 8px;border-radius: 8px;font-size: 12px;}
+.aw-ac-list {flex: 1;min-height: 0;overflow-y: auto;padding: 10px 10px 16px;display: flex;flex-direction: column;gap: 7px;}
+.aw-ac-empty {padding: 36px 12px;text-align: center;font-size: 12.5px;color: var(--ds-muted, var(--text-muted));}
+.aw-ac-group {display: flex;flex-direction: column;gap: 5px;}
+.aw-ac-group + .aw-ac-group {margin-top: 8px;}
+.aw-ac-group-head {display: flex;align-items: baseline;gap: 6px;padding: 0 4px 2px;}
+.aw-ac .aw-ac-group-name {
+  height: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ds-heading, var(--text-normal));
+  cursor: pointer;
+}
+.aw-ac .aw-ac-group-name:hover {color: var(--ds-accent, var(--interactive-accent));}
+.aw-ac-group-folder {flex: 1;min-width: 0;overflow: hidden;text-overflow: ellipsis;white-space: nowrap;font-size: 11px;color: var(--ds-faint, var(--text-faint));}
+.aw-ac-group-count {flex: none;margin-left: auto;font: 500 10.5px var(--ds-font-mono, var(--font-monospace));color: var(--ds-faint, var(--text-faint));}
+.aw-ac-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--ds-border, var(--background-modifier-border));
+  background: var(--ds-paper, var(--background-primary));
+  cursor: pointer;
+  transition: border-color 120ms ease, background-color 120ms ease;
+}
+.aw-ac-item:hover {border-color: var(--ds-rule, var(--background-modifier-border-hover));background: var(--ds-surface-hover, var(--background-modifier-hover));}
+.aw-ac-item.is-active {
+  border-color: color-mix(in srgb, var(--aw-annot-color) 62%, transparent);
+  background: color-mix(in srgb, var(--aw-annot-color) 8%, var(--ds-paper, var(--background-primary)));
+}
+.aw-ac-item:focus-visible {outline: 2px solid var(--ds-accent, var(--interactive-accent));outline-offset: 1px;}
+.aw-ac-item-top {display: flex;align-items: center;gap: 6px;min-width: 0;}
+.aw-ac-dot {flex: none;width: 8px;height: 8px;border-radius: 50%;background: var(--aw-annot-color);}
+.aw-ac-item.aw-annot-c-rainbow .aw-ac-dot {background: conic-gradient(rgb(var(--ds-tone-5,229,96,94)), rgb(var(--ds-tone-amber,184,134,22)), rgb(var(--ds-tone-2,31,148,97)), rgb(var(--ds-tone-accent,52,128,246)), rgb(var(--ds-tone-3,139,108,240)), rgb(var(--ds-tone-5,229,96,94)));}
+.aw-ac-target {flex: 1;min-width: 0;overflow: hidden;text-overflow: ellipsis;white-space: nowrap;font-size: 12.5px;font-weight: 600;color: var(--ds-heading, var(--text-normal));}
+.aw-ac-actions {display: inline-flex;align-items: center;gap: 2px;opacity: 0;transition: opacity 120ms ease;}
+.aw-ac-item:is(:hover,:focus-within) .aw-ac-actions {opacity: 1;}
+.aw-ac .aw-ac-act {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  box-shadow: none;
+  color: var(--ds-muted, var(--text-muted));
+  cursor: pointer;
+}
+.aw-ac .aw-ac-act svg {width: 12.5px;height: 12.5px;}
+.aw-ac .aw-ac-act:hover {background: var(--ds-surface, var(--background-secondary));color: var(--ds-heading, var(--text-normal));}
+.aw-ac .aw-ac-act-remove:hover {color: rgb(var(--ds-tone-5,208,88,86));}
+.aw-ac-note {font-family: var(--aw-annot-face);font-size: 13.5px;line-height: 1.38;color: var(--aw-annot-color);overflow-wrap: anywhere;}
+.aw-ac-item.aw-annot-c-rainbow .aw-ac-note {
+  background: linear-gradient(90deg, rgb(var(--ds-tone-5,229,96,94)), rgb(var(--ds-tone-4,236,136,52)), rgb(var(--ds-tone-amber,184,134,22)), rgb(var(--ds-tone-2,31,148,97)), rgb(var(--ds-tone-accent,52,128,246)), rgb(var(--ds-tone-3,139,108,240)));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.aw-ac-meta {display: flex;align-items: center;gap: 6px;font-size: 10.5px;color: var(--ds-faint, var(--text-faint));}
+.aw-ac-line {font-family: var(--ds-font-mono, var(--font-monospace));font-variant-numeric: tabular-nums;}
+.aw-ac-tag {padding: 0 5px;border-radius: 4px;background: var(--ds-inset-bg, var(--background-secondary));color: var(--ds-muted, var(--text-muted));}
+
+@media (prefers-reduced-motion: reduce) {
+  .aw-annot-target.aw-annot-jump-flash {animation: none;}
+  .aw-ac-item,.aw-ac-actions {transition: none;}
+}
+
 @media print {
   body .aw-annot-target,
   body .markdown-rendered mark.aw-annot-target {-webkit-print-color-adjust: exact;print-color-adjust: exact;}
+  /* Keep annotated paragraphs together so inline arrows and notes never split across pages. */
+  :is(p,li,blockquote,td,th,.callout-content):has(.aw-annot),
+  .aw-annot-target {break-inside: avoid;page-break-inside: avoid;}
   .markdown-reading-view .aw-annot .aw-annot-text {filter: none !important;opacity: 1 !important;box-shadow: none !important;background-color: transparent !important;}
+  /* Margin notes revert to their native 6-direction pinned layout inside A4 margins so nothing clips off-page. */
+  .aw-annot-margin-connector {display: none !important;}
+  .aw-annot.aw-annot-in-margin .aw-annot-pin .aw-annot-text {
+    left: calc(var(--aw-annot-x) + var(--aw-annot-nudge, 0px)) !important;
+    top: var(--aw-annot-y) !important;
+    width: max-content !important;
+    max-width: 13.5em !important;
+    transform: var(--aw-annot-shift) rotate(-1.3deg) !important;
+    visibility: visible !important;
+  }
 }

@@ -135,14 +135,20 @@ function maskVerbatimInLine(line){
 }
 // Scan a Markdown document (or section), skipping YAML front matter, fenced code and $$ math blocks.
 function collectNoteAnnotations(markdown,{allowFrontMatter=true}={}){
-  const lines=String(markdown||'').split(/\r?\n/),out=[];
-  let i=0,fence=null,mathBlock=false;
-  if(allowFrontMatter&&lines[0]?.trim()==='---'){
-    let end=1;while(end<lines.length&&!/^(?:---|\.\.\.)\s*$/.test(lines[end]))end++;
-    if(end<lines.length)i=end+1;
+  const source=String(markdown||''),rawLines=source.split(/\r?\n/),out=[];
+  const starts=[];
+  let offset=0;
+  for(const line of rawLines){
+    starts.push(offset);
+    offset+=line.length+(source[offset+line.length]==='\r'?2:1);
   }
-  for(;i<lines.length;i++){
-    const raw=lines[i];
+  let i=0,fence=null,mathBlock=false;
+  if(allowFrontMatter&&rawLines[0]?.trim()==='---'){
+    let end=1;while(end<rawLines.length&&!/^(?:---|\.\.\.)\s*$/.test(rawLines[end]))end++;
+    if(end<rawLines.length)i=end+1;
+  }
+  for(;i<rawLines.length;i++){
+    const raw=rawLines[i],lineStart=starts[i];
     if(fence){
       if(new RegExp(`^\\s*${fence[0]}{${fence.length},}\\s*$`).test(raw))fence=null;
       continue;
@@ -152,10 +158,25 @@ function collectNoteAnnotations(markdown,{allowFrontMatter=true}={}){
     if(/^\s*\$\$\s*$/.test(raw)){mathBlock=!mathBlock;continue;}
     if(mathBlock)continue;
     for(const a of findAnnotations(maskVerbatimInLine(raw),0)){
-      out.push({...a,lineIndex:i,target:raw.slice(a.targetFrom,a.targetTo)});
+      out.push({...a,lineIndex:i,docFrom:lineStart+a.markFrom,docTo:lineStart+a.to,target:raw.slice(a.targetFrom,a.targetTo)});
     }
   }
   return out;
+}
+// Rewrite or remove one annotation inside a full Markdown document by matching its recorded target/spec.
+function replaceNoteAnnotation(markdown,ref,replacement){
+  const source=String(markdown||'');
+  const hits=collectNoteAnnotations(source);
+  const same=a=>a.target===ref.target&&sameSpec(a,ref);
+  let hit=Number.isInteger(ref.docFrom)?hits.find(a=>a.docFrom===ref.docFrom&&same(a)):null;
+  if(!hit&&Number.isInteger(ref.lineIndex))hit=hits.find(a=>a.lineIndex===ref.lineIndex&&same(a));
+  if(!hit){
+    const bySpec=hits.filter(same);
+    if(bySpec.length===1)hit=bySpec[0];
+  }
+  if(!hit)throw Error('标注内容已变化，请刷新后重试。');
+  const braceStart=hit.docFrom+(hit.from-hit.markFrom);
+  return source.slice(0,braceStart)+replacement+source.slice(hit.docTo);
 }
 // Rewrite or remove one annotation inside a Markdown section after verifying target and spec match.
 function replaceSectionAnnotation(sectionText,target,oldSpec,ordinal,replacement){
@@ -168,6 +189,150 @@ function replaceSectionAnnotation(sectionText,target,oldSpec,ordinal,replacement
   lines[hit.lineIndex]=line.slice(0,hit.from)+replacement+line.slice(hit.to);
   return lines.join(eol);
 }
+// Next or previous annotation relative to (lineIndex, ch), wrapping cleanly at document ends.
+function findAdjacentAnnotation(items,lineIndex,ch,direction='next'){
+  if(!items?.length)return null;
+  if(direction==='prev'){
+    for(let i=items.length-1;i>=0;i--){
+      const a=items[i];
+      if(a.lineIndex<lineIndex||(a.lineIndex===lineIndex&&a.markFrom<ch))return a;
+    }
+    return items[items.length-1];
+  }
+  return items.find(a=>a.lineIndex>lineIndex||(a.lineIndex===lineIndex&&a.markFrom>ch))??items[0];
+}
+// Index of the visible rect closest to the vertical viewport center, or -1 if none are in view.
+function findClosestVisibleIndex(rects,viewTop,viewBottom){
+  if(!rects?.length||!(viewBottom>viewTop))return -1;
+  const center=(viewTop+viewBottom)/2;
+  let best=-1,bestDist=Infinity;
+  for(let i=0;i<rects.length;i++){
+    const r=rects[i];
+    if(!r||r.bottom<viewTop||r.top>viewBottom)continue;
+    const dist=Math.abs((r.top+r.bottom)/2-center);
+    if(dist<bestDist){bestDist=dist;best=i;}
+  }
+  return best;
+}
+// Choose left/right margin or inline (null) for one Reading-view annotation.
+// In "smart" mode, mid-line targets (36%–64%) stay inline so connectors never cut across body text.
+function chooseMarginSide(dir,layout,avail,counts,targetRect,sizerRect){
+  if(layout==='inline')return null;
+  if(layout==='left')return avail.left?'left':null;
+  if(layout==='right')return avail.right?'right':null;
+  if(targetRect&&sizerRect&&sizerRect.width>0){
+    const ratio=Math.max(0,Math.min(1,(targetRect.left+targetRect.width/2-sizerRect.left)/sizerRect.width));
+    if(ratio<0.36)return avail.left?'left':avail.right?'right':null;
+    if(ratio>0.64)return avail.right?'right':avail.left?'left':null;
+    return null;
+  }
+  const prefer=dir==='nw'||dir==='sw'?'left':dir==='ne'||dir==='se'?'right':null;
+  if(prefer&&avail[prefer])return prefer;
+  if(avail.left&&avail.right)return (counts?.left||0)<=(counts?.right||0)?'left':'right';
+  return avail.left?'left':avail.right?'right':null;
+}
+// Deterministic vertical stacking for margin notes on one side: top-down push, bottom-up pull, top clamp.
+function distributeMarginNotes(notes,containerHeight,gap=12,pad=8){
+  if(!notes?.length)return [];
+  const sorted=[...notes].sort((a,b)=>a.desiredY-b.desiredY);
+  const placed=[];
+  let nextY=pad;
+  for(const n of sorted){
+    const maxY=Math.max(pad,containerHeight-pad-n.height);
+    const y=Math.min(maxY,Math.max(nextY,n.desiredY));
+    placed.push({...n,y});
+    nextY=y+n.height+gap;
+  }
+  for(let i=placed.length-2;i>=0;i--){
+    placed[i].y=Math.min(placed[i].y,placed[i+1].y-gap-placed[i].height);
+  }
+  if(placed[0].y<pad){
+    placed[0].y=pad;
+    for(let i=1;i<placed.length;i++){
+      placed[i].y=Math.max(placed[i].y,placed[i-1].y+placed[i-1].height+gap);
+    }
+  }
+  return placed;
+}
+const fmtNum=v=>Number(v.toFixed(1)).toString();
+const fmtPt=p=>`${fmtNum(p.x)} ${fmtNum(p.y)}`;
+// Smooth polyline through sampled points using quadratic midpoints.
+function smoothPolyline(pts){
+  if(pts.length<2)return '';
+  let d=`M${fmtPt(pts[0])}`;
+  for(let i=1;i<pts.length-1;i++){
+    const mid={x:(pts[i].x+pts[i+1].x)/2,y:(pts[i].y+pts[i+1].y)/2};
+    d+=` Q${fmtPt(pts[i])} ${fmtPt(mid)}`;
+  }
+  return `${d} L${fmtPt(pts[pts.length-1])}`;
+}
+// Evaluate a cubic Bezier point and unit tangent at parameter t in [0, 1].
+function cubicAt(p0,c1,c2,p3,t){
+  const u=1-t,uu=u*u,tt=t*t;
+  const x=uu*u*p0.x+3*uu*t*c1.x+3*u*tt*c2.x+tt*t*p3.x;
+  const y=uu*u*p0.y+3*uu*t*c1.y+3*u*tt*c2.y+tt*t*p3.y;
+  const dx=3*uu*(c1.x-p0.x)+6*u*t*(c2.x-c1.x)+3*tt*(p3.x-c2.x);
+  const dy=3*uu*(c1.y-p0.y)+6*u*t*(c2.y-c1.y)+3*tt*(p3.y-c2.y);
+  const m=Math.hypot(dx,dy)||1;
+  return {x,y,tx:dx/m,ty:dy/m};
+}
+// Open hand-drawn arrowhead pointing into `to` along unit arrival direction (ux, uy).
+function arrowHeadAt(to,ux,uy){
+  const nx=-uy,ny=ux;
+  const back=(d,w)=>({x:to.x-ux*d+nx*w,y:to.y-uy*d+ny*w});
+  const a=back(8.5,4.6),m1=back(3.6,2.1),m2=back(3.6,-2.1),b=back(8.5,-4.6);
+  return `M${fmtPt(a)} Q${fmtPt(m1)} ${fmtPt(to)} Q${fmtPt(m2)} ${fmtPt(b)}`;
+}
+// Long SVG connector from margin note (from) to target (to), supporting all 5 line styles.
+// attach: 'side' (edge-flush target) | 'top' | 'bottom' (inset target, routed through inter-line gap).
+function buildMarginConnector(side,lineStyle,from,to,attach='side'){
+  const dx=to.x-from.x,dy=to.y-from.y,len=Math.max(1,Math.hypot(dx,dy));
+  const sign=side==='left'?1:-1;
+  let c1,c2;
+  if(attach==='bottom'||attach==='top'){
+    const ch=attach==='bottom'?15:-15;
+    c1={x:from.x+dx*0.36,y:from.y+(to.y+ch-from.y)*0.35};
+    c2={x:to.x-sign*14,y:to.y+ch};
+  }else{
+    const bend=Math.max(-22,Math.min(22,(dy>=0?1:-1)*Math.min(10,Math.abs(dy)*0.12+6)));
+    c1={x:from.x+dx*0.36,y:from.y+bend};
+    c2={x:from.x+dx*0.72,y:to.y-bend*0.6};
+  }
+  const endT=cubicAt(from,c1,c2,to,0.98);
+  const head=arrowHeadAt(to,endT.tx,endT.ty);
+  const offsetCurve=off=>{
+    if(!off)return `M${fmtPt(from)} C${fmtPt(c1)} ${fmtPt(c2)} ${fmtPt(to)}`;
+    const pts=[];
+    for(let i=0;i<=18;i++){
+      const p=cubicAt(from,c1,c2,to,i/18);
+      pts.push({x:p.x-p.ty*off,y:p.y+p.tx*off});
+    }
+    return smoothPolyline(pts);
+  };
+  if(lineStyle==='double')return {lines:[offsetCurve(-1.5),offsetCurve(1.5)],head,dashed:true};
+  if(lineStyle==='dashed')return {lines:[offsetCurve(0)],head,dashed:true};
+  if(lineStyle==='solid')return {lines:[offsetCurve(0)],head,dashed:false};
+  if(lineStyle==='wavy'){
+    const waves=Math.max(2,Math.round(len/28)),samples=waves*8,pts=[];
+    for(let i=0;i<=samples;i++){
+      const t=i/samples,p=cubicAt(from,c1,c2,to,t),env=Math.sin(t*Math.PI);
+      const across=Math.sin(t*waves*Math.PI*2)*3.8*env;
+      pts.push({x:p.x-p.ty*across,y:p.y+p.tx*across});
+    }
+    return {lines:[smoothPolyline(pts)],head,dashed:false};
+  }
+  if(lineStyle==='spiral'){
+    const turns=Math.min(2.4,Math.max(1.2,len/125)),amp=Math.min(11,Math.max(5.5,len*0.036));
+    const alongR=Math.min(len*0.085,(len/turns)*0.3),samples=Math.max(40,Math.ceil(turns*22)),pts=[];
+    for(let i=0;i<=samples;i++){
+      const t=i/samples,p=cubicAt(from,c1,c2,to,t),ang=t*turns*Math.PI*2,rad=Math.sin(t*Math.PI)*(0.4+t*0.6);
+      const along=Math.sin(ang)*alongR*rad,across=Math.cos(ang)*amp*rad;
+      pts.push({x:p.x+p.tx*along-p.ty*across,y:p.y+p.ty*along+p.tx*across});
+    }
+    return {lines:[smoothPolyline(pts)],head,dashed:false};
+  }
+  return {lines:[offsetCurve(0)],head,dashed:false};
+}
 // Markdown list of all annotations in a note for copying or review.
 function formatAnnotationSummary(title,items){
   const heading=`## 标注汇总：${String(title||'当前笔记').trim()||'当前笔记'}`;
@@ -178,4 +343,4 @@ function formatAnnotationSummary(title,items){
   });
   return `${heading}\n\n${rows.join('\n')}`;
 }
-module.exports={parseAnnotation,findAnnotations,formatAnnotation,parseBody,targetClasses,noteLines,noteTree,collectNoteAnnotations,replaceSectionAnnotation,formatAnnotationSummary,sameSpec,DIRECTIONS,COLORS,LINES,DEFAULTS,MAX_NOTE,KEEP};
+module.exports={parseAnnotation,findAnnotations,formatAnnotation,parseBody,targetClasses,noteLines,noteTree,collectNoteAnnotations,replaceNoteAnnotation,replaceSectionAnnotation,findAdjacentAnnotation,findClosestVisibleIndex,chooseMarginSide,distributeMarginNotes,buildMarginConnector,formatAnnotationSummary,sameSpec,DIRECTIONS,COLORS,LINES,DEFAULTS,MAX_NOTE,KEEP};
